@@ -97,6 +97,8 @@
   },
   "overrides": {
     "tmp": "0.2.5",
-    "serialize-javascript": "7.0.5"
+    "serialize-javascript": "7.0.5",
+    "uuid": "^14.0.0",
+    "sirv": "^3.0.2"
   }
 }
