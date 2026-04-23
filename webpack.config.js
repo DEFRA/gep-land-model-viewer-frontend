@@ -22,6 +22,9 @@ export default {
   entry: {
     application: {
       import: ['./javascripts/application.js', './stylesheets/application.scss']
+    },
+    map: {
+      import: ['./javascripts/map/index.js', './stylesheets/map.scss']
     }
   },
   experiments: {
@@ -29,6 +32,12 @@ export default {
   },
   mode: NODE_ENV === 'production' ? 'production' : 'development',
   devtool: NODE_ENV === 'production' ? 'source-map' : 'inline-source-map',
+  cache: {
+    type: 'filesystem',
+    buildDependencies: {
+      config: [fileURLToPath(import.meta.url)]
+    }
+  },
   watchOptions: {
     aggregateTimeout: 200,
     poll: 1000
@@ -74,6 +83,10 @@ export default {
 
         // Flag loaded modules as side effect free
         sideEffects: false
+      },
+      {
+        test: /\.css$/,
+        type: 'asset/source'
       },
       {
         test: /\.scss$/,
@@ -157,7 +170,10 @@ export default {
     usedExports: true
   },
   plugins: [
-    new CleanWebpackPlugin(),
+    // Preserve @arcgis/core assets; CopyPlugin re-copies ~10k files otherwise.
+    new CleanWebpackPlugin({
+      cleanOnceBeforeBuildPatterns: ['**/*', '!arcgis-assets', '!arcgis-assets/**']
+    }),
     new WebpackAssetsManifest(),
     new CopyPlugin({
       patterns: [
@@ -168,6 +184,26 @@ export default {
         {
           from: path.join(dirname, 'src/client/images'),
           to: 'images'
+        },
+        {
+          from: path.join(dirname, 'node_modules/@arcgis/core/assets'),
+          to: 'arcgis-assets'
+        },
+        {
+          from: path.join(dirname, 'node_modules/@defra/interactive-map/dist/css/index.css'),
+          to: 'stylesheets/vendor/interactive-map.css'
+        },
+        {
+          from: path.join(dirname, 'node_modules/@defra/interactive-map/providers/beta/esri/dist/css/index.css'),
+          to: 'stylesheets/vendor/interactive-map-esri.css'
+        },
+        {
+          from: path.join(dirname, 'node_modules/@defra/interactive-map/plugins/beta/map-styles/dist/css/index.css'),
+          to: 'stylesheets/vendor/interactive-map-styles.css'
+        },
+        {
+          from: path.join(dirname, 'src/client/data/vts'),
+          to: 'data/vts'
         }
       ]
     })

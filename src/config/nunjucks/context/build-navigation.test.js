@@ -16,6 +16,11 @@ describe('#buildNavigation', () => {
       },
       {
         current: false,
+        text: 'Map',
+        href: '/map'
+      },
+      {
+        current: false,
         text: 'About',
         href: '/about'
       }
@@ -28,6 +33,11 @@ describe('#buildNavigation', () => {
         current: true,
         text: 'Home',
         href: '/'
+      },
+      {
+        current: false,
+        text: 'Map',
+        href: '/map'
       },
       {
         current: false,

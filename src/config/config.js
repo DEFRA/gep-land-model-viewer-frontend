@@ -222,6 +222,15 @@ export const config = convict({
       default: 'x-cdp-request-id',
       env: 'TRACING_HEADER'
     }
+  },
+  map: {
+    osApiKey: {
+      doc: 'Ordnance Survey Maps API key',
+      format: String,
+      default: '',
+      env: 'OS_API_KEY',
+      sensitive: true
+    }
   }
 })
 

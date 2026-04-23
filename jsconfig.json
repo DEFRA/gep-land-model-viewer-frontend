@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "esnext",
+    "resolveJsonModule": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0,
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", ".public", "coverage"]
+}

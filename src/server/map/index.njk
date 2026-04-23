@@ -1,0 +1,35 @@
+{% extends 'layouts/page.njk' %}
+
+{% set bodyClasses = 'app-map-page' %}
+{% set hideNavigation = true %}
+
+{% block head %}
+  {{ super() }}
+  <link href="/public/stylesheets/vendor/interactive-map.css" rel="stylesheet">
+  <link href="/public/stylesheets/vendor/interactive-map-esri.css" rel="stylesheet">
+  <link href="/public/stylesheets/vendor/interactive-map-styles.css" rel="stylesheet">
+  <link href="{{ getAssetPath('stylesheets/map.scss') }}" rel="stylesheet">
+{% endblock %}
+
+{% block container %}
+  <main class="app-map-main" id="main-content">
+    <div id="land-map" class="app-map app-map--full">
+      <noscript>
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-visually-hidden">Warning</span>
+            This map requires JavaScript. Enable it in your browser settings and reload the page.
+          </strong>
+        </div>
+      </noscript>
+    </div>
+  </main>
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script type="module" src="{{ getAssetPath('map.js') }}"></script>
+{% endblock %}

@@ -37,6 +37,19 @@ describe('#contentSecurityPolicy', () => {
     expect(csp).toMatch(/script-src 'self' 'nonce-[a-f0-9]+'/)
   })
 
+  test('Should not relax script-src or worker-src on non-map routes', async () => {
+    const resp = await server.inject({
+      method: 'GET',
+      url: '/'
+    })
+
+    const csp = resp.headers['content-security-policy']
+    expect(csp).not.toContain("'unsafe-eval'")
+    expect(csp).not.toContain("'wasm-unsafe-eval'")
+    expect(csp).not.toContain('blob:')
+    expect(csp).not.toContain('environment.data.gov.uk')
+  })
+
   test('Should not include GTM domains when container ID is not set', async () => {
     const resp = await server.inject({
       method: 'GET',
