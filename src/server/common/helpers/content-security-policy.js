@@ -38,8 +38,6 @@ const contentSecurityPolicy = {
   }
 }
 
-// OS sprite hosted on GitHub (api.os.uk sprite endpoint is premium-only).
-const OS_SPRITE_HOST = 'https://raw.githubusercontent.com'
 // Environment Agency WMS host for overlay datasets.
 const EA_DATA_HOST = 'https://environment.data.gov.uk'
 
@@ -50,12 +48,12 @@ const EA_DATA_HOST = 'https://environment.data.gov.uk'
 export const mapContentSecurityPolicy = {
   defaultSrc: ['self'],
   fontSrc: ['self'],
-  connectSrc: ['self', ...gtmConnectSrc, OS_SPRITE_HOST, EA_DATA_HOST],
+  connectSrc: ['self', ...gtmConnectSrc, EA_DATA_HOST],
   mediaSrc: ['self'],
   styleSrc: ['self', "'unsafe-inline'"],
   scriptSrc: ['self', ...gtmScriptSrc, "'unsafe-eval'", "'wasm-unsafe-eval'"],
   workerSrc: ['self', 'blob:'],
-  imgSrc: ['self', ...gtmImgSrc, 'blob:', 'data:', OS_SPRITE_HOST, EA_DATA_HOST],
+  imgSrc: ['self', ...gtmImgSrc, 'blob:', 'data:', EA_DATA_HOST],
   frameSrc: ['self', ...gtmFrameSrc],
   objectSrc: ['none'],
   frameAncestors: ['none'],

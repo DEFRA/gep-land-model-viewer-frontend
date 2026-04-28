@@ -95,6 +95,12 @@ Install application dependencies:
 npm install
 ```
 
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OS_API_KEY` | Yes | OS Maps API (Vector Tile Service) key with premium access. Used by the `/os-base-map` proxy to authenticate tile, sprite and glyph requests. |
+
 ### Development
 
 To run the application in `development` mode run:

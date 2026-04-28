@@ -1,7 +1,6 @@
 {
     "version": 8,
-    "_sprite": "/os-base-map/resources/sprites/sprite",
-    "sprite": "https://raw.githubusercontent.com/OrdnanceSurvey/OS-Vector-Tile-API-Stylesheets/main/OS_VTS_27700/resources/sprites/sprite",
+    "sprite": "/os-base-map/resources/sprites/sprite",
     "glyphs": "/os-base-map/resources/fonts/{fontstack}/{range}.pbf",
     "sources": {
         "esri": {

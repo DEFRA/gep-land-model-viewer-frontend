@@ -31,7 +31,6 @@ describe('#mapController', () => {
     expect(mapCsp).toContain("'wasm-unsafe-eval'")
     expect(mapCsp).toContain('blob:')
     expect(mapCsp).toContain('https://environment.data.gov.uk')
-    expect(mapCsp).toContain('https://raw.githubusercontent.com')
 
     const homeResp = await server.inject({ method: 'GET', url: '/' })
     const homeCsp = homeResp.headers['content-security-policy']
