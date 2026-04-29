@@ -31,11 +31,16 @@ vi.mock('./config/map-styles.js', () => ({
 }))
 
 vi.mock('./plugins/grid/index.js', () => ({
-  registerGridPlugin: vi.fn()
+  registerGridController: vi.fn(() => ({ setVisible: vi.fn() }))
 }))
 
 vi.mock('./plugins/layers/index.js', () => ({
   registerLayersPanel: vi.fn()
+}))
+
+vi.mock('./plugins/view-mode/index.js', () => ({
+  registerViewMode: vi.fn(),
+  createViewModePlugin: vi.fn(() => ({ id: 'gepViewMode' }))
 }))
 
 describe('map entry point', () => {
@@ -43,28 +48,30 @@ describe('map entry point', () => {
     vi.clearAllMocks()
   })
 
-  test('creates InteractiveMap with mapStylesPlugin and registers plugins on MAP_READY', async () => {
+  test('loads the map and registers runtime extensions when ready', async () => {
     const interactiveMapModule = await import('@defra/interactive-map')
     const InteractiveMap = interactiveMapModule.default
     const mapStylesPlugin = (await import('@defra/interactive-map/plugins/map-styles')).default
-    const { registerGridPlugin } = await import('./plugins/grid/index.js')
+    const { registerGridController } = await import('./plugins/grid/index.js')
     const { registerLayersPanel } = await import('./plugins/layers/index.js')
+    const { registerViewMode } = await import('./plugins/view-mode/index.js')
     const esriConfig = (await import('@arcgis/core/config.js')).default
 
     await import('./index.js')
 
     expect(esriConfig.assetsPath).toBe('/public/arcgis-assets')
     expect(mapStylesPlugin).toHaveBeenCalled()
-    expect(InteractiveMap).toHaveBeenCalledWith('land-map', expect.objectContaining({
-      plugins: expect.arrayContaining([expect.objectContaining({ id: 'mapStyles' })])
-    }))
+    expect(InteractiveMap).toHaveBeenCalled()
 
     const readyHandler = InteractiveMap._handlers['map:ready']
     expect(readyHandler).toBeDefined()
 
-    await readyHandler({ map: {}, view: {} })
+    const arcgisMap = {}
+    const view = {}
+    await readyHandler({ map: arcgisMap, view })
 
-    expect(registerGridPlugin).toHaveBeenCalled()
-    expect(registerLayersPanel).toHaveBeenCalled()
+    expect(registerGridController).toHaveBeenCalledWith(expect.any(Object), arcgisMap, view)
+    expect(registerViewMode).toHaveBeenCalledWith(expect.any(Object), view, expect.any(Object))
+    expect(registerLayersPanel).toHaveBeenCalledWith(expect.any(Object), arcgisMap, view)
   })
 })

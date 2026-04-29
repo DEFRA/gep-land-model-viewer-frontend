@@ -2,15 +2,15 @@ import { EVENTS } from '@defra/interactive-map'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer.js'
 import Graphic from '@arcgis/core/Graphic.js'
 import { CELL_SIZE_METRES, snapDown, snapUp } from './cell-at-point.js'
+import { GRID_VISIBLE_MIN_ZOOM } from './constants.js'
 
 const GRID_LAYER_ID = 'gep-grid'
 const SELECTED_LAYER_ID = 'gep-grid-selected'
-const GRID_VISIBLE_MIN_ZOOM = 16
 const MAX_LINES_PER_AXIS = 400
 
 const GOVUK_BLUE = [29, 112, 184] // #1d70b8
-const GOVUK_YELLOW = [255, 221, 0] // #ffdd00
-const GOVUK_BLACK = [11, 12, 12] // #0b0c0c
+const DEFRA_GREEN = [0, 133, 49] // #008531
+const DEFRA_GREEN_DARK = [0, 106, 39] // #006a27
 
 const LINE_SYMBOL = {
   type: 'simple-line',
@@ -20,8 +20,8 @@ const LINE_SYMBOL = {
 
 const SELECTED_SYMBOL = {
   type: 'simple-fill',
-  color: [...GOVUK_YELLOW, 0.5],
-  outline: { color: [...GOVUK_BLACK, 1], width: 1, join: 'miter' }
+  color: [...DEFRA_GREEN, 0.25],
+  outline: { color: [...DEFRA_GREEN_DARK, 1], width: 2, join: 'miter' }
 }
 
 export function createGridLayer (interactiveMap, arcgisMap, view) {
@@ -30,7 +30,7 @@ export function createGridLayer (interactiveMap, arcgisMap, view) {
   arcgisMap.add(gridLayer)
   arcgisMap.add(selectedLayer)
 
-  let enabled = true
+  let enabled = false
 
   function refreshGrid () {
     gridLayer.removeAll()
@@ -72,14 +72,6 @@ export function createGridLayer (interactiveMap, arcgisMap, view) {
       enabled = next
       selectedLayer.visible = next
       scheduleRefresh()
-    },
-
-    isVisible () {
-      return enabled && view.zoom >= GRID_VISIBLE_MIN_ZOOM
-    },
-
-    canShow () {
-      return view.zoom >= GRID_VISIBLE_MIN_ZOOM
     }
   }
 }

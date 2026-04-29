@@ -3,8 +3,9 @@ import InteractiveMap, { EVENTS } from '@defra/interactive-map'
 import createEsriProvider from '@defra/interactive-map/providers/esri'
 import mapStylesPlugin from '@defra/interactive-map/plugins/map-styles'
 import { mapStyles } from './config/map-styles.js'
-import { registerGridPlugin } from './plugins/grid/index.js'
+import { registerGridController } from './plugins/grid/index.js'
 import { registerLayersPanel } from './plugins/layers/index.js'
+import { registerViewMode, createViewModePlugin } from './plugins/view-mode/index.js'
 
 esriConfig.assetsPath = '/public/arcgis-assets'
 
@@ -12,7 +13,7 @@ const MAP_ID = 'land-map'
 const DEFAULT_CENTER = [418700, 385100]
 const DEFAULT_ZOOM = 14
 const MIN_ZOOM = 5
-const MAX_ZOOM = 18
+const MAX_ZOOM = 20
 
 const map = new InteractiveMap(MAP_ID, {
   behaviour: 'inline',
@@ -41,11 +42,13 @@ const map = new InteractiveMap(MAP_ID, {
           desktop: { slot: 'mapStyles-button', width: '280px', modal: true, dismissible: true }
         }]
       }
-    })
+    }),
+    createViewModePlugin()
   ]
 })
 
 map.on(EVENTS.MAP_READY, async ({ map: arcgisMap, view }) => {
-  registerGridPlugin(map, arcgisMap, view)
+  const gridController = registerGridController(map, arcgisMap, view)
+  registerViewMode(map, view, { grid: gridController })
   registerLayersPanel(map, arcgisMap, view)
 })

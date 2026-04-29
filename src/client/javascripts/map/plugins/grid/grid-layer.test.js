@@ -86,12 +86,6 @@ describe('#createGridLayer', () => {
     expect(GraphicsLayer).toHaveBeenCalledWith(expect.objectContaining({ listMode: 'hide' }))
   })
 
-  test('registers MAP_RENDER event handler', async () => {
-    await createGridLayer(interactiveMap, arcgisMap, view)
-
-    expect(interactiveMap.on).toHaveBeenCalledWith('map:render', expect.any(Function))
-  })
-
   test('highlightCell adds graphic to selected layer', async () => {
     const api = await createGridLayer(interactiveMap, arcgisMap, view)
 
@@ -114,61 +108,46 @@ describe('#createGridLayer', () => {
   test('setEnabled toggles selected layer visibility', async () => {
     const api = await createGridLayer(interactiveMap, arcgisMap, view)
 
+    api.setEnabled(true)
+    const selectedLayer = arcgisMap._layers[1]
+    expect(selectedLayer.visible).toBe(true)
+
     api.setEnabled(false)
 
-    const selectedLayer = arcgisMap._layers[1]
     expect(selectedLayer.visible).toBe(false)
-  })
-
-  test('isVisible returns true when enabled and zoom is high enough', async () => {
-    view.zoom = 17
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
-
-    expect(api.isVisible()).toBe(true)
-  })
-
-  test('isVisible returns false when zoom too low', async () => {
-    view.zoom = 14
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
-
-    expect(api.isVisible()).toBe(false)
-  })
-
-  test('canShow returns true when zoom at threshold', async () => {
-    view.zoom = 16
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
-
-    expect(api.canShow()).toBe(true)
-  })
-
-  test('canShow returns false when zoom below threshold', async () => {
-    view.zoom = 15
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
-
-    expect(api.canShow()).toBe(false)
   })
 
   test('does not draw grid when zoom too low', async () => {
     view.zoom = 14
-    await createGridLayer(interactiveMap, arcgisMap, view)
+    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+    api.setEnabled(true)
 
     const gridLayer = arcgisMap._layers[0]
     expect(gridLayer.addMany).not.toHaveBeenCalled()
   })
 
-  test('draws grid lines when zoom is appropriate', async () => {
+  test('draws grid lines when enabled and zoom is appropriate', async () => {
     view.zoom = 17
-    await createGridLayer(interactiveMap, arcgisMap, view)
+    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+    api.setEnabled(true)
 
     const gridLayer = arcgisMap._layers[0]
     expect(gridLayer.addMany).toHaveBeenCalled()
     expect(gridLayer.graphics.length).toBeGreaterThan(0)
   })
 
-  test('does not draw grid when disabled', async () => {
+  test('does not draw grid until enabled, even at high zoom', async () => {
+    view.zoom = 17
+    await createGridLayer(interactiveMap, arcgisMap, view)
+
+    const gridLayer = arcgisMap._layers[0]
+    expect(gridLayer.addMany).not.toHaveBeenCalled()
+  })
+
+  test('setEnabled(false) clears the grid', async () => {
     const api = await createGridLayer(interactiveMap, arcgisMap, view)
     const gridLayer = arcgisMap._layers[0]
-
+    api.setEnabled(true)
     gridLayer.removeAll.mockClear()
     gridLayer.addMany.mockClear()
 
@@ -188,7 +167,8 @@ describe('#createGridLayer', () => {
       height: 100000
     }
     view.zoom = 17
-    await createGridLayer(interactiveMap, arcgisMap, view)
+    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+    api.setEnabled(true)
 
     const gridLayer = arcgisMap._layers[0]
     expect(gridLayer.addMany).not.toHaveBeenCalled()

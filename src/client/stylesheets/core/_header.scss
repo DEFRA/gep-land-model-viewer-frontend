@@ -1,7 +1,5 @@
-@use "variables/colours" as *;
-
-// Example namespaced custom element style CSS classes
+@use "govuk-frontend" as *;
 
 .app-header {
-  border-bottom-color: $app-light-grey;
+  border-bottom-color: govuk-colour("black", $variant: "tint-95");
 }

@@ -71,7 +71,7 @@ describe('context and cache', () => {
           cookieAction: null,
           hasAnalyticsConsent: false,
           currentUrl: '/',
-          serviceName: 'gep-land-model-viewer-frontend',
+          serviceName: 'Defra Group Land Model',
           serviceUrl: '/'
         })
       })
@@ -172,7 +172,7 @@ describe('context and cache', () => {
           cookieAction: null,
           hasAnalyticsConsent: false,
           currentUrl: '/',
-          serviceName: 'gep-land-model-viewer-frontend',
+          serviceName: 'Defra Group Land Model',
           serviceUrl: '/'
         })
       })

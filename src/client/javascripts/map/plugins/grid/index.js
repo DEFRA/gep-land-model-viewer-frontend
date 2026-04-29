@@ -1,18 +1,20 @@
 import { EVENTS } from '@defra/interactive-map'
 import { cellAtPoint } from './cell-at-point.js'
+import { GRID_VISIBLE_MIN_ZOOM } from './constants.js'
 import { createGridLayer } from './grid-layer.js'
 import { renderInitialInfoPanelHtml, renderCellInfoHtml } from './render.js'
 
-const BUTTON_ID = 'gep-grid-toggle'
 const PANEL_ID = 'gep-grid-info'
 const CONTENT_ID = 'gep-grid-info-content'
 
-// Lucide "grid-3x3"
-const GRID_ICON_SVG = '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>'
-
-export function registerGridPlugin (interactiveMap, arcgisMap, view) {
+/**
+ * @typedef {object} GridController
+ * @property {number} minZoom Minimum zoom at which the grid is rendered.
+ * @property {(next: boolean) => void} setVisible Show or hide the grid layer and its cursor class.
+ */
+export function registerGridController (interactiveMap, arcgisMap, view) {
   const gridLayer = createGridLayer(interactiveMap, arcgisMap, view)
-  let enabled = true
+  let isVisible = false
 
   function updatePanelContent (innerHtml) {
     const el = document.getElementById(CONTENT_ID)
@@ -20,33 +22,6 @@ export function registerGridPlugin (interactiveMap, arcgisMap, view) {
       el.innerHTML = innerHtml
     }
   }
-
-  interactiveMap.addButton(BUTTON_ID, {
-    id: BUTTON_ID,
-    label: 'Toggle grid',
-    iconSvgContent: GRID_ICON_SVG,
-    isPressed: true,
-    onClick: () => {
-      enabled = !enabled
-      gridLayer.setEnabled(enabled)
-      interactiveMap.toggleButtonState(BUTTON_ID, 'pressed', enabled)
-    },
-    mobile: { slot: 'right-top', showLabel: false, order: 11 },
-    tablet: { slot: 'right-top', showLabel: false, order: 11 },
-    desktop: { slot: 'right-top', showLabel: false, order: 11 }
-  })
-
-  interactiveMap.toggleButtonState(BUTTON_ID, 'pressed', enabled)
-  interactiveMap.toggleButtonState(BUTTON_ID, 'disabled', !gridLayer.canShow())
-
-  let couldShow = gridLayer.canShow()
-  interactiveMap.on(EVENTS.MAP_RENDER, () => {
-    const canShow = gridLayer.canShow()
-    if (canShow !== couldShow) {
-      couldShow = canShow
-      interactiveMap.toggleButtonState(BUTTON_ID, 'disabled', !canShow)
-    }
-  })
 
   interactiveMap.addPanel(PANEL_ID, {
     id: PANEL_ID,
@@ -58,17 +33,32 @@ export function registerGridPlugin (interactiveMap, arcgisMap, view) {
   })
 
   let clickTimeout = null
-  interactiveMap.on(EVENTS.MAP_CLICK, ({ coords }) => {
-    if (!gridLayer.isVisible()) {
-      return
-    }
+  function clearPendingClick () {
     if (clickTimeout) {
       clearTimeout(clickTimeout)
       clickTimeout = null
+    }
+  }
+
+  function hideGridState () {
+    clearPendingClick()
+    gridLayer.clearHighlight()
+    interactiveMap.hidePanel(PANEL_ID)
+  }
+
+  interactiveMap.on(EVENTS.MAP_CLICK, ({ coords }) => {
+    if (!isVisible) {
+      return
+    }
+    if (clickTimeout) {
+      clearPendingClick()
       return
     }
     clickTimeout = setTimeout(() => {
       clickTimeout = null
+      if (!isVisible) {
+        return
+      }
       const cell = cellAtPoint(coords)
       gridLayer.highlightCell(cell.easting, cell.northing)
       updatePanelContent(renderCellInfoHtml(cell))
@@ -81,4 +71,17 @@ export function registerGridPlugin (interactiveMap, arcgisMap, view) {
       gridLayer.clearHighlight()
     }
   })
+
+  return {
+    minZoom: GRID_VISIBLE_MIN_ZOOM,
+
+    setVisible (next) {
+      isVisible = next
+      gridLayer.setEnabled(next)
+      view.container?.classList.toggle('app-map--grid', next)
+      if (!next) {
+        hideGridState()
+      }
+    }
+  }
 }

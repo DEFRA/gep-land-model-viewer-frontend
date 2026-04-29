@@ -1,4 +1,5 @@
 @use '../variables/colours' as *;
+@use 'govuk-frontend' as *;
 
 .defra-service-navigation {
   background-color: $defra-green;
@@ -39,21 +40,21 @@
   &,
   &:link,
   &:visited {
-    color: $govuk-white;
+    color: govuk-colour("white");
   }
 
   &:hover {
-    color: $govuk-white;
+    color: govuk-colour("white");
     background-color: rgba(0, 0, 0, 0.2);
     text-decoration: none;
     box-shadow: inset 0 -4px 0 0 $defra-light-green;
   }
 
   &:focus {
-    outline: 3px solid $govuk-yellow;
+    outline: 3px solid govuk-colour("yellow");
     outline-offset: 0;
-    background-color: $govuk-yellow;
-    color: $govuk-black;
+    background-color: govuk-colour("yellow");
+    color: govuk-colour("black");
     box-shadow: none;
   }
 }
@@ -67,7 +68,7 @@
 // Active state using aria-current for accessibility
 .defra-service-navigation__link[aria-current='page'] {
   background-color: rgba(0, 0, 0, 0.2);
-  box-shadow: inset 0 -4px 0 0 $govuk-white;
+  box-shadow: inset 0 -4px 0 0 govuk-colour("white");
   font-weight: 700;
 
   &:hover {
@@ -75,7 +76,7 @@
   }
 
   &:focus {
-    background-color: $govuk-yellow;
+    background-color: govuk-colour("yellow");
     box-shadow: none;
   }
 }
@@ -95,7 +96,7 @@
   left: 0;
   z-index: 100;
   min-width: 300px;
-  background-color: $govuk-white;
+  background-color: govuk-colour("white");
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   border-top: 4px solid $defra-green;
 }
@@ -107,7 +108,7 @@
 }
 
 .defra-service-navigation__dropdown-item {
-  border-bottom: 1px solid $govuk-light-grey;
+  border-bottom: 1px solid govuk-colour("black", $variant: "tint-95");
 
   &:last-child {
     border-bottom: none;
@@ -118,16 +119,16 @@
   display: block;
   padding: 15px 20px;
   text-decoration: none;
-  color: $govuk-black;
+  color: govuk-colour("black");
 
   &:hover {
-    background-color: $govuk-light-grey;
+    background-color: govuk-colour("black", $variant: "tint-95");
   }
 
   &:focus {
-    outline: 3px solid $govuk-yellow;
+    outline: 3px solid govuk-colour("yellow");
     outline-offset: -3px;
-    background-color: $govuk-yellow;
+    background-color: govuk-colour("yellow");
   }
 }
 
@@ -138,7 +139,7 @@
   -moz-osx-font-smoothing: grayscale;
   font-size: 16px;
   font-weight: 700;
-  color: $govuk-blue;
+  color: govuk-colour("blue");
   margin-bottom: 4px;
 
   .defra-service-navigation__dropdown-link:hover & {
@@ -151,7 +152,7 @@
   display: block;
   font-family: Arial, sans-serif;
   font-size: 14px;
-  color: $govuk-black;
+  color: govuk-colour("black");
 }
 
 // Mobile toggle button
@@ -161,7 +162,7 @@
   padding: 12px 16px;
   background-color: transparent;
   border: none;
-  color: $govuk-white;
+  color: govuk-colour("white");
   font-family: Arial, sans-serif;
   font-size: 16px;
   font-weight: 700;
@@ -176,13 +177,13 @@
     margin-left: 8px;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    border-top: 5px solid $govuk-white;
+    border-top: 5px solid govuk-colour("white");
     vertical-align: middle;
   }
 
   &[aria-expanded='true']::after {
     border-top: none;
-    border-bottom: 5px solid $govuk-white;
+    border-bottom: 5px solid govuk-colour("white");
   }
 
   &:hover {
@@ -190,17 +191,17 @@
   }
 
   &:focus {
-    outline: 3px solid $govuk-yellow;
+    outline: 3px solid govuk-colour("yellow");
     outline-offset: 0;
-    background-color: $govuk-yellow;
-    color: $govuk-black;
+    background-color: govuk-colour("yellow");
+    color: govuk-colour("black");
 
     &::after {
-      border-top-color: $govuk-black;
+      border-top-color: govuk-colour("black");
     }
 
     &[aria-expanded='true']::after {
-      border-bottom-color: $govuk-black;
+      border-bottom-color: govuk-colour("black");
     }
   }
 }
@@ -248,7 +249,7 @@
 
   .defra-service-navigation__dropdown-link {
     padding: 12px 16px 12px 32px;
-    color: $govuk-white;
+    color: govuk-colour("white");
     background-color: transparent;
 
     &:hover {
@@ -257,7 +258,7 @@
   }
 
   .defra-service-navigation__dropdown-title {
-    color: $govuk-white;
+    color: govuk-colour("white");
   }
 
   .defra-service-navigation__dropdown-description {

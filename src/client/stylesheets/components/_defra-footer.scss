@@ -1,10 +1,11 @@
 @use '../variables/colours' as *;
+@use 'govuk-frontend' as *;
 
 .defra-footer {
   padding-top: 25px;
   padding-bottom: 25px;
   border-top: 10px solid $defra-green;
-  background-color: $govuk-light-grey;
+  background-color: govuk-colour("black", $variant: "tint-95");
 }
 
 .defra-footer__meta {
@@ -46,7 +47,7 @@
 
   &:link,
   &:visited {
-    color: $govuk-black;
+    color: govuk-colour("black");
   }
 
   &:hover {
@@ -57,11 +58,11 @@
 
   &:focus {
     outline: 3px solid transparent;
-    color: $govuk-black;
-    background-color: $govuk-yellow;
+    color: govuk-colour("black");
+    background-color: govuk-colour("yellow");
     box-shadow:
-      0 -2px $govuk-yellow,
-      0 4px $govuk-black;
+      0 -2px govuk-colour("yellow"),
+      0 4px govuk-colour("black");
     text-decoration: none;
   }
 }
@@ -72,5 +73,5 @@
   -moz-osx-font-smoothing: grayscale;
   font-size: 16px;
   line-height: 1.25;
-  color: $govuk-black;
+  color: govuk-colour("black");
 }

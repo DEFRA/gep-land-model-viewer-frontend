@@ -8,21 +8,20 @@ vi.mock('./grid-layer.js', () => ({
 vi.mock('@defra/interactive-map', () => ({
   EVENTS: {
     MAP_CLICK: 'map:click',
-    MAP_RENDER: 'map:render',
     APP_PANEL_CLOSED: 'app:panelclosed'
   }
 }))
 
 const { createGridLayer } = await import('./grid-layer.js')
-const { registerGridPlugin } = await import('./index.js')
+const { registerGridController } = await import('./index.js')
+const { GRID_VISIBLE_MIN_ZOOM } = await import('./constants.js')
 
 function createMapHarness () {
   const handlers = {}
   return {
-    addButton: vi.fn(),
     addPanel: vi.fn(),
     showPanel: vi.fn(),
-    toggleButtonState: vi.fn(),
+    hidePanel: vi.fn(),
     on: vi.fn((event, handler) => {
       handlers[event] = handler
     }),
@@ -34,21 +33,20 @@ function createMockGridLayer () {
   return {
     setEnabled: vi.fn(),
     highlightCell: vi.fn(),
-    clearHighlight: vi.fn(),
-    isVisible: vi.fn(() => true),
-    canShow: vi.fn(() => true)
+    clearHighlight: vi.fn()
   }
 }
 
-describe('#registerGridPlugin', () => {
+describe('#registerGridController', () => {
   let interactiveMap
   let mockGridLayer
+  let view
   const arcgisMap = {}
-  const view = {}
 
   beforeEach(() => {
     vi.useFakeTimers()
-    document.body.innerHTML = '<div id="gep-grid-info-content"></div>'
+    document.body.innerHTML = '<div id="map-container"></div><div id="gep-grid-info-content"></div>'
+    view = { container: document.getElementById('map-container') }
     interactiveMap = createMapHarness()
     mockGridLayer = createMockGridLayer()
     createGridLayer.mockReturnValue(mockGridLayer)
@@ -60,27 +58,14 @@ describe('#registerGridPlugin', () => {
     document.body.innerHTML = ''
   })
 
-  test('creates grid layer on registration', async () => {
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
+  test('creates grid layer on registration', () => {
+    registerGridController(interactiveMap, arcgisMap, view)
 
     expect(createGridLayer).toHaveBeenCalledWith(interactiveMap, arcgisMap, view)
   })
 
-  test('adds toggle button with grid icon', async () => {
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
-
-    expect(interactiveMap.addButton).toHaveBeenCalledWith(
-      'gep-grid-toggle',
-      expect.objectContaining({
-        id: 'gep-grid-toggle',
-        label: 'Toggle grid',
-        isPressed: true
-      })
-    )
-  })
-
-  test('adds info panel for cell details', async () => {
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
+  test('adds info panel for cell details', () => {
+    registerGridController(interactiveMap, arcgisMap, view)
 
     expect(interactiveMap.addPanel).toHaveBeenCalledWith(
       'gep-grid-info',
@@ -91,26 +76,44 @@ describe('#registerGridPlugin', () => {
     )
   })
 
-  test('toggle button click toggles grid visibility', async () => {
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
+  test('setVisible(true) enables the grid layer', () => {
+    const api = registerGridController(interactiveMap, arcgisMap, view)
 
-    const buttonConfig = interactiveMap.addButton.mock.calls[0][1]
-    buttonConfig.onClick()
-
-    expect(mockGridLayer.setEnabled).toHaveBeenCalledWith(false)
-    expect(interactiveMap.toggleButtonState).toHaveBeenCalledWith(
-      'gep-grid-toggle',
-      'pressed',
-      false
-    )
-
-    buttonConfig.onClick()
+    api.setVisible(true)
 
     expect(mockGridLayer.setEnabled).toHaveBeenCalledWith(true)
   })
 
-  test('map click shows cell info panel when grid visible', async () => {
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
+  test('exposes the minimum usable grid zoom', () => {
+    const api = registerGridController(interactiveMap, arcgisMap, view)
+
+    expect(api.minZoom).toBe(GRID_VISIBLE_MIN_ZOOM)
+  })
+
+  test('setVisible(false) hides the grid layer and closes the cell info panel', () => {
+    const api = registerGridController(interactiveMap, arcgisMap, view)
+
+    api.setVisible(true)
+    api.setVisible(false)
+
+    expect(mockGridLayer.setEnabled).toHaveBeenLastCalledWith(false)
+    expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
+    expect(interactiveMap.hidePanel).toHaveBeenCalledWith('gep-grid-info')
+  })
+
+  test('setVisible toggles the grid cursor class on the view container', () => {
+    const api = registerGridController(interactiveMap, arcgisMap, view)
+
+    api.setVisible(true)
+    expect(view.container.classList.contains('app-map--grid')).toBe(true)
+
+    api.setVisible(false)
+    expect(view.container.classList.contains('app-map--grid')).toBe(false)
+  })
+
+  test('map click shows cell info panel when grid visible', () => {
+    const api = registerGridController(interactiveMap, arcgisMap, view)
+    api.setVisible(true)
 
     const clickHandler = interactiveMap._handlers['map:click']
     clickHandler({ coords: [418725, 385137] })
@@ -121,9 +124,8 @@ describe('#registerGridPlugin', () => {
     expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-grid-info', { focus: false })
   })
 
-  test('map click does nothing when grid not visible', async () => {
-    mockGridLayer.isVisible.mockReturnValue(false)
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
+  test('map click does nothing when grid not visible', () => {
+    registerGridController(interactiveMap, arcgisMap, view)
 
     const clickHandler = interactiveMap._handlers['map:click']
     clickHandler({ coords: [418725, 385137] })
@@ -133,8 +135,23 @@ describe('#registerGridPlugin', () => {
     expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
   })
 
-  test('double click is ignored', async () => {
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
+  test('hiding the grid cancels a pending cell selection', () => {
+    const api = registerGridController(interactiveMap, arcgisMap, view)
+    api.setVisible(true)
+
+    const clickHandler = interactiveMap._handlers['map:click']
+    clickHandler({ coords: [418725, 385137] })
+    api.setVisible(false)
+
+    vi.advanceTimersByTime(300)
+
+    expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
+    expect(interactiveMap.showPanel).not.toHaveBeenCalled()
+  })
+
+  test('double click is ignored', () => {
+    const api = registerGridController(interactiveMap, arcgisMap, view)
+    api.setVisible(true)
 
     const clickHandler = interactiveMap._handlers['map:click']
     clickHandler({ coords: [418725, 385137] })
@@ -145,8 +162,8 @@ describe('#registerGridPlugin', () => {
     expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
   })
 
-  test('panel close clears cell highlight', async () => {
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
+  test('panel close clears cell highlight', () => {
+    registerGridController(interactiveMap, arcgisMap, view)
 
     const closeHandler = interactiveMap._handlers['app:panelclosed']
     closeHandler({ panelId: 'gep-grid-info' })
@@ -154,53 +171,12 @@ describe('#registerGridPlugin', () => {
     expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
   })
 
-  test('other panel close does not clear highlight', async () => {
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
+  test('other panel close does not clear highlight', () => {
+    registerGridController(interactiveMap, arcgisMap, view)
 
     const closeHandler = interactiveMap._handlers['app:panelclosed']
     closeHandler({ panelId: 'other-panel' })
 
     expect(mockGridLayer.clearHighlight).not.toHaveBeenCalled()
-  })
-
-  test('sets initial disabled state based on canShow', async () => {
-    mockGridLayer.canShow.mockReturnValue(false)
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
-
-    expect(interactiveMap.toggleButtonState).toHaveBeenCalledWith(
-      'gep-grid-toggle',
-      'disabled',
-      true
-    )
-  })
-
-  test('disables button when zooming out past threshold', async () => {
-    mockGridLayer.canShow.mockReturnValue(true)
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
-
-    mockGridLayer.canShow.mockReturnValue(false)
-    const renderHandler = interactiveMap._handlers['map:render']
-    renderHandler()
-
-    expect(interactiveMap.toggleButtonState).toHaveBeenCalledWith(
-      'gep-grid-toggle',
-      'disabled',
-      true
-    )
-  })
-
-  test('enables button when zooming in past threshold', async () => {
-    mockGridLayer.canShow.mockReturnValue(false)
-    await registerGridPlugin(interactiveMap, arcgisMap, view)
-
-    mockGridLayer.canShow.mockReturnValue(true)
-    const renderHandler = interactiveMap._handlers['map:render']
-    renderHandler()
-
-    expect(interactiveMap.toggleButtonState).toHaveBeenCalledWith(
-      'gep-grid-toggle',
-      'disabled',
-      false
-    )
   })
 })

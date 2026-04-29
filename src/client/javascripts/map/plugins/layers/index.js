@@ -72,7 +72,6 @@ function registerLayerListPanel (interactiveMap, arcgisMap) {
 
 function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
   let infoEnabled = false
-  const mapContainer = document.getElementById('land-map')
 
   interactiveMap.addButton(INFO_BUTTON_ID, {
     id: INFO_BUTTON_ID,
@@ -82,7 +81,7 @@ function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
     onClick: () => {
       infoEnabled = !infoEnabled
       interactiveMap.toggleButtonState(INFO_BUTTON_ID, 'pressed', infoEnabled)
-      mapContainer?.classList.toggle('app-map--identify', infoEnabled)
+      view.container?.classList.toggle('app-map--identify', infoEnabled)
       if (!infoEnabled) {
         interactiveMap.hidePanel(INFO_PANEL_ID)
       }

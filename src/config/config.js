@@ -46,6 +46,11 @@ export const config = convict({
     format: String,
     default: 'gep-land-model-viewer-frontend'
   },
+  serviceDisplayName: {
+    doc: 'Human-readable service name shown in the UI',
+    format: String,
+    default: 'Defra Group Land Model'
+  },
   root: {
     doc: 'Project root',
     format: String,

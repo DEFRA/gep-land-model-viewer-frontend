@@ -23,7 +23,7 @@ describe('#errors', () => {
     })
 
     expect(result).toEqual(
-      expect.stringContaining('Page not found | gep-land-model-viewer-frontend')
+      expect.stringContaining('Page not found | Defra Group Land Model')
     )
     expect(statusCode).toBe(statusCodes.notFound)
   })

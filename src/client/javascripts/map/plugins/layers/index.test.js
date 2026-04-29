@@ -107,6 +107,7 @@ function createArcgisMapMock () {
 
 function createViewMock () {
   return {
+    container: document.getElementById('map-container'),
     extent: { xmin: 418700, ymin: 385100, xmax: 418900, ymax: 385300, width: 200, height: 200 },
     width: 800,
     height: 600,
@@ -121,7 +122,7 @@ describe('#registerLayersPanel', () => {
   let view
 
   beforeEach(() => {
-    document.body.innerHTML = '<div id="land-map"></div><div id="gep-layer-info-content"></div>'
+    document.body.innerHTML = '<div id="map-container"></div><div id="gep-layer-info-content"></div>'
     interactiveMap = createMapHarness()
     arcgisMap = createArcgisMapMock()
     view = createViewMock()
@@ -240,7 +241,7 @@ describe('#registerLayersPanel', () => {
       'pressed',
       true
     )
-    expect(document.getElementById('land-map').classList.contains('app-map--identify')).toBe(true)
+    expect(view.container.classList.contains('app-map--identify')).toBe(true)
 
     buttonConfig.onClick()
 
