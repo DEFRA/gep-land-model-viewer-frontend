@@ -9,6 +9,7 @@ const PANEL_ID = 'gep-layers'
 const INFO_BUTTON_ID = 'gep-layer-info-toggle'
 const INFO_PANEL_ID = 'gep-layer-info'
 const INFO_CONTENT_ID = 'gep-layer-info-content'
+const INFO_STATUS_ID = 'gep-layer-info-status'
 
 // Lucide "scan-eye"
 const IDENTIFY_ICON_SVG = '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>'
@@ -72,6 +73,19 @@ function registerLayerListPanel (interactiveMap, arcgisMap) {
 
 function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
   let infoEnabled = false
+  let identifyAbortController = null
+  let doubleClickGuardTimeout = null
+
+  const cancelIdentifyRequest = () => {
+    if (doubleClickGuardTimeout) {
+      clearTimeout(doubleClickGuardTimeout)
+      doubleClickGuardTimeout = null
+    }
+    if (identifyAbortController) {
+      identifyAbortController.abort()
+      identifyAbortController = null
+    }
+  }
 
   interactiveMap.addButton(INFO_BUTTON_ID, {
     id: INFO_BUTTON_ID,
@@ -83,6 +97,7 @@ function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
       interactiveMap.toggleButtonState(INFO_BUTTON_ID, 'pressed', infoEnabled)
       view.container?.classList.toggle('app-map--identify', infoEnabled)
       if (!infoEnabled) {
+        cancelIdentifyRequest()
         interactiveMap.hidePanel(INFO_PANEL_ID)
       }
     },
@@ -94,128 +109,207 @@ function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
   interactiveMap.addPanel(INFO_PANEL_ID, {
     id: INFO_PANEL_ID,
     label: 'Data Layer Attributes',
-    html: `<div id="${INFO_CONTENT_ID}"></div>`,
+    html: `<div id="${INFO_STATUS_ID}" class="govuk-visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div><div id="${INFO_CONTENT_ID}" class="app-map__layer-info-panel"></div>`,
     mobile: { slot: 'drawer', open: false, modal: true, dismissible: true },
-    tablet: { slot: 'right-top', open: false, modal: true, width: '500px', dismissible: true },
-    desktop: { slot: 'right-top', open: false, modal: true, width: '500px', dismissible: true }
+    tablet: { slot: 'middle', open: false, modal: true, width: '500px', dismissible: true },
+    desktop: { slot: 'middle', open: false, modal: true, width: '500px', dismissible: true }
   })
 
-  let infoClickTimeout = null
+  interactiveMap.on(EVENTS.APP_PANEL_CLOSED, ({ panelId }) => {
+    if (panelId === INFO_PANEL_ID) {
+      cancelIdentifyRequest()
+    }
+  })
+
   interactiveMap.on(EVENTS.MAP_CLICK, ({ coords }) => {
-    if (!infoEnabled) {
+    if (!infoEnabled || identifyAbortController) {
       return
     }
-    if (infoClickTimeout) {
-      clearTimeout(infoClickTimeout)
-      infoClickTimeout = null
+    if (doubleClickGuardTimeout) {
+      clearTimeout(doubleClickGuardTimeout)
+      doubleClickGuardTimeout = null
       return
     }
-    infoClickTimeout = setTimeout(() => {
-      infoClickTimeout = null
-      showFeatureInfo(coords, arcgisMap, view, interactiveMap)
+    doubleClickGuardTimeout = setTimeout(() => {
+      doubleClickGuardTimeout = null
+      const abortController = new AbortController()
+      identifyAbortController = abortController
+      showFeatureInfo(coords, arcgisMap, view, interactiveMap, abortController.signal)
+        .finally(() => {
+          if (identifyAbortController === abortController) {
+            identifyAbortController = null
+          }
+        })
     }, 250)
   })
 }
 
-async function showFeatureInfo (coords, arcgisMap, view, interactiveMap) {
+async function showFeatureInfo (coords, arcgisMap, view, interactiveMap, signal) {
+  const contentEl = document.getElementById(INFO_CONTENT_ID)
+  const statusEl = document.getElementById(INFO_STATUS_ID)
+  if (contentEl) {
+    contentEl.setAttribute('aria-busy', 'true')
+    contentEl.replaceChildren(buildStatusFragment('Loading data layer attributes...'))
+  }
+  updateStatus(statusEl, 'Loading attributes')
+  interactiveMap.showPanel(INFO_PANEL_ID)
+
   const visibleLayers = arcgisMap.layers
-    .filter(layer => layer.visible && layer.sublayers)
+    .filter(layer => layer.type === 'wms' && layer.visible && layer.sublayers && layer.url)
     .toArray()
 
   const mapPoint = { x: coords[0], y: coords[1] }
   const results = await Promise.all(
-    visibleLayers.map(layer => describeLayerFeatures(layer, mapPoint, view))
+    visibleLayers.map(layer => describeLayerFeatures(layer, mapPoint, view, signal))
   )
-  const layersWithFeatures = results.filter(r => r.features.length > 0)
-  if (layersWithFeatures.length === 0) {
+  if (signal.aborted) {
     return
   }
 
-  const contentEl = document.getElementById(INFO_CONTENT_ID)
-  if (contentEl) {
-    contentEl.replaceChildren(buildFeatureInfoFragment(layersWithFeatures))
-  }
-  interactiveMap.showPanel(INFO_PANEL_ID, { focus: false })
-}
-
-async function describeLayerFeatures (layer, mapPoint, view) {
-  const features = await fetchFeatureInfo(layer, mapPoint, view)
-  const dataset = datasets.find(d => layer.id === `gep-${d.id}`)
-  return { layerName: dataset?.label ?? layer.title ?? 'Unknown Layer', features }
-}
-
-async function fetchFeatureInfo (layer, mapPoint, view) {
-  try {
-    await layer.load()
-
-    const sublayerNames = layer.sublayers
-      ?.filter(s => s.visible)
-      .map(s => s.name)
-      .toArray()
-      .join(',')
-
-    if (!sublayerNames) {
-      return []
+  const layersWithFeatures = results.filter(r => r.features.length > 0)
+  const failedLayers = results.filter(r => r.error)
+  if (layersWithFeatures.length === 0 && failedLayers.length === 0) {
+    if (contentEl) {
+      contentEl.removeAttribute('aria-busy')
+      contentEl.replaceChildren(buildStatusFragment('No data layer attributes found at this location.'))
     }
+    updateStatus(statusEl, 'No attributes found')
+    return
+  }
 
-    const screen = view.toScreen(new Point({
-      x: mapPoint.x,
-      y: mapPoint.y,
-      spatialReference: view.spatialReference
-    }))
-    const { extent, width, height } = view
+  if (contentEl) {
+    contentEl.removeAttribute('aria-busy')
+    contentEl.replaceChildren(buildFeatureInfoFragment(results))
+  }
+  updateStatus(statusEl, failedLayers.length > 0 ? 'Some attributes could not be loaded' : 'Attributes loaded')
+}
 
-    const params = new URLSearchParams({
-      SERVICE: 'WMS',
-      VERSION: layer.version || '1.3.0',
-      REQUEST: 'GetFeatureInfo',
-      LAYERS: sublayerNames,
-      QUERY_LAYERS: sublayerNames,
-      INFO_FORMAT: 'application/json',
-      CRS: 'EPSG:27700',
-      BBOX: `${extent.xmin},${extent.ymin},${extent.xmax},${extent.ymax}`,
-      WIDTH: String(width),
-      HEIGHT: String(height),
-      I: String(Math.round(screen.x)),
-      J: String(Math.round(screen.y))
-    })
+async function describeLayerFeatures (layer, mapPoint, view, signal) {
+  const dataset = datasets.find(d => layer.id === `gep-${d.id}`)
+  const layerName = dataset?.label ?? layer.title ?? 'Unknown Layer'
 
-    const response = await fetch(`${layer.url}?${params}`)
-    const data = await response.json()
-    return data.features ?? []
-  } catch (err) {
-    console.error('GetFeatureInfo error:', err)
+  try {
+    const features = await fetchFeatureInfo(layer, mapPoint, view, signal)
+    return { layerName, features, error: false }
+  } catch {
+    return { layerName, features: [], error: !signal.aborted }
+  }
+}
+
+async function fetchFeatureInfo (layer, mapPoint, view, signal) {
+  await layer.load()
+  if (signal.aborted) {
     return []
+  }
+
+  const sublayerNames = layer.sublayers
+    ?.filter(s => s.visible)
+    .map(s => s.name)
+    .toArray()
+    .join(',')
+
+  if (!sublayerNames) {
+    return []
+  }
+
+  const screen = view.toScreen(new Point({
+    x: mapPoint.x,
+    y: mapPoint.y,
+    spatialReference: view.spatialReference
+  }))
+  const { extent, width, height } = view
+
+  const params = new URLSearchParams({
+    SERVICE: 'WMS',
+    VERSION: layer.version || '1.3.0',
+    REQUEST: 'GetFeatureInfo',
+    LAYERS: sublayerNames,
+    QUERY_LAYERS: sublayerNames,
+    INFO_FORMAT: 'application/json',
+    CRS: 'EPSG:27700',
+    BBOX: `${extent.xmin},${extent.ymin},${extent.xmax},${extent.ymax}`,
+    WIDTH: String(width),
+    HEIGHT: String(height),
+    I: String(Math.round(screen.x)),
+    J: String(Math.round(screen.y))
+  })
+
+  const response = await fetch(`${layer.url}?${params}`, { signal })
+  const data = await response.json()
+  return data.features ?? []
+}
+
+function buildStatusFragment (message) {
+  const fragment = document.createDocumentFragment()
+  const container = document.createElement('div')
+  container.className = 'app-map__layer-info app-map__layer-info-status'
+
+  const paragraph = document.createElement('p')
+  paragraph.className = 'govuk-body govuk-!-margin-bottom-0'
+  paragraph.textContent = message
+
+  container.appendChild(paragraph)
+  fragment.appendChild(container)
+  return fragment
+}
+
+function updateStatus (statusEl, message) {
+  if (statusEl && statusEl.textContent !== message) {
+    statusEl.textContent = message
   }
 }
 
 // WMS GetFeatureInfo properties come from external responses, so build DOM
 // nodes with textContent rather than interpolating into an HTML string.
-function buildFeatureInfoFragment (layersWithFeatures) {
+function buildFeatureInfoFragment (layerResults) {
   const fragment = document.createDocumentFragment()
-  layersWithFeatures.forEach(({ layerName, features }, layerIndex) => {
-    if (layerIndex > 0) {
-      fragment.appendChild(createHr('govuk-section-break govuk-section-break--m govuk-section-break--visible'))
+  const container = document.createElement('div')
+  container.className = 'app-map__layer-info'
+
+  layerResults.forEach(({ layerName, features, error }) => {
+    if (error) {
+      container.appendChild(buildFeatureErrorSection(layerName))
+      return
     }
 
-    const heading = document.createElement('h3')
-    heading.className = 'govuk-heading-s govuk-!-margin-bottom-2'
-    heading.textContent = layerName
-    fragment.appendChild(heading)
+    features.forEach((feature) => {
+      const section = document.createElement('section')
+      section.className = 'app-map__layer-info-section'
 
-    features.forEach((feature, featureIndex) => {
-      if (featureIndex > 0) {
-        fragment.appendChild(createHr('govuk-section-break govuk-section-break--s'))
-      }
-      fragment.appendChild(buildFeatureSummaryList(feature))
+      const heading = document.createElement('h3')
+      heading.className = 'app-map__layer-info-heading govuk-heading-s'
+      heading.textContent = layerName
+
+      section.appendChild(heading)
+      section.appendChild(buildFeatureSummaryList(feature))
+      container.appendChild(section)
     })
   })
+
+  fragment.appendChild(container)
   return fragment
+}
+
+function buildFeatureErrorSection (layerName) {
+  const section = document.createElement('section')
+  section.className = 'app-map__layer-info-section'
+
+  const heading = document.createElement('h3')
+  heading.className = 'app-map__layer-info-heading govuk-heading-s'
+  heading.textContent = layerName
+
+  const message = document.createElement('p')
+  message.className = 'govuk-body govuk-!-margin-bottom-0'
+  message.textContent = 'Data layer attributes could not be loaded.'
+
+  section.appendChild(heading)
+  section.appendChild(message)
+  return section
 }
 
 function buildFeatureSummaryList (feature) {
   const dl = document.createElement('dl')
-  dl.className = 'govuk-summary-list govuk-summary-list--no-border'
+  dl.className = 'govuk-summary-list govuk-summary-list--no-border app-map__layer-info-list'
   const props = feature.properties ?? {}
   for (const [key, value] of Object.entries(props)) {
     if (value == null || value === '') {
@@ -237,12 +331,6 @@ function buildFeatureSummaryList (feature) {
     dl.appendChild(row)
   }
   return dl
-}
-
-function createHr (className) {
-  const hr = document.createElement('hr')
-  hr.className = className
-  return hr
 }
 
 function toggleLayer (dataset, visible, arcgisMap) {

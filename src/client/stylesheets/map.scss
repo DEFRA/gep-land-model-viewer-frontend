@@ -131,6 +131,101 @@ html:has(.app-map-page) {
   display: none;
 }
 
+.app-map .im-c-panel:has(.app-map__layer-info-panel) .im-c-panel__heading {
+  margin: 0;
+  padding: 10px 52px 10px 15px;
+  background-color: $defra-green;
+  color: govuk-colour("white");
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.app-map .im-c-panel:has(.app-map__layer-info-panel) .im-c-panel__close {
+  top: 0;
+  right: 0;
+  color: govuk-colour("white");
+}
+
+.app-map .im-c-panel:has(.app-map__layer-info-panel) .im-c-panel__close:hover {
+  background-color: $defra-green-dark;
+}
+
+.app-map .im-c-panel:has(.app-map__layer-info-panel) .im-c-panel__close:focus-visible {
+  color: govuk-functional-colour("focus-text");
+  background-color: govuk-functional-colour("focus");
+}
+
+.app-map .im-c-panel:has(.app-map__layer-info-panel) .im-c-panel__body {
+  padding: 0;
+  background-color: govuk-colour("white");
+}
+
+.app-map__layer-info {
+  padding: 16px 20px 18px;
+}
+
+.app-map__layer-info-section + .app-map__layer-info-section {
+  margin-top: 18px;
+}
+
+.app-map__layer-info-heading {
+  margin: 0 0 12px;
+  color: govuk-colour("black");
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.app-map__layer-info-list {
+  margin-bottom: 0;
+}
+
+.app-map__layer-info-list .govuk-summary-list__row {
+  display: grid;
+  grid-template-columns: minmax(150px, 42%) minmax(0, 1fr);
+  border-bottom: 1px solid govuk-colour("black", $variant: "tint-80");
+}
+
+.app-map__layer-info-list .govuk-summary-list__row:last-child {
+  border-bottom: 0;
+}
+
+.app-map__layer-info-list .govuk-summary-list__key,
+.app-map__layer-info-list .govuk-summary-list__value {
+  width: auto;
+  margin: 0;
+  padding: 8px 0;
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.app-map__layer-info-list .govuk-summary-list__key {
+  padding-right: 15px;
+  font-weight: 700;
+}
+
+.app-map__layer-info-list .govuk-summary-list__value {
+  color: govuk-colour("black");
+}
+
+@include govuk-media-query($until: tablet) {
+  .app-map__layer-info {
+    padding: 14px 15px 16px;
+  }
+
+  .app-map__layer-info-list .govuk-summary-list__row {
+    grid-template-columns: 1fr;
+    row-gap: 2px;
+    padding: 8px 0;
+  }
+
+  .app-map__layer-info-list .govuk-summary-list__key,
+  .app-map__layer-info-list .govuk-summary-list__value {
+    padding: 0;
+  }
+}
+
 .app-map__cell-info .govuk-summary-list__key {
   width: auto;
   white-space: nowrap;

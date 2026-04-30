@@ -78,7 +78,13 @@ function createMapHarness () {
     hidePanel: vi.fn(),
     toggleButtonState: vi.fn(),
     on: vi.fn((event, handler) => {
-      handlers[event] = handler
+      const existingHandler = handlers[event]
+      handlers[event] = existingHandler
+        ? (...args) => {
+            existingHandler(...args)
+            handler(...args)
+          }
+        : handler
     }),
     _handlers: handlers
   }
@@ -116,13 +122,40 @@ function createViewMock () {
   }
 }
 
+function createVisibleWmsLayer (overrides = {}) {
+  return {
+    type: 'wms',
+    visible: true,
+    url: 'https://example.com/wms',
+    load: vi.fn().mockResolvedValue(),
+    sublayers: {
+      filter: vi.fn(() => ({
+        map: vi.fn(() => ({ toArray: vi.fn(() => ['layer1']) }))
+      }))
+    },
+    ...overrides
+  }
+}
+
+function mockVisibleWmsLayers (arcgisMap, layers = [{}]) {
+  const wmsLayers = layers.map(createVisibleWmsLayer)
+  arcgisMap.layers.filter.mockImplementation((predicate) => {
+    const filteredLayers = wmsLayers.filter(predicate)
+    return {
+      length: filteredLayers.length,
+      toArray: vi.fn(() => filteredLayers)
+    }
+  })
+  return wmsLayers
+}
+
 describe('#registerLayersPanel', () => {
   let interactiveMap
   let arcgisMap
   let view
 
   beforeEach(() => {
-    document.body.innerHTML = '<div id="map-container"></div><div id="gep-layer-info-content"></div>'
+    document.body.innerHTML = '<div id="map-container"></div><div id="gep-layer-info-status" role="status" aria-live="polite" aria-atomic="true"></div><div id="gep-layer-info-content"></div>'
     interactiveMap = createMapHarness()
     arcgisMap = createArcgisMapMock()
     view = createViewMock()
@@ -181,7 +214,11 @@ describe('#registerLayersPanel', () => {
       'gep-layer-info',
       expect.objectContaining({
         id: 'gep-layer-info',
-        label: 'Data Layer Attributes'
+        label: 'Data Layer Attributes',
+        html: expect.stringContaining('id="gep-layer-info-status"'),
+        mobile: expect.objectContaining({ modal: true }),
+        tablet: expect.objectContaining({ slot: 'middle', modal: true }),
+        desktop: expect.objectContaining({ slot: 'middle', modal: true })
       })
     )
   })
@@ -314,23 +351,7 @@ describe('#registerLayersPanel', () => {
 
   test('map click with identify mode queries WMS layers', async () => {
     vi.useFakeTimers()
-    arcgisMap.layers.filter.mockReturnValue({
-      length: 1,
-      toArray: vi.fn(() => [{
-        type: 'wms',
-        visible: true,
-        url: 'https://example.com/wms',
-        version: '1.3.0',
-        load: vi.fn().mockResolvedValue(),
-        sublayers: {
-          filter: vi.fn(() => ({
-            map: vi.fn(() => ({
-              toArray: vi.fn(() => ['layer1'])
-            }))
-          }))
-        }
-      }])
-    })
+    mockVisibleWmsLayers(arcgisMap)
 
     registerLayersPanel(interactiveMap, arcgisMap, view)
 
@@ -349,25 +370,158 @@ describe('#registerLayersPanel', () => {
     await vi.advanceTimersByTimeAsync(300)
 
     expect(global.fetch).toHaveBeenCalled()
-    expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-layer-info', { focus: false })
+    expect(document.getElementById('gep-layer-info-content').hasAttribute('aria-busy')).toBe(false)
+    expect(document.getElementById('gep-layer-info-status').textContent).toBe('Attributes loaded')
+    expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-layer-info')
+  })
+
+  test('shows loading state while feature info is being requested', async () => {
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap)
+
+    registerLayersPanel(interactiveMap, arcgisMap, view)
+
+    const buttonConfig = interactiveMap.addButton.mock.calls.find(
+      call => call[0] === 'gep-layer-info-toggle'
+    )[1]
+    buttonConfig.onClick()
+
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
+
+    const contentEl = document.getElementById('gep-layer-info-content')
+    expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-layer-info')
+    expect(contentEl.getAttribute('aria-busy')).toBe('true')
+    expect(contentEl.textContent).toContain('Loading data layer attributes...')
+    expect(contentEl.querySelector('[role="status"]')).toBeNull()
+    expect(document.getElementById('gep-layer-info-status').textContent).toBe('Loading attributes')
+  })
+
+  test('does not start another identify request while one is loading', async () => {
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap)
+
+    registerLayersPanel(interactiveMap, arcgisMap, view)
+
+    const buttonConfig = interactiveMap.addButton.mock.calls.find(
+      call => call[0] === 'gep-layer-info-toggle'
+    )[1]
+    buttonConfig.onClick()
+
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
+    interactiveMap._handlers['map:click']({ coords: [418760, 385160] })
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  test('second click before identify starts cancels the pending request', async () => {
+    vi.useFakeTimers()
+    registerLayersPanel(interactiveMap, arcgisMap, view)
+
+    const buttonConfig = interactiveMap.addButton.mock.calls.find(
+      call => call[0] === 'gep-layer-info-toggle'
+    )[1]
+    buttonConfig.onClick()
+
+    vi.stubGlobal('fetch', vi.fn())
+
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(global.fetch).not.toHaveBeenCalled()
+    expect(interactiveMap.showPanel).not.toHaveBeenCalledWith('gep-layer-info')
+  })
+
+  test('closing the identify panel aborts the active request', async () => {
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap)
+
+    registerLayersPanel(interactiveMap, arcgisMap, view)
+
+    const buttonConfig = interactiveMap.addButton.mock.calls.find(
+      call => call[0] === 'gep-layer-info-toggle'
+    )[1]
+    buttonConfig.onClick()
+
+    let requestSignal
+    vi.stubGlobal('fetch', vi.fn((url, options) => {
+      requestSignal = options.signal
+      return new Promise(() => {})
+    }))
+
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
+    interactiveMap._handlers['app:panelclosed']({ panelId: 'gep-layer-info' })
+
+    expect(requestSignal.aborted).toBe(true)
+  })
+
+  test('closing the identify panel before the layer loads prevents the fetch', async () => {
+    vi.useFakeTimers()
+    let resolveLoad
+    mockVisibleWmsLayers(arcgisMap, [{
+      load: vi.fn(() => new Promise(resolve => { resolveLoad = resolve }))
+    }])
+
+    registerLayersPanel(interactiveMap, arcgisMap, view)
+
+    const buttonConfig = interactiveMap.addButton.mock.calls.find(
+      call => call[0] === 'gep-layer-info-toggle'
+    )[1]
+    buttonConfig.onClick()
+
+    vi.stubGlobal('fetch', vi.fn())
+
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
+    interactiveMap._handlers['app:panelclosed']({ panelId: 'gep-layer-info' })
+    resolveLoad()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  test('does not render an error for cancelled feature info requests', async () => {
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap)
+
+    registerLayersPanel(interactiveMap, arcgisMap, view)
+
+    const buttonConfig = interactiveMap.addButton.mock.calls.find(
+      call => call[0] === 'gep-layer-info-toggle'
+    )[1]
+    buttonConfig.onClick()
+
+    let rejectRequest
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve, reject) => {
+      rejectRequest = reject
+    })))
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
+    interactiveMap._handlers['app:panelclosed']({ panelId: 'gep-layer-info' })
+
+    const abortError = new Error('Cancelled')
+    abortError.name = 'AbortError'
+    rejectRequest(abortError)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(consoleSpy).not.toHaveBeenCalled()
+    expect(document.getElementById('gep-layer-info-content').textContent).not.toContain('Data layer attributes could not be loaded.')
+    consoleSpy.mockRestore()
   })
 
   test('feature properties from WMS are rendered as text, not HTML', async () => {
     vi.useFakeTimers()
-    arcgisMap.layers.filter.mockReturnValue({
-      length: 1,
-      toArray: vi.fn(() => [{
-        type: 'wms',
-        visible: true,
-        url: 'https://example.com/wms',
-        load: vi.fn().mockResolvedValue(),
-        sublayers: {
-          filter: vi.fn(() => ({
-            map: vi.fn(() => ({ toArray: vi.fn(() => ['layer1']) }))
-          }))
-        }
-      }])
-    })
+    mockVisibleWmsLayers(arcgisMap)
 
     registerLayersPanel(interactiveMap, arcgisMap, view)
 
@@ -390,14 +544,70 @@ describe('#registerLayersPanel', () => {
     await vi.advanceTimersByTimeAsync(300)
 
     const contentEl = document.getElementById('gep-layer-info-content')
+    expect(contentEl.querySelector('.app-map__layer-info')).not.toBeNull()
+    expect(contentEl.querySelectorAll('.app-map__layer-info-section')).toHaveLength(2)
+    expect(contentEl.querySelectorAll('.app-map__layer-info-list')).toHaveLength(2)
     expect(contentEl.querySelector('img')).toBeNull()
     expect(contentEl.querySelector('script')).toBeNull()
     expect(contentEl.textContent).toContain('name<script>')
     expect(contentEl.textContent).toContain(injection)
     expect(contentEl.textContent).not.toContain('empty')
     expect(contentEl.textContent).not.toContain('missing')
-    expect(contentEl.querySelectorAll('hr').length).toBeGreaterThan(0)
     expect(window.__xss).toBeUndefined()
+  })
+
+  test('renders each identified layer feature as a repeated title and attributes table', async () => {
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap, [
+      { id: 'gep-test-dataset' },
+      {
+        id: 'custom-layer',
+        title: 'Custom Layer',
+        url: 'https://example.com/wms2',
+        sublayers: {
+          filter: vi.fn(() => ({
+            map: vi.fn(() => ({ toArray: vi.fn(() => ['layer2']) }))
+          }))
+        }
+      }
+    ])
+
+    registerLayersPanel(interactiveMap, arcgisMap, view)
+
+    const buttonConfig = interactiveMap.addButton.mock.calls.find(
+      call => call[0] === 'gep-layer-info-toggle'
+    )[1]
+    buttonConfig.onClick()
+
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        json: vi.fn().mockResolvedValue({
+          features: [
+            { properties: { 'Object ID': '31840', 'Woodland name': 'Green Lane Spring' } },
+            { properties: { 'Object ID': '31841', 'Woodland name': 'Second Wood' } }
+          ]
+        })
+      })
+      .mockResolvedValueOnce({
+        json: vi.fn().mockResolvedValue({
+          features: [
+            { properties: { Status: 'Active' } }
+          ]
+        })
+      }))
+
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
+
+    const sections = document.querySelectorAll('.app-map__layer-info-section')
+    expect(sections).toHaveLength(3)
+    expect(sections[0].querySelector('.app-map__layer-info-heading').textContent).toBe('Test Dataset')
+    expect(sections[0].textContent).toContain('Object ID')
+    expect(sections[0].textContent).toContain('31840')
+    expect(sections[1].querySelector('.app-map__layer-info-heading').textContent).toBe('Test Dataset')
+    expect(sections[1].textContent).toContain('Second Wood')
+    expect(sections[2].querySelector('.app-map__layer-info-heading').textContent).toBe('Custom Layer')
+    expect(sections[2].textContent).toContain('Active')
   })
 
   test('map click without identify mode does nothing', async () => {
@@ -412,6 +622,7 @@ describe('#registerLayersPanel', () => {
   })
 
   test('map click with identify mode but no WMS layers does nothing', async () => {
+    vi.useFakeTimers()
     registerLayersPanel(interactiveMap, arcgisMap, view)
 
     const buttonConfig = interactiveMap.addButton.mock.calls.find(
@@ -421,10 +632,36 @@ describe('#registerLayersPanel', () => {
 
     vi.stubGlobal('fetch', vi.fn())
 
-    const clickHandler = interactiveMap._handlers['map:click']
-    await clickHandler({ coords: [418750, 385150] })
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
 
     expect(global.fetch).not.toHaveBeenCalled()
+    expect(document.getElementById('gep-layer-info-content').textContent).toContain('No data layer attributes found at this location.')
+  })
+
+  test('ignores layers that are not queryable WMS layers', async () => {
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap, [
+      { type: 'feature' },
+      { url: undefined },
+      { sublayers: null },
+      { visible: false }
+    ])
+
+    registerLayersPanel(interactiveMap, arcgisMap, view)
+
+    const buttonConfig = interactiveMap.addButton.mock.calls.find(
+      call => call[0] === 'gep-layer-info-toggle'
+    )[1]
+    buttonConfig.onClick()
+
+    vi.stubGlobal('fetch', vi.fn())
+
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(global.fetch).not.toHaveBeenCalled()
+    expect(document.getElementById('gep-layer-info-content').textContent).toContain('No data layer attributes found at this location.')
   })
 
   test('search shows empty message when no items match', () => {
@@ -488,22 +725,9 @@ describe('#registerLayersPanel', () => {
     })
   })
 
-  test('GetFeatureInfo handles fetch errors gracefully', async () => {
+  test('GetFeatureInfo shows a generic message when fetch errors', async () => {
     vi.useFakeTimers()
-    arcgisMap.layers.filter.mockReturnValue({
-      length: 1,
-      toArray: vi.fn(() => [{
-        type: 'wms',
-        visible: true,
-        url: 'https://example.com/wms',
-        load: vi.fn().mockResolvedValue(),
-        sublayers: {
-          filter: vi.fn(() => ({
-            map: vi.fn(() => ({ toArray: vi.fn(() => ['layer1']) }))
-          }))
-        }
-      }])
-    })
+    mockVisibleWmsLayers(arcgisMap)
 
     registerLayersPanel(interactiveMap, arcgisMap, view)
 
@@ -518,25 +742,23 @@ describe('#registerLayersPanel', () => {
     interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
     await vi.advanceTimersByTimeAsync(300)
 
-    expect(consoleSpy).toHaveBeenCalled()
+    const contentEl = document.getElementById('gep-layer-info-content')
+    expect(consoleSpy).not.toHaveBeenCalled()
+    expect(contentEl.textContent).toContain('Data layer attributes could not be loaded.')
+    expect(contentEl.textContent).not.toContain('No data layer attributes found at this location.')
+    expect(document.getElementById('gep-layer-info-status').textContent).toBe('Some attributes could not be loaded')
     consoleSpy.mockRestore()
   })
 
-  test('GetFeatureInfo returns empty when no visible sublayers', async () => {
-    arcgisMap.layers.filter.mockReturnValue({
-      length: 1,
-      toArray: vi.fn(() => [{
-        type: 'wms',
-        visible: true,
-        url: 'https://example.com/wms',
-        load: vi.fn().mockResolvedValue(),
-        sublayers: {
-          filter: vi.fn(() => ({
-            map: vi.fn(() => ({ toArray: vi.fn(() => []) }))
-          }))
-        }
-      }])
-    })
+  test('shows no data when WMS layer has no visible sublayers', async () => {
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap, [{
+      sublayers: {
+        filter: vi.fn(() => ({
+          map: vi.fn(() => ({ toArray: vi.fn(() => []) }))
+        }))
+      }
+    }])
 
     registerLayersPanel(interactiveMap, arcgisMap, view)
 
@@ -547,27 +769,16 @@ describe('#registerLayersPanel', () => {
 
     vi.stubGlobal('fetch', vi.fn())
 
-    const clickHandler = interactiveMap._handlers['map:click']
-    await clickHandler({ coords: [418750, 385150] })
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
 
     expect(global.fetch).not.toHaveBeenCalled()
+    expect(document.getElementById('gep-layer-info-content').textContent).toContain('No data layer attributes found at this location.')
   })
 
   test('shows no features message when query returns empty', async () => {
-    arcgisMap.layers.filter.mockReturnValue({
-      length: 1,
-      toArray: vi.fn(() => [{
-        type: 'wms',
-        visible: true,
-        url: 'https://example.com/wms',
-        load: vi.fn().mockResolvedValue(),
-        sublayers: {
-          filter: vi.fn(() => ({
-            map: vi.fn(() => ({ toArray: vi.fn(() => ['layer1']) }))
-          }))
-        }
-      }])
-    })
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap)
 
     registerLayersPanel(interactiveMap, arcgisMap, view)
 
@@ -580,23 +791,20 @@ describe('#registerLayersPanel', () => {
       json: vi.fn().mockResolvedValue({ features: [] })
     }))
 
-    const clickHandler = interactiveMap._handlers['map:click']
-    await clickHandler({ coords: [418750, 385150] })
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
 
-    expect(interactiveMap.showPanel).not.toHaveBeenCalled()
+    const contentEl = document.getElementById('gep-layer-info-content')
+    expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-layer-info')
+    expect(contentEl.hasAttribute('aria-busy')).toBe(false)
+    expect(contentEl.textContent).toContain('No data layer attributes found at this location.')
+    expect(contentEl.querySelector('[role="status"]')).toBeNull()
+    expect(document.getElementById('gep-layer-info-status').textContent).toBe('No attributes found')
   })
 
   test('handles WMS layer with null sublayers', async () => {
-    arcgisMap.layers.filter.mockReturnValue({
-      length: 1,
-      toArray: vi.fn(() => [{
-        type: 'wms',
-        visible: true,
-        url: 'https://example.com/wms',
-        load: vi.fn().mockResolvedValue(),
-        sublayers: null
-      }])
-    })
+    vi.useFakeTimers()
+    mockVisibleWmsLayers(arcgisMap, [{ sublayers: null }])
 
     registerLayersPanel(interactiveMap, arcgisMap, view)
 
@@ -607,9 +815,10 @@ describe('#registerLayersPanel', () => {
 
     vi.stubGlobal('fetch', vi.fn())
 
-    const clickHandler = interactiveMap._handlers['map:click']
-    await clickHandler({ coords: [418750, 385150] })
+    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
+    await vi.advanceTimersByTimeAsync(300)
 
     expect(global.fetch).not.toHaveBeenCalled()
+    expect(document.getElementById('gep-layer-info-content').textContent).toContain('No data layer attributes found at this location.')
   })
 })
