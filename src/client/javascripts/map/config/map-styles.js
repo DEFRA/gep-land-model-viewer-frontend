@@ -1,4 +1,4 @@
-const attribution = `© Crown copyright and database rights ${new Date().getFullYear()} Ordnance Survey`
+export const OS_ATTRIBUTION = `© Crown copyright and database rights ${new Date().getFullYear()} OS AC0000805307`
 
 export const mapStyles = [
   {
@@ -6,7 +6,7 @@ export const mapStyles = [
     label: 'OS Outdoor',
     url: '/map/style/OS_VTS_27700_ESRI.json',
     thumbnail: '/public/images/os-outdoor.jpg',
-    attribution,
+    attribution: OS_ATTRIBUTION,
     mapColorScheme: 'light',
     appColorScheme: 'light'
   },
@@ -15,7 +15,7 @@ export const mapStyles = [
     label: 'OS Road',
     url: '/map/style/OS_VTS_27700_Road.json',
     thumbnail: '/public/images/os-road.jpg',
-    attribution,
+    attribution: OS_ATTRIBUTION,
     mapColorScheme: 'light',
     appColorScheme: 'light'
   }

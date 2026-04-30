@@ -1,4 +1,4 @@
-import { mapStyles } from './map-styles.js'
+import { mapStyles, OS_ATTRIBUTION } from './map-styles.js'
 
 describe('#mapStyles', () => {
   test('exports an array of map styles', () => {
@@ -24,12 +24,9 @@ describe('#mapStyles', () => {
     }
   })
 
-  test('attribution includes Ordnance Survey copyright and current year', () => {
-    const currentYear = new Date().getFullYear().toString()
+  test('each style uses the OS attribution', () => {
     for (const style of mapStyles) {
-      expect(style.attribution).toContain('Crown copyright')
-      expect(style.attribution).toContain('Ordnance Survey')
-      expect(style.attribution).toContain(currentYear)
+      expect(style.attribution).toBe(OS_ATTRIBUTION)
     }
   })
 })
