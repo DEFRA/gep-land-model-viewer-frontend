@@ -14,6 +14,7 @@ import { sessionCache } from './common/helpers/session-cache/session-cache.js'
 import { getCacheEngine } from './common/helpers/session-cache/cache-engine.js'
 import { secureContext } from '@defra/hapi-secure-context'
 import { contentSecurityPolicy } from './common/helpers/content-security-policy.js'
+import { setCacheHeaders } from './common/helpers/cache-headers.js'
 import { securityHeaders } from './common/helpers/security-headers.js'
 import { metrics } from '@defra/cdp-metrics'
 
@@ -74,6 +75,7 @@ export async function createServer () {
   ])
 
   server.ext('onPreResponse', catchAll)
+  server.ext('onPreResponse', setCacheHeaders)
 
   return server
 }
