@@ -136,9 +136,7 @@ const proxyHandler = {
         ? handleBinaryResponse(res, h, path, duration)
         : handleJsonResponse(res, h, request, path, duration)
     } catch (err) {
-      logger.error(
-        `Map proxy error for ${path || '/'}: ${err.message} (${err.code || 'no error code'})`
-      )
+      logger.error(err, `Map proxy error for ${path || '/'}`)
       return h.response('Map tile request failed').code(statusCodes.badGateway)
     }
   }

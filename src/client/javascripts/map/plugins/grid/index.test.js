@@ -45,7 +45,7 @@ describe('#registerGridController', () => {
 
   beforeEach(() => {
     vi.useFakeTimers()
-    document.body.innerHTML = '<div id="map-container"></div><div id="gep-grid-info-content"></div>'
+    document.body.innerHTML = '<div class="app-map"><div id="map-container"></div></div><div id="gep-grid-info-content"></div>'
     view = { container: document.getElementById('map-container') }
     interactiveMap = createMapHarness()
     mockGridLayer = createMockGridLayer()
@@ -71,7 +71,10 @@ describe('#registerGridController', () => {
       'gep-grid-info',
       expect.objectContaining({
         id: 'gep-grid-info',
-        label: 'Cell info'
+        label: 'Land model attributes',
+        html: expect.stringContaining('class="app-map__grid-info-panel"'),
+        tablet: expect.objectContaining({ slot: 'right-top', modal: false }),
+        desktop: expect.objectContaining({ slot: 'right-top', modal: false })
       })
     )
   })
@@ -124,6 +127,18 @@ describe('#registerGridController', () => {
     expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-grid-info', { focus: false })
   })
 
+  test('map click marks the grid info panel as open for layout', () => {
+    const api = registerGridController(interactiveMap, arcgisMap, view)
+    api.setVisible(true)
+
+    const clickHandler = interactiveMap._handlers['map:click']
+    clickHandler({ coords: [418725, 385137] })
+
+    vi.advanceTimersByTime(300)
+
+    expect(document.querySelector('.app-map').classList.contains('app-map--grid-info-open')).toBe(true)
+  })
+
   test('map click does nothing when grid not visible', () => {
     registerGridController(interactiveMap, arcgisMap, view)
 
@@ -163,12 +178,18 @@ describe('#registerGridController', () => {
   })
 
   test('panel close clears cell highlight', () => {
-    registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, arcgisMap, view)
+    api.setVisible(true)
+
+    const clickHandler = interactiveMap._handlers['map:click']
+    clickHandler({ coords: [418725, 385137] })
+    vi.advanceTimersByTime(300)
 
     const closeHandler = interactiveMap._handlers['app:panelclosed']
     closeHandler({ panelId: 'gep-grid-info' })
 
     expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
+    expect(document.querySelector('.app-map').classList.contains('app-map--grid-info-open')).toBe(false)
   })
 
   test('other panel close does not clear highlight', () => {

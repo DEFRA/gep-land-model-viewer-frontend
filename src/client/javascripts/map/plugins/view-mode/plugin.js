@@ -6,9 +6,9 @@ export function createViewModeButtonConfig (mode = VIEW_MODE_DEFAULT) {
     id: VIEW_MODE_BUTTON_ID,
     label: MODE_LABELS[mode],
     panelId: VIEW_MODE_PANEL_ID,
-    mobile: { slot: 'top-right', showLabel: true },
-    tablet: { slot: 'top-right', showLabel: true },
-    desktop: { slot: 'top-right', showLabel: true }
+    mobile: { slot: 'right-top', showLabel: true, order: 1 },
+    tablet: { slot: 'right-top', showLabel: true, order: 1 },
+    desktop: { slot: 'right-top', showLabel: true, order: 1 }
   }
 }
 

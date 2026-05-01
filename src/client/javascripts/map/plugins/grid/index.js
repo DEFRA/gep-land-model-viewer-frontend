@@ -6,6 +6,7 @@ import { renderInitialInfoPanelHtml, renderCellInfoHtml } from './render.js'
 
 const PANEL_ID = 'gep-grid-info'
 const CONTENT_ID = 'gep-grid-info-content'
+const GRID_INFO_OPEN_CLASS = 'app-map--grid-info-open'
 
 /**
  * @typedef {object} GridController
@@ -14,6 +15,7 @@ const CONTENT_ID = 'gep-grid-info-content'
  */
 export function registerGridController (interactiveMap, arcgisMap, view) {
   const gridLayer = createGridLayer(interactiveMap, arcgisMap, view)
+  const mapContainer = view.container?.closest('.app-map')
   let isVisible = false
 
   function updatePanelContent (innerHtml) {
@@ -25,11 +27,11 @@ export function registerGridController (interactiveMap, arcgisMap, view) {
 
   interactiveMap.addPanel(PANEL_ID, {
     id: PANEL_ID,
-    label: 'Cell info',
+    label: 'Land model attributes',
     html: renderInitialInfoPanelHtml(CONTENT_ID),
     mobile: { slot: 'drawer', open: false, modal: true, dismissible: true },
-    tablet: { slot: 'right-top', open: false, modal: true, width: '320px', dismissible: true },
-    desktop: { slot: 'right-top', open: false, modal: true, width: '320px', dismissible: true }
+    tablet: { slot: 'right-top', open: false, modal: false, width: '320px', dismissible: true },
+    desktop: { slot: 'right-top', open: false, modal: false, width: '320px', dismissible: true }
   })
 
   let clickTimeout = null
@@ -43,6 +45,7 @@ export function registerGridController (interactiveMap, arcgisMap, view) {
   function hideGridState () {
     clearPendingClick()
     gridLayer.clearHighlight()
+    mapContainer?.classList.remove(GRID_INFO_OPEN_CLASS)
     interactiveMap.hidePanel(PANEL_ID)
   }
 
@@ -62,6 +65,7 @@ export function registerGridController (interactiveMap, arcgisMap, view) {
       const cell = cellAtPoint(coords)
       gridLayer.highlightCell(cell.easting, cell.northing)
       updatePanelContent(renderCellInfoHtml(cell))
+      mapContainer?.classList.add(GRID_INFO_OPEN_CLASS)
       interactiveMap.showPanel(PANEL_ID, { focus: false })
     }, 250)
   })
@@ -69,6 +73,7 @@ export function registerGridController (interactiveMap, arcgisMap, view) {
   interactiveMap.on(EVENTS.APP_PANEL_CLOSED, ({ panelId }) => {
     if (panelId === PANEL_ID) {
       gridLayer.clearHighlight()
+      mapContainer?.classList.remove(GRID_INFO_OPEN_CLASS)
     }
   })
 
