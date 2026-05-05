@@ -4,30 +4,31 @@ import { statusCodes } from '../common/constants/status-codes.js'
 
 const logger = createLogger()
 
-const ordnanceSurveyMapUrl = 'https://api.os.uk/maps/vector/v1/vts'
-const defaultCacheControl = 'no-cache'
-const cacheControlHeader = 'cache-control'
-
-export const routePath = '/os-base-map'
+const ORDNANCE_SURVEY_MAP_URL = 'https://api.os.uk/maps/vector/v1/vts'
+const DEFAULT_CACHE_CONTROL = 'no-cache'
+const CACHE_CONTROL_HEADER = 'cache-control'
+const ROUTE_PATH = '/os-base-map'
 
 function getOrdnanceSurveyMapUrl (path, query) {
   const ordnanceSurveyApiKey = config.get('map.osApiKey')
   const params = new URLSearchParams(query)
   params.set('key', ordnanceSurveyApiKey)
   params.set('srs', '27700')
-  const base = path ? `${ordnanceSurveyMapUrl}/${path}` : ordnanceSurveyMapUrl
+  const base = path
+    ? `${ORDNANCE_SURVEY_MAP_URL}/${path}`
+    : ORDNANCE_SURVEY_MAP_URL
   return `${base}?${params.toString()}`
 }
 
 // Rewrites api.os.uk URLs in JSON responses to route through our proxy, stripping
 // query strings so the API key isn't leaked to the client.
 function rewriteOrdnanceSurveyMapUrls (body, host) {
-  const proxyBase = `${host}${routePath}`
-  const basePath = new URL(ordnanceSurveyMapUrl).pathname
+  const proxyBase = `${host}${ROUTE_PATH}`
+  const basePath = new URL(ORDNANCE_SURVEY_MAP_URL).pathname
 
   try {
     const json = JSON.parse(body, (_key, value) => {
-      if (typeof value === 'string' && value.startsWith(ordnanceSurveyMapUrl)) {
+      if (typeof value === 'string' && value.startsWith(ORDNANCE_SURVEY_MAP_URL)) {
         // decodeURIComponent restores MapLibre template tokens like {z}/{y}/{x}
         // that new URL() percent-encodes.
         const subPath = decodeURIComponent(
@@ -53,7 +54,7 @@ function isBinaryPath (path) {
 function getResponseHeaders (res) {
   return {
     contentType: res.headers.get('content-type') || '',
-    cacheControl: res.headers.get(cacheControlHeader) || defaultCacheControl
+    cacheControl: res.headers.get(CACHE_CONTROL_HEADER) || DEFAULT_CACHE_CONTROL
   }
 }
 
@@ -66,7 +67,7 @@ async function handleBinaryResponse (res, h, path, duration) {
   return h
     .response(payload)
     .type(contentType)
-    .header(cacheControlHeader, cacheControl)
+    .header(CACHE_CONTROL_HEADER, cacheControl)
 }
 
 async function handleJsonResponse (res, h, request, path, duration) {
@@ -82,7 +83,7 @@ async function handleJsonResponse (res, h, request, path, duration) {
   return h
     .response(rewritten)
     .type(contentType)
-    .header(cacheControlHeader, cacheControl)
+    .header(CACHE_CONTROL_HEADER, cacheControl)
 }
 
 async function handleUpstreamError (res, h, path, duration) {
@@ -115,10 +116,7 @@ async function fetchUpstream (request, path) {
 
 const proxyHandler = {
   method: 'GET',
-  path: `${routePath}/{path*}`,
-  options: {
-    auth: false
-  },
+  path: `${ROUTE_PATH}/{path*}`,
   async handler (request, h) {
     const path = request.params.path || ''
 
