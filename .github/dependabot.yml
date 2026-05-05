@@ -29,6 +29,7 @@ updates:
           - 'cssnano'
           - 'cssnano-*'
           - 'husky'
+          - 'jsdom'
           - 'nodemon'
           - 'npm-run-all'
           - 'postcss-*'
@@ -39,6 +40,10 @@ updates:
           - 'vitest-*'
           - 'webpack'
           - 'webpack-*'
+
+      map:
+        patterns:
+          - '@arcgis/*'
 
       lint:
         patterns:
