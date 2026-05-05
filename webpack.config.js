@@ -202,6 +202,10 @@ export default {
           to: 'stylesheets/vendor/interactive-map-styles.css'
         },
         {
+          from: path.join(dirname, 'node_modules/@defra/interactive-map/plugins/search/dist/css/index.css'),
+          to: 'stylesheets/vendor/interactive-map-search.css'
+        },
+        {
           from: path.join(dirname, 'src/client/data/vts'),
           to: 'data/vts'
         }

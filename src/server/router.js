@@ -8,6 +8,7 @@ import { accessibilityStatement } from './accessibility-statement/index.js'
 import { health } from './health/index.js'
 import { map } from './map/index.js'
 import { osBaseMap } from './os-base-map/index.js'
+import { osNamesSearch } from './os-names-search/index.js'
 import { serveStaticFiles } from './common/helpers/serve-static-files.js'
 
 export const router = {
@@ -20,7 +21,7 @@ export const router = {
       await server.register([health])
 
       // Application specific routes, add your own routes here
-      await server.register([home, about, cookies, privacy, accessibilityStatement, map, osBaseMap])
+      await server.register([home, about, cookies, privacy, accessibilityStatement, map, osBaseMap, osNamesSearch])
 
       // Static assets
       await server.register([serveStaticFiles])

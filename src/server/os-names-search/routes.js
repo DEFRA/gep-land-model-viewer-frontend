@@ -1,0 +1,74 @@
+import { config } from '../../config/config.js'
+import { createLogger } from '../common/helpers/logging/logger.js'
+import { statusCodes } from '../common/constants/status-codes.js'
+
+const logger = createLogger()
+
+const OS_NAMES_API_URL = 'https://api.os.uk/search/names/v1/find'
+const DEFAULT_CACHE_CONTROL = 'no-cache'
+const CACHE_CONTROL_HEADER = 'cache-control'
+const MAX_QUERY_LENGTH = 200
+
+const ROUTE_PATH = '/os-names-search'
+
+function buildUpstreamUrl (query) {
+  const osApiKey = config.get('map.osApiKey')
+  const params = new URLSearchParams()
+  params.set('query', query)
+  params.set('key', osApiKey)
+  return `${OS_NAMES_API_URL}?${params.toString()}`
+}
+
+const searchHandler = {
+  method: 'GET',
+  path: ROUTE_PATH,
+  async handler (request, h) {
+    const query = request.query.query
+    if (!query || !query.trim()) {
+      return h
+        .response({ error: 'Missing required query parameter' })
+        .code(statusCodes.badRequest)
+    }
+
+    if (query.length > MAX_QUERY_LENGTH) {
+      return h
+        .response({ error: 'Query parameter exceeds maximum length' })
+        .code(statusCodes.badRequest)
+    }
+
+    try {
+      const upstreamUrl = buildUpstreamUrl(query.trim())
+      const startTime = Date.now()
+      const res = await fetch(upstreamUrl, { redirect: 'follow' })
+      const duration = Date.now() - startTime
+
+      if (!res.ok) {
+        logger.warn(
+          `OS Names proxy upstream error: returned ${res.status} (${duration}ms)`
+        )
+        const body = await res.text()
+        return h.response(body).code(res.status)
+      }
+
+      const cacheControl =
+        res.headers.get(CACHE_CONTROL_HEADER) || DEFAULT_CACHE_CONTROL
+      const body = await res.text()
+
+      logger.info(
+        `OS Names proxy response: ${res.status} ${body.length} chars (${duration}ms)`
+      )
+
+      return h
+        .response(body)
+        .type('application/json')
+        .header(CACHE_CONTROL_HEADER, cacheControl)
+    } catch (err) {
+      logger.error(err, 'OS Names proxy network error')
+      return h
+        .response({ error: 'Search request failed' })
+        .code(statusCodes.badGateway)
+    }
+  }
+}
+
+export default [searchHandler]

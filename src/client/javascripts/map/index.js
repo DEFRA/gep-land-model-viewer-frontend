@@ -2,6 +2,7 @@ import esriConfig from '@arcgis/core/config.js'
 import InteractiveMap, { EVENTS } from '@defra/interactive-map'
 import createEsriProvider from '@defra/interactive-map/providers/esri'
 import mapStylesPlugin from '@defra/interactive-map/plugins/map-styles'
+import searchPlugin from '@defra/interactive-map/plugins/search'
 import { mapStyles } from './config/map-styles.js'
 import { registerGridController } from './plugins/grid/index.js'
 import { registerLayersPanel } from './plugins/layers/index.js'
@@ -26,6 +27,20 @@ const map = new InteractiveMap(MAP_ID, {
   maxZoom: MAX_ZOOM,
   containerHeight: '100%',
   plugins: [
+    searchPlugin({
+      osNamesURL: '/os-names-search?query={query}',
+      showMarker: true,
+      regions: ['england'],
+      width: '300px',
+      manifest: {
+        controls: [{
+          id: 'search',
+          mobile: { slot: 'top-left', showLabel: false, order: 2 },
+          tablet: { slot: 'top-left', showLabel: false, order: 2 },
+          desktop: { slot: 'top-left', showLabel: false, order: 2 }
+        }]
+      }
+    }),
     mapStylesPlugin({
       mapStyles,
       manifest: {
