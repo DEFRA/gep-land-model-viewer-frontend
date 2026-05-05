@@ -24,7 +24,7 @@ const searchHandler = {
   path: ROUTE_PATH,
   async handler (request, h) {
     const query = request.query.query
-    if (!query || !query.trim()) {
+    if (!query?.trim()) {
       return h
         .response({ error: 'Missing required query parameter' })
         .code(statusCodes.badRequest)
@@ -46,8 +46,8 @@ const searchHandler = {
         logger.warn(
           `OS Names proxy upstream error: returned ${res.status} (${duration}ms)`
         )
-        const body = await res.text()
-        return h.response(body).code(res.status)
+        const errorBody = await res.text()
+        return h.response(errorBody).code(res.status)
       }
 
       const cacheControl =
