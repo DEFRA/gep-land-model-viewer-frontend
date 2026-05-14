@@ -170,10 +170,7 @@ export default {
     usedExports: true
   },
   plugins: [
-    // Preserve @arcgis/core assets; CopyPlugin re-copies ~10k files otherwise.
-    new CleanWebpackPlugin({
-      cleanOnceBeforeBuildPatterns: ['**/*', '!arcgis-assets', '!arcgis-assets/**']
-    }),
+    new CleanWebpackPlugin(),
     new WebpackAssetsManifest(),
     new CopyPlugin({
       patterns: [
@@ -186,16 +183,8 @@ export default {
           to: 'images'
         },
         {
-          from: path.join(dirname, 'node_modules/@arcgis/core/assets'),
-          to: 'arcgis-assets'
-        },
-        {
           from: path.join(dirname, 'node_modules/@defra/interactive-map/dist/css/index.css'),
           to: 'stylesheets/vendor/interactive-map.css'
-        },
-        {
-          from: path.join(dirname, 'node_modules/@defra/interactive-map/providers/beta/esri/dist/css/index.css'),
-          to: 'stylesheets/vendor/interactive-map-esri.css'
         },
         {
           from: path.join(dirname, 'node_modules/@defra/interactive-map/plugins/beta/map-styles/dist/css/index.css'),
