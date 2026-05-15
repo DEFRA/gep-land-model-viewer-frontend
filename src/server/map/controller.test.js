@@ -24,17 +24,14 @@ describe('#mapController', () => {
     expect(result).toEqual(expect.stringContaining('id="land-map"'))
   })
 
-  test('applies ArcGIS-relaxed CSP only on the map route', async () => {
+  test('applies map CSP with EA data host and blob workers on the map route', async () => {
     const mapResp = await server.inject({ method: 'GET', url: '/map' })
     const mapCsp = mapResp.headers['content-security-policy']
-    expect(mapCsp).toContain("'unsafe-eval'")
-    expect(mapCsp).toContain("'wasm-unsafe-eval'")
-    expect(mapCsp).toContain('blob:')
     expect(mapCsp).toContain('https://environment.data.gov.uk')
+    expect(mapCsp).toContain('blob:')
 
     const homeResp = await server.inject({ method: 'GET', url: '/' })
     const homeCsp = homeResp.headers['content-security-policy']
-    expect(homeCsp).not.toContain("'unsafe-eval'")
-    expect(homeCsp).not.toContain('blob:')
+    expect(homeCsp).not.toContain('https://environment.data.gov.uk')
   })
 })

@@ -43,23 +43,21 @@ const EA_DATA_HOST = 'https://environment.data.gov.uk'
 
 // Per-route override applied only to routes that render the map. Blankie
 // replaces (does not merge) the global directives, so this must be complete.
-// Nonce scoped to scripts because a nonce on style-src makes browsers ignore
-// 'unsafe-inline' under CSP3, breaking ArcGIS's runtime-injected styles.
 export const mapContentSecurityPolicy = {
   defaultSrc: ['self'],
   fontSrc: ['self'],
   connectSrc: ['self', ...gtmConnectSrc, EA_DATA_HOST],
   mediaSrc: ['self'],
-  styleSrc: ['self', "'unsafe-inline'"],
-  scriptSrc: ['self', ...gtmScriptSrc, "'unsafe-eval'", "'wasm-unsafe-eval'"],
+  styleSrc: ['self'],
+  scriptSrc: ['self', ...gtmScriptSrc],
   workerSrc: ['self', 'blob:'],
-  imgSrc: ['self', ...gtmImgSrc, 'blob:', 'data:', EA_DATA_HOST],
+  imgSrc: ['self', ...gtmImgSrc, EA_DATA_HOST],
   frameSrc: ['self', ...gtmFrameSrc],
   objectSrc: ['none'],
   frameAncestors: ['none'],
   formAction: ['self'],
   manifestSrc: ['self'],
-  generateNonces: 'script'
+  generateNonces: true
 }
 
 export { contentSecurityPolicy }
