@@ -1,8 +1,19 @@
 import { EVENTS } from '@defra/interactive-map'
-import Point from '@arcgis/core/geometry/Point.js'
-import WMSLayer from '@arcgis/core/layers/WMSLayer.js'
+import ImageLayer from 'ol/layer/Image.js'
+import ImageWMS from 'ol/source/ImageWMS.js'
 import { datasets } from '../../config/datasets.js'
-import { renderLayersPanelHtml, LAYERS_ICON_SVG } from './render.js'
+import { OS_ATTRIBUTION } from '../../config/map-styles.js'
+import {
+  buildFeatureInfoFragment,
+  buildKeyFragment,
+  buildStatusFragment,
+  renderFeatureInfoPanelHtml,
+  renderKeyPanelHtml,
+  renderLayersPanelHtml,
+  IDENTIFY_ICON_SVG,
+  KEY_ICON_SVG,
+  LAYERS_ICON_SVG
+} from './render.js'
 
 const BUTTON_ID = 'gep-layers'
 const PANEL_ID = 'gep-layers'
@@ -10,16 +21,20 @@ const INFO_BUTTON_ID = 'gep-layer-info-toggle'
 const INFO_PANEL_ID = 'gep-layer-info'
 const INFO_CONTENT_ID = 'gep-layer-info-content'
 const INFO_STATUS_ID = 'gep-layer-info-status'
+const KEY_BUTTON_ID = 'gep-key'
+const KEY_PANEL_ID = 'gep-key'
+const KEY_CONTENT_ID = 'gep-key-content'
 
-// Lucide "scan-eye"
-const IDENTIFY_ICON_SVG = '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>'
-
-export function registerLayersPanel (interactiveMap, arcgisMap, view) {
-  registerLayerListPanel(interactiveMap, arcgisMap)
-  registerIdentifyPanel(interactiveMap, arcgisMap, view)
+export function registerLayersPanel (interactiveMap, map) {
+  registerLayerListPanel(interactiveMap, map)
+  registerIdentifyPanel(interactiveMap, map)
 }
 
-function registerLayerListPanel (interactiveMap, arcgisMap) {
+function registerLayerListPanel (interactiveMap, map) {
+  const refreshAttributions = () => refreshAttributionsForVisibleLayers(map)
+  refreshAttributions()
+  interactiveMap.on(EVENTS.MAP_STYLE_CHANGE, refreshAttributions)
+
   interactiveMap.addButton(BUTTON_ID, {
     id: BUTTON_ID,
     label: 'Layers',
@@ -51,6 +66,8 @@ function registerLayerListPanel (interactiveMap, arcgisMap) {
     }
   })
 
+  registerKeyPanel(interactiveMap)
+
   document.addEventListener('change', (event) => {
     const input = event.target.closest('[data-app-layer-id]')
     if (!input) {
@@ -60,7 +77,18 @@ function registerLayerListPanel (interactiveMap, arcgisMap) {
     if (!dataset) {
       return
     }
-    toggleLayer(dataset, input.checked, arcgisMap)
+    const visible = input.checked
+    setLayerInputLoading(input, true)
+    toggleLayer(dataset, visible, map).catch(() => {
+      // Keep UI state in sync with the map even when a layer update fails.
+    }).finally(() => {
+      if (visible && !findLayerById(map, `gep-${dataset.id}`)) {
+        input.checked = false
+      }
+      refreshKey(map)
+      refreshAttributions()
+      setLayerInputLoading(input, false)
+    })
   })
 
   document.addEventListener('input', (event) => {
@@ -71,7 +99,28 @@ function registerLayerListPanel (interactiveMap, arcgisMap) {
   })
 }
 
-function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
+function registerKeyPanel (interactiveMap) {
+  interactiveMap.addButton(KEY_BUTTON_ID, {
+    id: KEY_BUTTON_ID,
+    label: 'Key',
+    panelId: KEY_PANEL_ID,
+    iconSvgContent: KEY_ICON_SVG,
+    mobile: { slot: 'top-left', showLabel: false },
+    tablet: { slot: 'top-left', showLabel: true },
+    desktop: { slot: 'top-left', showLabel: true }
+  })
+
+  interactiveMap.addPanel(KEY_PANEL_ID, {
+    id: KEY_PANEL_ID,
+    label: 'Key',
+    html: renderKeyPanelHtml(KEY_CONTENT_ID),
+    mobile: { slot: 'drawer', open: false, modal: true, dismissible: true },
+    tablet: { slot: 'left-top', open: false, modal: false, width: '450px', dismissible: true },
+    desktop: { slot: 'left-top', open: false, modal: false, width: '450px', dismissible: true }
+  })
+}
+
+function registerIdentifyPanel (interactiveMap, map) {
   let infoEnabled = false
   let identifyAbortController = null
   let doubleClickGuardTimeout = null
@@ -95,7 +144,7 @@ function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
     onClick: () => {
       infoEnabled = !infoEnabled
       interactiveMap.toggleButtonState(INFO_BUTTON_ID, 'pressed', infoEnabled)
-      view.container?.classList.toggle('app-map--identify', infoEnabled)
+      map.getTargetElement()?.classList.toggle('app-map--identify', infoEnabled)
       if (!infoEnabled) {
         cancelIdentifyRequest()
         interactiveMap.hidePanel(INFO_PANEL_ID)
@@ -109,7 +158,7 @@ function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
   interactiveMap.addPanel(INFO_PANEL_ID, {
     id: INFO_PANEL_ID,
     label: 'Data Layer Attributes',
-    html: `<div id="${INFO_STATUS_ID}" class="govuk-visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div><div id="${INFO_CONTENT_ID}" class="app-map__layer-info-panel"></div>`,
+    html: renderFeatureInfoPanelHtml(INFO_STATUS_ID, INFO_CONTENT_ID),
     mobile: { slot: 'drawer', open: false, modal: true, dismissible: true },
     tablet: { slot: 'middle', open: false, modal: true, width: '500px', dismissible: true },
     desktop: { slot: 'middle', open: false, modal: true, width: '500px', dismissible: true }
@@ -134,7 +183,7 @@ function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
       doubleClickGuardTimeout = null
       const abortController = new AbortController()
       identifyAbortController = abortController
-      showFeatureInfo(coords, arcgisMap, view, interactiveMap, abortController.signal)
+      showFeatureInfo(coords, map, interactiveMap, abortController.signal)
         .finally(() => {
           if (identifyAbortController === abortController) {
             identifyAbortController = null
@@ -144,7 +193,25 @@ function registerIdentifyPanel (interactiveMap, arcgisMap, view) {
   })
 }
 
-async function showFeatureInfo (coords, arcgisMap, view, interactiveMap, signal) {
+function findLayerById (map, id) {
+  return map.getLayers().getArray().find(l => l.get('id') === id)
+}
+
+function getSourceUrl (source) {
+  return source.getUrls?.()?.[0] ?? source.getUrl?.()
+}
+
+function getVisibleWmsLayers (map) {
+  return map.getLayers().getArray()
+    .filter(layer =>
+      layer.get('wms') &&
+      layer.getVisible() &&
+      layer.getSource()?.getParams()?.LAYERS &&
+      getSourceUrl(layer.getSource())
+    )
+}
+
+async function showFeatureInfo (coords, map, interactiveMap, signal) {
   const contentEl = document.getElementById(INFO_CONTENT_ID)
   const statusEl = document.getElementById(INFO_STATUS_ID)
   if (contentEl) {
@@ -154,13 +221,11 @@ async function showFeatureInfo (coords, arcgisMap, view, interactiveMap, signal)
   updateStatus(statusEl, 'Loading attributes')
   interactiveMap.showPanel(INFO_PANEL_ID)
 
-  const visibleLayers = arcgisMap.layers
-    .filter(layer => layer.type === 'wms' && layer.visible && layer.sublayers && layer.url)
-    .toArray()
+  const visibleLayers = getVisibleWmsLayers(map)
 
   const mapPoint = { x: coords[0], y: coords[1] }
   const results = await Promise.all(
-    visibleLayers.map(layer => describeLayerFeatures(layer, mapPoint, view, signal))
+    visibleLayers.map(layer => describeLayerFeatures(layer, mapPoint, map, signal))
   )
   if (signal.aborted) {
     return
@@ -184,73 +249,48 @@ async function showFeatureInfo (coords, arcgisMap, view, interactiveMap, signal)
   updateStatus(statusEl, failedLayers.length > 0 ? 'Some attributes could not be loaded' : 'Attributes loaded')
 }
 
-async function describeLayerFeatures (layer, mapPoint, view, signal) {
-  const dataset = datasets.find(d => layer.id === `gep-${d.id}`)
-  const layerName = dataset?.label ?? layer.title ?? 'Unknown Layer'
+async function describeLayerFeatures (layer, mapPoint, map, signal) {
+  const dataset = datasets.find(d => `gep-${d.id}` === layer.get('id'))
+  const layerName = dataset?.label ?? 'Unknown Layer'
 
   try {
-    const features = await fetchFeatureInfo(layer, mapPoint, view, signal)
+    const features = await fetchFeatureInfo(layer, mapPoint, map, signal)
     return { layerName, features, error: false }
   } catch {
     return { layerName, features: [], error: !signal.aborted }
   }
 }
 
-async function fetchFeatureInfo (layer, mapPoint, view, signal) {
-  await layer.load()
-  if (signal.aborted) {
+async function fetchFeatureInfo (layer, mapPoint, map, signal) {
+  const source = layer.getSource()
+  const layerNames = source.getParams().LAYERS
+  if (!layerNames) {
     return []
   }
 
-  const sublayerNames = layer.sublayers
-    ?.filter(s => s.visible)
-    .map(s => s.name)
-    .toArray()
-    .join(',')
-
-  if (!sublayerNames) {
-    return []
-  }
-
-  const screen = view.toScreen(new Point({
-    x: mapPoint.x,
-    y: mapPoint.y,
-    spatialReference: view.spatialReference
-  }))
-  const { extent, width, height } = view
+  const pixel = map.getPixelFromCoordinate([mapPoint.x, mapPoint.y])
+  const view = map.getView()
+  const size = map.getSize()
+  const extent = view.calculateExtent(size)
 
   const params = new URLSearchParams({
     SERVICE: 'WMS',
-    VERSION: layer.version || '1.3.0',
+    VERSION: '1.3.0',
     REQUEST: 'GetFeatureInfo',
-    LAYERS: sublayerNames,
-    QUERY_LAYERS: sublayerNames,
+    LAYERS: layerNames,
+    QUERY_LAYERS: layerNames,
     INFO_FORMAT: 'application/json',
     CRS: 'EPSG:27700',
-    BBOX: `${extent.xmin},${extent.ymin},${extent.xmax},${extent.ymax}`,
-    WIDTH: String(width),
-    HEIGHT: String(height),
-    I: String(Math.round(screen.x)),
-    J: String(Math.round(screen.y))
+    BBOX: `${extent[0]},${extent[1]},${extent[2]},${extent[3]}`,
+    WIDTH: String(Math.round(size[0])),
+    HEIGHT: String(Math.round(size[1])),
+    I: String(Math.round(pixel[0])),
+    J: String(Math.round(pixel[1]))
   })
 
-  const response = await fetch(`${layer.url}?${params}`, { signal })
+  const response = await fetch(`${getSourceUrl(source)}?${params}`, { signal })
   const data = await response.json()
   return data.features ?? []
-}
-
-function buildStatusFragment (message) {
-  const fragment = document.createDocumentFragment()
-  const container = document.createElement('div')
-  container.className = 'app-map__layer-info app-map__layer-info-status'
-
-  const paragraph = document.createElement('p')
-  paragraph.className = 'govuk-body govuk-!-margin-bottom-0'
-  paragraph.textContent = message
-
-  container.appendChild(paragraph)
-  fragment.appendChild(container)
-  return fragment
 }
 
 function updateStatus (statusEl, message) {
@@ -259,103 +299,130 @@ function updateStatus (statusEl, message) {
   }
 }
 
-// WMS GetFeatureInfo properties come from external responses, so build DOM
-// nodes with textContent rather than interpolating into an HTML string.
-function buildFeatureInfoFragment (layerResults) {
-  const fragment = document.createDocumentFragment()
-  const container = document.createElement('div')
-  container.className = 'app-map__layer-info'
+const capabilitiesCache = new Map()
 
-  layerResults.forEach(({ layerName, features, error }) => {
-    if (error) {
-      container.appendChild(buildFeatureErrorSection(layerName))
-      return
-    }
-
-    features.forEach((feature) => {
-      const section = document.createElement('section')
-      section.className = 'app-map__layer-info-section'
-
-      const heading = document.createElement('h3')
-      heading.className = 'app-map__layer-info-heading govuk-heading-s'
-      heading.textContent = layerName
-
-      section.appendChild(heading)
-      section.appendChild(buildFeatureSummaryList(feature))
-      container.appendChild(section)
-    })
-  })
-
-  fragment.appendChild(container)
-  return fragment
+export function resetCapabilitiesCache () {
+  capabilitiesCache.clear()
 }
 
-function buildFeatureErrorSection (layerName) {
-  const section = document.createElement('section')
-  section.className = 'app-map__layer-info-section'
-
-  const heading = document.createElement('h3')
-  heading.className = 'app-map__layer-info-heading govuk-heading-s'
-  heading.textContent = layerName
-
-  const message = document.createElement('p')
-  message.className = 'govuk-body govuk-!-margin-bottom-0'
-  message.textContent = 'Data layer attributes could not be loaded.'
-
-  section.appendChild(heading)
-  section.appendChild(message)
-  return section
-}
-
-function buildFeatureSummaryList (feature) {
-  const dl = document.createElement('dl')
-  dl.className = 'govuk-summary-list govuk-summary-list--no-border app-map__layer-info-list'
-  const props = feature.properties ?? {}
-  for (const [key, value] of Object.entries(props)) {
-    if (value == null || value === '') {
-      continue
-    }
-    const row = document.createElement('div')
-    row.className = 'govuk-summary-list__row'
-
-    const dt = document.createElement('dt')
-    dt.className = 'govuk-summary-list__key'
-    dt.textContent = key
-
-    const dd = document.createElement('dd')
-    dd.className = 'govuk-summary-list__value'
-    dd.textContent = value
-
-    row.appendChild(dt)
-    row.appendChild(dd)
-    dl.appendChild(row)
+async function fetchWmsLayerNames (wmsUrl) {
+  if (capabilitiesCache.has(wmsUrl)) {
+    return capabilitiesCache.get(wmsUrl)
   }
-  return dl
+
+  try {
+    const res = await fetch(`${wmsUrl}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities`)
+    if (!res.ok) {
+      return []
+    }
+
+    const text = await res.text()
+    const doc = new DOMParser().parseFromString(text, 'text/xml')
+    const names = [...doc.querySelectorAll('Layer[queryable="1"] > Name')]
+      .map(el => el.textContent)
+      .filter(Boolean)
+
+    if (names.length) {
+      capabilitiesCache.set(wmsUrl, names)
+    }
+    return names
+  } catch {
+    return []
+  }
 }
 
-function toggleLayer (dataset, visible, arcgisMap) {
+function setLayerInputLoading (input, loading) {
+  input.disabled = loading
+  const item = input.closest('[data-app-layer-item]')
+  if (!item) {
+    return
+  }
+
+  if (!loading) {
+    item.removeAttribute('aria-busy')
+    return
+  }
+
+  item.setAttribute('aria-busy', 'true')
+}
+
+async function toggleLayer (dataset, visible, map) {
   const layerId = `gep-${dataset.id}`
-  const existing = arcgisMap.findLayerById(layerId)
+  const existing = findLayerById(map, layerId)
   if (!visible) {
     if (existing) {
-      arcgisMap.remove(existing)
+      map.removeLayer(existing)
     }
     return
   }
   if (existing) {
-    existing.visible = true
+    existing.setVisible(true)
     return
   }
-  const layerConfig = {
-    id: layerId,
-    url: dataset.source.url,
-    opacity: dataset.source.opacity ?? 1,
-    copyright: dataset.source.attribution
+
+  const layerNames = dataset.source.layers?.length
+    ? dataset.source.layers
+    : await fetchWmsLayerNames(dataset.source.url)
+
+  if (!layerNames.length) {
+    return
   }
-  if (dataset.source.layers?.length) {
-    layerConfig.sublayers = dataset.source.layers.map(name => ({ name }))
+
+  const params = {
+    LAYERS: layerNames.join(','),
+    FORMAT: 'image/png',
+    TRANSPARENT: true,
+    CRS: 'EPSG:27700'
   }
-  arcgisMap.add(new WMSLayer(layerConfig))
+
+  map.addLayer(new ImageLayer({
+    properties: { id: layerId, wms: true },
+    source: new ImageWMS({
+      url: dataset.source.url,
+      params,
+      attributions: dataset.source.attribution,
+      ratio: 1.5,
+      crossOrigin: 'anonymous'
+    }),
+    opacity: dataset.source.opacity ?? 1
+  }))
+}
+
+function refreshKey (map) {
+  const contentEl = document.getElementById(KEY_CONTENT_ID)
+  if (!contentEl) {
+    return
+  }
+
+  const entries = getVisibleWmsLayers(map).map(layer => {
+    const dataset = datasets.find(d => `gep-${d.id}` === layer.get('id'))
+    const label = dataset?.label ?? 'Unknown Layer'
+    const source = layer.getSource()
+    const layerNames = source.getParams().LAYERS
+    const baseUrl = getSourceUrl(source)
+    if (!layerNames || !baseUrl) {
+      return null
+    }
+    return { label, baseUrl, layerNames: layerNames.split(',') }
+  }).filter(Boolean)
+
+  contentEl.replaceChildren(buildKeyFragment(entries))
+}
+
+function getCurrentAttribution (map) {
+  const visibleAttributions = getVisibleWmsLayers(map)
+    .map(layer => datasets.find(d => `gep-${d.id}` === layer.get('id'))?.source.attribution)
+    .filter(Boolean)
+
+  return [...new Set([OS_ATTRIBUTION, ...visibleAttributions])].join(' | ')
+}
+
+function refreshAttributionsForVisibleLayers (map) {
+  const attribution = getCurrentAttribution(map)
+  const attributionEl = document.querySelector('.im-c-attributions')
+  if (attributionEl) {
+    attributionEl.textContent = attribution
+  }
 }
 
 function filterLayers (query) {

@@ -34,6 +34,10 @@ vi.mock('./plugins/grid/index.js', () => ({
   registerGridController: vi.fn(() => ({ setVisible: vi.fn() }))
 }))
 
+vi.mock('./plugins/layers/index.js', () => ({
+  registerLayersPanel: vi.fn()
+}))
+
 vi.mock('./plugins/view-mode/index.js', () => ({
   registerViewMode: vi.fn(),
   createViewModePlugin: vi.fn(() => ({ id: 'gepViewMode' }))
@@ -67,8 +71,9 @@ describe('map entry point', () => {
     )
   })
 
-  test('registers grid and view-mode plugins when map is ready', async () => {
+  test('registers layers, grid and view-mode plugins when map is ready', async () => {
     const InteractiveMap = (await import('@defra/interactive-map')).default
+    const { registerLayersPanel } = await import('./plugins/layers/index.js')
     const { registerGridController } = await import('./plugins/grid/index.js')
     const { registerViewMode } = await import('./plugins/view-mode/index.js')
 
@@ -80,6 +85,7 @@ describe('map entry point', () => {
     const olMap = {}
     readyHandler({ map: olMap })
 
+    expect(registerLayersPanel).toHaveBeenCalledWith(expect.any(Object), olMap)
     expect(registerGridController).toHaveBeenCalledWith(expect.any(Object), olMap)
     expect(registerViewMode).toHaveBeenCalledWith(expect.any(Object), olMap, expect.any(Object))
   })

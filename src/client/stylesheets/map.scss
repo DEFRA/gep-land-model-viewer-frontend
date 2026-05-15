@@ -122,6 +122,13 @@ html:has(.app-map-page) {
   stroke-linejoin: round;
 }
 
+.app-map__layers-content > .govuk-fieldset {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 // Layer list scrolls within the fixed header/search area.
 .app-map [data-app-layer-list] {
   flex: 1 1 auto;
@@ -135,6 +142,41 @@ html:has(.app-map-page) {
 .app-map [data-app-layer-item][hidden],
 .app-map [data-app-layer-empty][hidden] {
   display: none;
+}
+
+.app-map__key-panel {
+  padding: 12px;
+}
+
+.app-map__key-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-map__key-entry + .app-map__key-entry {
+  padding-top: 16px;
+  border-top: 1px solid govuk-colour("black", $variant: "tint-80");
+}
+
+.app-map__key-legends {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+
+.app-map__key-legend-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.app-map__key-legend {
+  max-width: 100%;
+  height: auto;
 }
 
 // ===== Layer identify popup =====

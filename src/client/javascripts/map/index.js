@@ -4,6 +4,7 @@ import mapStylesPlugin from '@defra/interactive-map/plugins/map-styles'
 import searchPlugin from '@defra/interactive-map/plugins/search'
 import { mapStyles } from './config/map-styles.js'
 import { registerGridController } from './plugins/grid/index.js'
+import { registerLayersPanel } from './plugins/layers/index.js'
 import { createViewModePlugin, registerViewMode } from './plugins/view-mode/index.js'
 
 const MAP_ID = 'land-map'
@@ -59,6 +60,7 @@ const map = new InteractiveMap(MAP_ID, {
 })
 
 map.on(EVENTS.MAP_READY, (/** @type {{ map: import('ol/Map').default }} */ { map: olMap }) => {
+  registerLayersPanel(map, olMap)
   const grid = registerGridController(map, olMap)
   registerViewMode(map, olMap, { grid })
 })
