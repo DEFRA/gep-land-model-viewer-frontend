@@ -153,12 +153,12 @@ export function buildKeyFragment (entries) {
       const img = document.createElement('img')
       img.className = 'app-map__key-legend'
       img.src = `${baseUrl}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=${encodeURIComponent(name)}&FORMAT=image/png`
-      img.alt = `Legend for ${name.replace(/_/g, ' ')}`
+      img.alt = `Legend for ${name.replaceAll('_', ' ')}`
       img.crossOrigin = 'anonymous'
 
       const layerLabel = document.createElement('span')
       layerLabel.className = 'govuk-body-s govuk-!-margin-bottom-0'
-      layerLabel.textContent = name.replace(/_/g, ' ')
+      layerLabel.textContent = name.replaceAll('_', ' ')
 
       row.appendChild(layerLabel)
       row.appendChild(img)
