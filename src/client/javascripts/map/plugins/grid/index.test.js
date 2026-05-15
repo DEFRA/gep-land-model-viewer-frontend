@@ -40,13 +40,14 @@ function createMockGridLayer () {
 describe('#registerGridController', () => {
   let interactiveMap
   let mockGridLayer
-  let view
-  const arcgisMap = {}
+  let olMap
 
   beforeEach(() => {
     vi.useFakeTimers()
     document.body.innerHTML = '<div class="app-map"><div id="map-container"></div></div><div id="gep-grid-info-content"></div>'
-    view = { container: document.getElementById('map-container') }
+    olMap = {
+      getTargetElement: vi.fn(() => document.getElementById('map-container'))
+    }
     interactiveMap = createMapHarness()
     mockGridLayer = createMockGridLayer()
     createGridLayer.mockReturnValue(mockGridLayer)
@@ -59,13 +60,13 @@ describe('#registerGridController', () => {
   })
 
   test('creates grid layer on registration', () => {
-    registerGridController(interactiveMap, arcgisMap, view)
+    registerGridController(interactiveMap, olMap)
 
-    expect(createGridLayer).toHaveBeenCalledWith(interactiveMap, arcgisMap, view)
+    expect(createGridLayer).toHaveBeenCalledWith(interactiveMap, olMap)
   })
 
   test('adds info panel for cell details', () => {
-    registerGridController(interactiveMap, arcgisMap, view)
+    registerGridController(interactiveMap, olMap)
 
     expect(interactiveMap.addPanel).toHaveBeenCalledWith(
       'gep-grid-info',
@@ -80,7 +81,7 @@ describe('#registerGridController', () => {
   })
 
   test('setVisible(true) enables the grid layer', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, olMap)
 
     api.setVisible(true)
 
@@ -88,13 +89,13 @@ describe('#registerGridController', () => {
   })
 
   test('exposes the minimum usable grid zoom', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, olMap)
 
     expect(api.minZoom).toBe(GRID_VISIBLE_MIN_ZOOM)
   })
 
   test('setVisible(false) hides the grid layer and closes the cell info panel', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, olMap)
 
     api.setVisible(true)
     api.setVisible(false)
@@ -104,18 +105,19 @@ describe('#registerGridController', () => {
     expect(interactiveMap.hidePanel).toHaveBeenCalledWith('gep-grid-info')
   })
 
-  test('setVisible toggles the grid cursor class on the view container', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+  test('setVisible toggles the grid cursor class on the map container', () => {
+    const api = registerGridController(interactiveMap, olMap)
+    const container = document.getElementById('map-container')
 
     api.setVisible(true)
-    expect(view.container.classList.contains('app-map--grid')).toBe(true)
+    expect(container.classList.contains('app-map--grid')).toBe(true)
 
     api.setVisible(false)
-    expect(view.container.classList.contains('app-map--grid')).toBe(false)
+    expect(container.classList.contains('app-map--grid')).toBe(false)
   })
 
   test('map click shows cell info panel when grid visible', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, olMap)
     api.setVisible(true)
 
     const clickHandler = interactiveMap._handlers['map:click']
@@ -128,7 +130,7 @@ describe('#registerGridController', () => {
   })
 
   test('map click marks the grid info panel as open for layout', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, olMap)
     api.setVisible(true)
 
     const clickHandler = interactiveMap._handlers['map:click']
@@ -140,7 +142,7 @@ describe('#registerGridController', () => {
   })
 
   test('map click does nothing when grid not visible', () => {
-    registerGridController(interactiveMap, arcgisMap, view)
+    registerGridController(interactiveMap, olMap)
 
     const clickHandler = interactiveMap._handlers['map:click']
     clickHandler({ coords: [418725, 385137] })
@@ -151,7 +153,7 @@ describe('#registerGridController', () => {
   })
 
   test('hiding the grid cancels a pending cell selection', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, olMap)
     api.setVisible(true)
 
     const clickHandler = interactiveMap._handlers['map:click']
@@ -165,7 +167,7 @@ describe('#registerGridController', () => {
   })
 
   test('double click is ignored', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, olMap)
     api.setVisible(true)
 
     const clickHandler = interactiveMap._handlers['map:click']
@@ -178,7 +180,7 @@ describe('#registerGridController', () => {
   })
 
   test('panel close clears cell highlight', () => {
-    const api = registerGridController(interactiveMap, arcgisMap, view)
+    const api = registerGridController(interactiveMap, olMap)
     api.setVisible(true)
 
     const clickHandler = interactiveMap._handlers['map:click']
@@ -193,7 +195,7 @@ describe('#registerGridController', () => {
   })
 
   test('other panel close does not clear highlight', () => {
-    registerGridController(interactiveMap, arcgisMap, view)
+    registerGridController(interactiveMap, olMap)
 
     const closeHandler = interactiveMap._handlers['app:panelclosed']
     closeHandler({ panelId: 'other-panel' })

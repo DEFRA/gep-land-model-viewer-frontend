@@ -7,27 +7,45 @@ vi.mock('@defra/interactive-map', () => ({
   }
 }))
 
-vi.mock('@arcgis/core/layers/GraphicsLayer.js', () => ({
+vi.mock('ol/Feature.js', () => ({
   default: vi.fn().mockImplementation(function (opts) {
-    this.id = opts?.id
-    this.listMode = opts?.listMode
-    this.visible = true
-    this.graphics = []
-    this.removeAll = vi.fn(() => { this.graphics = [] })
-    this.add = vi.fn((g) => { this.graphics.push(g) })
-    this.addMany = vi.fn((gs) => { this.graphics.push(...gs) })
+    this.geometry = opts?.geometry
   })
 }))
 
-vi.mock('@arcgis/core/Graphic.js', () => ({
+vi.mock('ol/geom/LineString.js', () => ({
+  default: vi.fn().mockImplementation(function (coords) {
+    this.type = 'LineString'
+    this.coords = coords
+  })
+}))
+
+vi.mock('ol/geom/Polygon.js', () => ({
+  default: vi.fn().mockImplementation(function (rings) {
+    this.type = 'Polygon'
+    this.rings = rings
+  })
+}))
+
+vi.mock('ol/source/Vector.js', () => ({
+  default: vi.fn().mockImplementation(function () {
+    this.features = []
+    this.clear = vi.fn(() => { this.features = [] })
+    this.addFeature = vi.fn((f) => { this.features.push(f) })
+    this.addFeatures = vi.fn((fs) => { this.features.push(...fs) })
+  })
+}))
+
+vi.mock('ol/layer/WebGLVector.js', () => ({
   default: vi.fn().mockImplementation(function (opts) {
-    this.geometry = opts?.geometry
-    this.symbol = opts?.symbol
+    this._opts = opts
+    this.source = opts?.source
+    this.setVisible = vi.fn()
   })
 }))
 
 const { createGridLayer } = await import('./grid-layer.js')
-const { default: GraphicsLayer } = await import('@arcgis/core/layers/GraphicsLayer.js')
+const { default: WebGLVectorLayer } = await import('ol/layer/WebGLVector.js')
 
 function createMapHarness () {
   const handlers = {}
@@ -39,32 +57,30 @@ function createMapHarness () {
   }
 }
 
-function createArcgisMapMock () {
+function createOlMapMock (zoom = 17, extent = [418700, 385100, 418900, 385300], resolution = 1) {
   const layers = []
-  return {
-    add: vi.fn((layer) => { layers.push(layer) }),
-    _layers: layers
+  const view = {
+    getZoom: vi.fn(() => zoom),
+    getResolution: vi.fn(() => resolution),
+    calculateExtent: vi.fn(() => extent)
   }
-}
-
-function createViewMock (zoom = 17, extent = { xmin: 418700, ymin: 385100, xmax: 418900, ymax: 385300, width: 200, height: 200 }) {
   return {
-    zoom,
-    resolution: 1,
-    extent
+    addLayer: vi.fn((layer) => { layers.push(layer) }),
+    getView: vi.fn(() => view),
+    getSize: vi.fn(() => [800, 600]),
+    _layers: layers,
+    _view: view
   }
 }
 
 describe('#createGridLayer', () => {
   let interactiveMap
-  let arcgisMap
-  let view
+  let olMap
 
   beforeEach(() => {
     vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(cb => { cb(); return 1 })
     interactiveMap = createMapHarness()
-    arcgisMap = createArcgisMapMock()
-    view = createViewMock()
+    olMap = createOlMapMock()
   })
 
   afterEach(() => {
@@ -72,105 +88,123 @@ describe('#createGridLayer', () => {
     vi.restoreAllMocks()
   })
 
-  test('creates grid and selected graphics layers', async () => {
-    await createGridLayer(interactiveMap, arcgisMap, view)
+  test('creates grid and selected WebGL layers', () => {
+    createGridLayer(interactiveMap, olMap)
 
-    expect(arcgisMap.add).toHaveBeenCalledTimes(2)
-    expect(GraphicsLayer).toHaveBeenCalledWith(expect.objectContaining({ id: 'gep-grid' }))
-    expect(GraphicsLayer).toHaveBeenCalledWith(expect.objectContaining({ id: 'gep-grid-selected' }))
+    expect(olMap.addLayer).toHaveBeenCalledTimes(2)
+    expect(WebGLVectorLayer).toHaveBeenCalledTimes(2)
   })
 
-  test('layers are hidden from layer list', async () => {
-    await createGridLayer(interactiveMap, arcgisMap, view)
-
-    expect(GraphicsLayer).toHaveBeenCalledWith(expect.objectContaining({ listMode: 'hide' }))
-  })
-
-  test('highlightCell adds graphic to selected layer', async () => {
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+  test('highlightCell adds feature to selected source', () => {
+    const api = createGridLayer(interactiveMap, olMap)
 
     api.highlightCell(418720, 385130)
 
-    const selectedLayer = arcgisMap._layers[1]
-    expect(selectedLayer.removeAll).toHaveBeenCalled()
-    expect(selectedLayer.add).toHaveBeenCalled()
+    const selectedLayer = olMap._layers[1]
+    const selectedSource = selectedLayer.source
+    expect(selectedSource.clear).toHaveBeenCalled()
+    expect(selectedSource.addFeature).toHaveBeenCalled()
   })
 
-  test('clearHighlight removes graphics from selected layer', async () => {
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+  test('clearHighlight clears selected source', () => {
+    const api = createGridLayer(interactiveMap, olMap)
 
     api.clearHighlight()
 
-    const selectedLayer = arcgisMap._layers[1]
-    expect(selectedLayer.removeAll).toHaveBeenCalled()
+    const selectedLayer = olMap._layers[1]
+    expect(selectedLayer.source.clear).toHaveBeenCalled()
   })
 
-  test('setEnabled toggles selected layer visibility', async () => {
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+  test('setEnabled toggles selected layer visibility', () => {
+    const api = createGridLayer(interactiveMap, olMap)
 
     api.setEnabled(true)
-    const selectedLayer = arcgisMap._layers[1]
-    expect(selectedLayer.visible).toBe(true)
+    const selectedLayer = olMap._layers[1]
+    expect(selectedLayer.setVisible).toHaveBeenCalledWith(true)
+
+    api.setEnabled(false)
+    expect(selectedLayer.setVisible).toHaveBeenCalledWith(false)
+  })
+
+  test('does not draw grid when zoom too low', () => {
+    olMap = createOlMapMock(8)
+    const api = createGridLayer(interactiveMap, olMap)
+    api.setEnabled(true)
+
+    const gridSource = olMap._layers[0].source
+    expect(gridSource.addFeatures).not.toHaveBeenCalled()
+  })
+
+  test('draws grid lines when enabled and zoom is appropriate', () => {
+    olMap = createOlMapMock(17)
+    const api = createGridLayer(interactiveMap, olMap)
+    api.setEnabled(true)
+
+    const gridSource = olMap._layers[0].source
+    expect(gridSource.addFeatures).toHaveBeenCalled()
+    expect(gridSource.features.length).toBeGreaterThan(0)
+  })
+
+  test('does not draw grid until enabled, even at high zoom', () => {
+    olMap = createOlMapMock(17)
+    createGridLayer(interactiveMap, olMap)
+
+    const gridSource = olMap._layers[0].source
+    expect(gridSource.addFeatures).not.toHaveBeenCalled()
+  })
+
+  test('setEnabled(false) clears the grid', () => {
+    const api = createGridLayer(interactiveMap, olMap)
+    const gridSource = olMap._layers[0].source
+    api.setEnabled(true)
+    gridSource.clear.mockClear()
+    gridSource.addFeatures.mockClear()
 
     api.setEnabled(false)
 
-    expect(selectedLayer.visible).toBe(false)
+    expect(gridSource.clear).toHaveBeenCalled()
+    expect(gridSource.addFeatures).not.toHaveBeenCalled()
   })
 
-  test('does not draw grid when zoom too low', async () => {
-    view.zoom = 14
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+  test('skips rebuild when viewport is still inside the drawn grid', () => {
+    olMap = createOlMapMock(17)
+    const api = createGridLayer(interactiveMap, olMap)
     api.setEnabled(true)
 
-    const gridLayer = arcgisMap._layers[0]
-    expect(gridLayer.addMany).not.toHaveBeenCalled()
+    const gridSource = olMap._layers[0].source
+    expect(gridSource.addFeatures).toHaveBeenCalledTimes(1)
+    gridSource.addFeatures.mockClear()
+    gridSource.clear.mockClear()
+
+    interactiveMap._handlers['map:render']()
+
+    expect(gridSource.clear).not.toHaveBeenCalled()
+    expect(gridSource.addFeatures).not.toHaveBeenCalled()
   })
 
-  test('draws grid lines when enabled and zoom is appropriate', async () => {
-    view.zoom = 17
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+  test('rebuilds grid when viewport moves outside drawn extent', () => {
+    olMap = createOlMapMock(17)
+    const api = createGridLayer(interactiveMap, olMap)
     api.setEnabled(true)
 
-    const gridLayer = arcgisMap._layers[0]
-    expect(gridLayer.addMany).toHaveBeenCalled()
-    expect(gridLayer.graphics.length).toBeGreaterThan(0)
+    const gridSource = olMap._layers[0].source
+    gridSource.addFeatures.mockClear()
+    gridSource.clear.mockClear()
+
+    olMap._view.calculateExtent.mockReturnValue([500000, 500000, 500200, 500200])
+
+    interactiveMap._handlers['map:render']()
+
+    expect(gridSource.clear).toHaveBeenCalled()
+    expect(gridSource.addFeatures).toHaveBeenCalled()
   })
 
-  test('does not draw grid until enabled, even at high zoom', async () => {
-    view.zoom = 17
-    await createGridLayer(interactiveMap, arcgisMap, view)
-
-    const gridLayer = arcgisMap._layers[0]
-    expect(gridLayer.addMany).not.toHaveBeenCalled()
-  })
-
-  test('setEnabled(false) clears the grid', async () => {
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
-    const gridLayer = arcgisMap._layers[0]
-    api.setEnabled(true)
-    gridLayer.removeAll.mockClear()
-    gridLayer.addMany.mockClear()
-
-    api.setEnabled(false)
-
-    expect(gridLayer.removeAll).toHaveBeenCalled()
-    expect(gridLayer.addMany).not.toHaveBeenCalled()
-  })
-
-  test('limits grid lines when extent is too large', async () => {
-    view.extent = {
-      xmin: 0,
-      ymin: 0,
-      xmax: 100000,
-      ymax: 100000,
-      width: 100000,
-      height: 100000
-    }
-    view.zoom = 17
-    const api = await createGridLayer(interactiveMap, arcgisMap, view)
+  test('limits grid lines when extent is too large', () => {
+    olMap = createOlMapMock(17, [0, 0, 100000, 100000])
+    const api = createGridLayer(interactiveMap, olMap)
     api.setEnabled(true)
 
-    const gridLayer = arcgisMap._layers[0]
-    expect(gridLayer.addMany).not.toHaveBeenCalled()
+    const gridSource = olMap._layers[0].source
+    expect(gridSource.addFeatures).not.toHaveBeenCalled()
   })
 })

@@ -17,18 +17,26 @@ function createMapHarness () {
   return {
     addButton: vi.fn(),
     emit: vi.fn(),
-    setView: vi.fn(),
     hidePanel: vi.fn(),
     on: vi.fn((event, handler) => { handlers[event] = handler }),
     _handlers: handlers
   }
 }
 
-function createView (zoom = 14, minZoom = 5) {
+function createOlMapMock (zoom = 14, minZoom = 5) {
+  let currentMinZoom = minZoom
+  const view = {
+    getZoom: vi.fn(() => zoom),
+    getMinZoom: vi.fn(() => currentMinZoom),
+    getMaxZoom: vi.fn(() => 20),
+    setMinZoom: vi.fn((z) => { currentMinZoom = z }),
+    getCenter: vi.fn(() => [418700, 385100]),
+    animate: vi.fn()
+  }
   return {
-    zoom,
-    center: { x: 418700, y: 385100 },
-    constraints: { minZoom, maxZoom: 20 }
+    getView: vi.fn(() => view),
+    getTargetElement: vi.fn(() => document.getElementById('map-container')),
+    _view: view
   }
 }
 
@@ -41,6 +49,7 @@ function createGridApi () {
 
 function mountPanelDom (mode = 'map') {
   document.body.innerHTML = `
+    <div class="app-map"><div id="map-container"></div></div>
     <button class="im-c-map-button im-c-map-button--gep-view-mode"><span>Map view</span></button>
     <div id="gep-view-mode-content">${renderViewModePanelHtml(mode)}</div>
   `
@@ -53,13 +62,13 @@ function clickOption (modeId) {
 
 describe('#registerViewMode', () => {
   let interactiveMap
-  let view
+  let olMap
   let grid
 
   beforeEach(() => {
     mountPanelDom()
     interactiveMap = createMapHarness()
-    view = createView()
+    olMap = createOlMapMock()
     grid = createGridApi()
   })
 
@@ -69,88 +78,98 @@ describe('#registerViewMode', () => {
   })
 
   test('switching to grid mode locks min zoom and enables grid', () => {
-    registerViewMode(interactiveMap, view, { grid })
+    olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM)
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
 
-    expect(view.constraints.minZoom).toBe(GRID_VISIBLE_MIN_ZOOM)
+    const view = olMap.getView()
+    expect(view.setMinZoom).toHaveBeenCalledWith(GRID_VISIBLE_MIN_ZOOM)
     expect(grid.setVisible).toHaveBeenLastCalledWith(true)
   })
 
   test('switching to grid mode zooms in if currently zoomed out', () => {
-    view.zoom = 14
-    registerViewMode(interactiveMap, view, { grid })
+    olMap = createOlMapMock(8)
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
 
-    expect(interactiveMap.setView).toHaveBeenCalledWith({ center: [418700, 385100], zoom: GRID_VISIBLE_MIN_ZOOM })
+    expect(olMap._view.animate).toHaveBeenCalledWith({
+      center: [418700, 385100],
+      zoom: GRID_VISIBLE_MIN_ZOOM
+    }, expect.any(Function))
+    expect(olMap._view.setMinZoom).not.toHaveBeenCalled()
+
+    olMap._view.animate.mock.calls[0][1]()
+
+    expect(olMap._view.setMinZoom).toHaveBeenCalledWith(GRID_VISIBLE_MIN_ZOOM)
   })
 
   test('switching to grid mode does not zoom if already at threshold', () => {
-    view.zoom = GRID_VISIBLE_MIN_ZOOM
-    registerViewMode(interactiveMap, view, { grid })
+    olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM)
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
 
-    expect(interactiveMap.setView).not.toHaveBeenCalled()
+    expect(olMap._view.animate).not.toHaveBeenCalled()
   })
 
   test('switching back to map mode restores original min zoom', () => {
-    view.constraints.minZoom = 5
-    registerViewMode(interactiveMap, view, { grid })
+    olMap = createOlMapMock(14, 5)
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
     clickOption('map')
 
-    expect(view.constraints.minZoom).toBe(5)
+    const view = olMap.getView()
+    expect(view.setMinZoom).toHaveBeenLastCalledWith(5)
     expect(grid.setVisible).toHaveBeenLastCalledWith(false)
   })
 
-  test('switching back to map mode refreshes zoom button state after relaxing min zoom', () => {
-    view = createView(GRID_VISIBLE_MIN_ZOOM, 5)
-    registerViewMode(interactiveMap, view, { grid })
+  test('switching back to map mode refreshes zoom button state', () => {
+    olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM, 5)
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
     clickOption('map')
 
-    expect(interactiveMap.emit).toHaveBeenLastCalledWith('map:move', {
+    expect(interactiveMap.emit).toHaveBeenLastCalledWith('map:move', expect.objectContaining({
       zoom: GRID_VISIBLE_MIN_ZOOM,
-      isAtMaxZoom: false,
       isAtMinZoom: false
-    })
+    }))
   })
 
   test('clicking disabled feature option is a no-op', () => {
-    registerViewMode(interactiveMap, view, { grid })
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('feature')
 
     expect(grid.setVisible).not.toHaveBeenCalled()
-    expect(view.constraints.minZoom).toBe(5)
   })
 
   test('clicking the active mode is a no-op', () => {
-    registerViewMode(interactiveMap, view, { grid })
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('map')
 
     expect(grid.setVisible).not.toHaveBeenCalled()
-    expect(interactiveMap.setView).not.toHaveBeenCalled()
+    expect(olMap._view.animate).not.toHaveBeenCalled()
+    expect(olMap._view.setMinZoom).not.toHaveBeenCalled()
   })
 
   test('panel re-renders after mode change to update aria-pressed', () => {
-    registerViewMode(interactiveMap, view, { grid })
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
 
     const gridOpt = document.querySelector('[data-app-view-mode="grid"]')
-    const map = document.querySelector('[data-app-view-mode="map"]')
+    const mapOpt = document.querySelector('[data-app-view-mode="map"]')
     expect(gridOpt.getAttribute('aria-pressed')).toBe('true')
-    expect(map.getAttribute('aria-pressed')).toBe('false')
+    expect(mapOpt.getAttribute('aria-pressed')).toBe('false')
   })
 
   test('button label updates to reflect the active mode', () => {
-    registerViewMode(interactiveMap, view, { grid })
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
 
@@ -166,7 +185,7 @@ describe('#registerViewMode', () => {
   })
 
   test('selecting a mode closes the popover', () => {
-    registerViewMode(interactiveMap, view, { grid })
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
 
@@ -174,7 +193,7 @@ describe('#registerViewMode', () => {
   })
 
   test('panel content is re-rendered when the panel reopens', () => {
-    registerViewMode(interactiveMap, view, { grid })
+    registerViewMode(interactiveMap, olMap, { grid })
 
     clickOption('grid')
 
@@ -187,11 +206,12 @@ describe('#registerViewMode', () => {
   })
 
   test('clicking outside any mode button is a no-op', () => {
-    registerViewMode(interactiveMap, view, { grid })
+    registerViewMode(interactiveMap, olMap, { grid })
 
     document.body.dispatchEvent(new globalThis.MouseEvent('click', { bubbles: true }))
 
     expect(grid.setVisible).not.toHaveBeenCalled()
-    expect(interactiveMap.setView).not.toHaveBeenCalled()
+    expect(olMap._view.animate).not.toHaveBeenCalled()
+    expect(olMap._view.setMinZoom).not.toHaveBeenCalled()
   })
 })

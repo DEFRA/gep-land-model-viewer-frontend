@@ -13,9 +13,10 @@ const GRID_INFO_OPEN_CLASS = 'app-map--grid-info-open'
  * @property {number} minZoom Minimum zoom at which the grid is rendered.
  * @property {(next: boolean) => void} setVisible Show or hide the grid layer and its cursor class.
  */
-export function registerGridController (interactiveMap, arcgisMap, view) {
-  const gridLayer = createGridLayer(interactiveMap, arcgisMap, view)
-  const mapContainer = view.container?.closest('.app-map')
+/** @param {import('ol/Map').default} map */
+export function registerGridController (interactiveMap, map) {
+  const gridLayer = createGridLayer(interactiveMap, map)
+  const mapContainer = map.getTargetElement()?.closest('.app-map')
   let isVisible = false
 
   function updatePanelContent (innerHtml) {
@@ -83,7 +84,7 @@ export function registerGridController (interactiveMap, arcgisMap, view) {
     setVisible (next) {
       isVisible = next
       gridLayer.setEnabled(next)
-      view.container?.classList.toggle('app-map--grid', next)
+      map.getTargetElement()?.classList.toggle('app-map--grid', next)
       if (!next) {
         hideGridState()
       }

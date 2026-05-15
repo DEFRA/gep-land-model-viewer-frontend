@@ -5,18 +5,17 @@ import { renderViewModePanelHtml } from './render.js'
 
 export { default as createViewModePlugin } from './plugin.js'
 
-export function registerViewMode (interactiveMap, view, { grid }) {
+/** @param {import('ol/Map').default} map */
+export function registerViewMode (interactiveMap, map, { grid }) {
+  const view = map.getView()
   let mode = VIEW_MODE_DEFAULT
-  const originalMinZoom = view.constraints.minZoom
+  const originalMinZoom = view.getMinZoom()
 
-  // interactive-map's zoom buttons read isAtMinZoom/isAtMaxZoom from MAP_MOVE event
-  // payloads. Mutating view.constraints.minZoom does not fire a provider event,
-  // so we re-emit MAP_MOVE to refresh button state.
   function syncZoomButtonState () {
     interactiveMap.emit(EVENTS.MAP_MOVE, {
-      zoom: view.zoom,
-      isAtMaxZoom: view.zoom >= view.constraints.maxZoom,
-      isAtMinZoom: view.zoom <= view.constraints.minZoom
+      zoom: view.getZoom(),
+      isAtMaxZoom: view.getZoom() >= view.getMaxZoom(),
+      isAtMinZoom: view.getZoom() <= view.getMinZoom()
     })
   }
 
@@ -28,23 +27,30 @@ export function registerViewMode (interactiveMap, view, { grid }) {
   }
 
   function refreshButton () {
-    // Re-add the button to update the label in interactive-map's registry.
     interactiveMap.addButton(VIEW_MODE_BUTTON_ID, createViewModeButtonConfig(mode))
+  }
+
+  function lockGridMinZoom () {
+    if (mode === VIEW_MODES.GRID) {
+      view.setMinZoom(grid.minZoom)
+    }
   }
 
   function applyMode (next) {
     if (next === VIEW_MODES.GRID) {
-      view.constraints.minZoom = grid.minZoom
-      if (view.zoom < grid.minZoom) {
-        interactiveMap.setView({
-          center: [view.center.x, view.center.y],
+      if (view.getZoom() < grid.minZoom) {
+        const center = view.getCenter()
+        view.animate({
+          center: [center[0], center[1]],
           zoom: grid.minZoom
-        })
+        }, lockGridMinZoom)
+      } else {
+        lockGridMinZoom()
       }
       grid.setVisible(true)
     } else {
       grid.setVisible(false)
-      view.constraints.minZoom = originalMinZoom
+      view.setMinZoom(originalMinZoom)
     }
     syncZoomButtonState()
   }
@@ -60,7 +66,6 @@ export function registerViewMode (interactiveMap, view, { grid }) {
     interactiveMap.hidePanel(VIEW_MODE_PANEL_ID)
   }
 
-  // The panel is re-mounted from its initial HTML on each open
   interactiveMap.on(EVENTS.APP_PANEL_OPENED, ({ panelId }) => {
     if (panelId === VIEW_MODE_PANEL_ID) {
       renderPanel()

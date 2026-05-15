@@ -1,8 +1,10 @@
-import InteractiveMap from '@defra/interactive-map'
+import InteractiveMap, { EVENTS } from '@defra/interactive-map'
 import createOpenLayersProvider from '@defra/interactive-map/providers/openlayers'
 import mapStylesPlugin from '@defra/interactive-map/plugins/map-styles'
 import searchPlugin from '@defra/interactive-map/plugins/search'
 import { mapStyles } from './config/map-styles.js'
+import { registerGridController } from './plugins/grid/index.js'
+import { createViewModePlugin, registerViewMode } from './plugins/view-mode/index.js'
 
 const MAP_ID = 'land-map'
 const DEFAULT_CENTER = [418700, 385100]
@@ -10,7 +12,6 @@ const DEFAULT_ZOOM = 14
 const MIN_ZOOM = 5
 const MAX_ZOOM = 20
 
-// eslint-disable-next-line no-unused-vars
 const map = new InteractiveMap(MAP_ID, {
   behaviour: 'inline',
   mapProvider: createOpenLayersProvider({ zoomAlignment: 'world' }),
@@ -52,6 +53,12 @@ const map = new InteractiveMap(MAP_ID, {
           desktop: { slot: 'mapStyles-button', width: '280px', modal: true, dismissible: true }
         }]
       }
-    })
+    }),
+    createViewModePlugin()
   ]
+})
+
+map.on(EVENTS.MAP_READY, (/** @type {{ map: import('ol/Map').default }} */ { map: olMap }) => {
+  const grid = registerGridController(map, olMap)
+  registerViewMode(map, olMap, { grid })
 })

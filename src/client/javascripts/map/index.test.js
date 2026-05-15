@@ -2,11 +2,15 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 
 vi.mock('@defra/interactive-map', () => {
+  const handlers = {}
   const MockInteractiveMap = vi.fn().mockImplementation(function () {
-    this.on = vi.fn()
+    this.on = vi.fn((event, handler) => { handlers[event] = handler })
+    this._handlers = handlers
   })
+  MockInteractiveMap._handlers = handlers
   return {
-    default: MockInteractiveMap
+    default: MockInteractiveMap,
+    EVENTS: { MAP_READY: 'map:ready' }
   }
 })
 
@@ -24,6 +28,15 @@ vi.mock('@defra/interactive-map/plugins/search', () => ({
 
 vi.mock('./config/map-styles.js', () => ({
   mapStyles: [{ id: 'outdoor', label: 'Outdoor', url: '/style.json' }]
+}))
+
+vi.mock('./plugins/grid/index.js', () => ({
+  registerGridController: vi.fn(() => ({ setVisible: vi.fn() }))
+}))
+
+vi.mock('./plugins/view-mode/index.js', () => ({
+  registerViewMode: vi.fn(),
+  createViewModePlugin: vi.fn(() => ({ id: 'gepViewMode' }))
 }))
 
 describe('map entry point', () => {
@@ -52,5 +65,22 @@ describe('map entry point', () => {
         maxZoom: 20
       })
     )
+  })
+
+  test('registers grid and view-mode plugins when map is ready', async () => {
+    const InteractiveMap = (await import('@defra/interactive-map')).default
+    const { registerGridController } = await import('./plugins/grid/index.js')
+    const { registerViewMode } = await import('./plugins/view-mode/index.js')
+
+    await import('./index.js')
+
+    const readyHandler = InteractiveMap._handlers['map:ready']
+    expect(readyHandler).toBeDefined()
+
+    const olMap = {}
+    readyHandler({ map: olMap })
+
+    expect(registerGridController).toHaveBeenCalledWith(expect.any(Object), olMap)
+    expect(registerViewMode).toHaveBeenCalledWith(expect.any(Object), olMap, expect.any(Object))
   })
 })
