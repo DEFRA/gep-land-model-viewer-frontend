@@ -53,14 +53,14 @@ describe('GET /map/style/{filename}', () => {
     const mockStyle = JSON.stringify({
       version: 8,
       sources: {
-        'os-vts': { type: 'vector', tiles: ['/os-base-map/tiles/{z}/{x}/{y}.pbf'] }
+        'os-vts': { type: 'vector', tiles: ['/os/vts/tiles/{z}/{x}/{y}.pbf'] }
       }
     })
     readFile.mockResolvedValue(mockStyle)
 
     const res = await server.inject({
       method: 'GET',
-      url: '/map/style/OS_VTS_27700_ESRI.json'
+      url: '/map/style/OS_VTS_27700_Outdoor.json'
     })
 
     expect(res.statusCode).toBe(statusCodes.ok)
@@ -71,29 +71,29 @@ describe('GET /map/style/{filename}', () => {
   test('rewrites proxy paths to absolute URLs', async () => {
     const mockStyle = JSON.stringify({
       sources: {
-        'os-vts': { tiles: ['/os-base-map/tiles/{z}/{x}/{y}.pbf'] }
+        'os-vts': { tiles: ['/os/vts/tiles/{z}/{x}/{y}.pbf'] }
       },
-      sprite: '/os-base-map/sprite',
-      glyphs: '/os-base-map/fonts/{fontstack}/{range}.pbf'
+      sprite: '/os/vts/sprite',
+      glyphs: '/os/vts/fonts/{fontstack}/{range}.pbf'
     })
     readFile.mockResolvedValue(mockStyle)
 
     const res = await server.inject({
       method: 'GET',
-      url: '/map/style/OS_VTS_27700_ESRI.json',
+      url: '/map/style/OS_VTS_27700_Outdoor.json',
       headers: {
         host: 'localhost:3000'
       }
     })
 
     const body = res.result
-    expect(body).toContain('http://localhost:3000/os-base-map/tiles')
-    expect(body).toContain('http://localhost:3000/os-base-map/sprite')
-    expect(body).toContain('http://localhost:3000/os-base-map/fonts')
+    expect(body).toContain('http://localhost:3000/os/vts/tiles')
+    expect(body).toContain('http://localhost:3000/os/vts/sprite')
+    expect(body).toContain('http://localhost:3000/os/vts/fonts')
   })
 
   test('uses x-forwarded headers for origin', async () => {
-    const mockStyle = JSON.stringify({ sprite: '/os-base-map/sprite' })
+    const mockStyle = JSON.stringify({ sprite: '/os/vts/sprite' })
     readFile.mockResolvedValue(mockStyle)
 
     const res = await server.inject({
@@ -105,7 +105,7 @@ describe('GET /map/style/{filename}', () => {
       }
     })
 
-    expect(res.result).toContain('https://example.gov.uk/os-base-map/sprite')
+    expect(res.result).toContain('https://example.gov.uk/os/vts/sprite')
   })
 
   test('returns 500 when style file cannot be read', async () => {
@@ -113,7 +113,7 @@ describe('GET /map/style/{filename}', () => {
 
     const res = await server.inject({
       method: 'GET',
-      url: '/map/style/OS_VTS_27700_ESRI.json'
+      url: '/map/style/OS_VTS_27700_Outdoor.json'
     })
 
     expect(res.statusCode).toBe(statusCodes.internalServerError)
@@ -121,11 +121,11 @@ describe('GET /map/style/{filename}', () => {
   })
 
   test('reads the style file once across repeated requests', async () => {
-    readFile.mockResolvedValue(JSON.stringify({ sprite: '/os-base-map/sprite' }))
+    readFile.mockResolvedValue(JSON.stringify({ sprite: '/os/vts/sprite' }))
 
-    await server.inject({ method: 'GET', url: '/map/style/OS_VTS_27700_ESRI.json' })
-    await server.inject({ method: 'GET', url: '/map/style/OS_VTS_27700_ESRI.json' })
-    await server.inject({ method: 'GET', url: '/map/style/OS_VTS_27700_ESRI.json' })
+    await server.inject({ method: 'GET', url: '/map/style/OS_VTS_27700_Outdoor.json' })
+    await server.inject({ method: 'GET', url: '/map/style/OS_VTS_27700_Outdoor.json' })
+    await server.inject({ method: 'GET', url: '/map/style/OS_VTS_27700_Outdoor.json' })
 
     expect(readFile).toHaveBeenCalledTimes(1)
   })
@@ -135,7 +135,7 @@ describe('GET /map/style/{filename}', () => {
 
     const res = await server.inject({
       method: 'GET',
-      url: '/map/style/OS_VTS_27700_ESRI.json'
+      url: '/map/style/OS_VTS_27700_Outdoor.json'
     })
 
     expect(res.statusCode).toBe(statusCodes.internalServerError)

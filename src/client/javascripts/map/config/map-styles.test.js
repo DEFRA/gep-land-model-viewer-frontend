@@ -18,9 +18,27 @@ describe('#mapStyles', () => {
     }
   })
 
-  test('style URLs point to local VTS JSON files', () => {
-    for (const style of mapStyles) {
+  test('VTS style URLs point to local style JSON files', () => {
+    const vtsStyles = mapStyles.filter(s => !s.type)
+    expect(vtsStyles.length).toBeGreaterThan(0)
+    for (const style of vtsStyles) {
       expect(style.url).toMatch(/^\/map\/style\/.*\.json$/)
+    }
+  })
+
+  test('NGD style URLs point to NGD API proxy', () => {
+    const ngdStyles = mapStyles.filter(s => s.type === 'ogc-vt')
+    expect(ngdStyles.length).toBeGreaterThanOrEqual(4)
+    for (const style of ngdStyles) {
+      expect(style.url).toMatch(/^\/os\/ngd\/collections\/ngd-base\/styles\//)
+    }
+  })
+
+  test('raster style URLs point to raster proxy with tile template', () => {
+    const rasterStyles = mapStyles.filter(s => s.type === 'raster')
+    expect(rasterStyles.length).toBeGreaterThan(0)
+    for (const style of rasterStyles) {
+      expect(style.url).toMatch(/^\/os\/raster\/.*\/{z}\/{x}\/{y}\.png$/)
     }
   })
 

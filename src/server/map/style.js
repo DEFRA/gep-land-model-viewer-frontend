@@ -8,12 +8,12 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 const logger = createLogger()
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 const STYLE_DIR = path.resolve(dirname, '../../client/data/vts')
-const SUPPORTED_STYLES = new Set(['OS_VTS_27700_ESRI.json', 'OS_VTS_27700_Road.json'])
+const SUPPORTED_STYLES = new Set(['OS_VTS_27700_Outdoor.json', 'OS_VTS_27700_Road.json', 'OS_VTS_27700_Dark.json'])
 const CACHE_CONTROL = 'public, max-age=3600'
 
 // Esri's VectorTileLayer resolves relative URLs against the style URL, not origin,
-// so `/os-base-map` would 404 as a sibling of the style. Rewrite to absolute.
-const PROXY_PATH_PREFIX = '/os-base-map'
+// so `/os/vts` would 404 as a sibling of the style. Rewrite to absolute.
+const PROXY_PATH_PREFIX = '/os/vts'
 
 const styleCache = new Map()
 

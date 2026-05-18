@@ -1,6 +1,6 @@
-import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { statusCodes } from '../common/constants/status-codes.js'
+import { getApiKey } from './proxy-helpers.js'
 
 const logger = createLogger()
 
@@ -9,19 +9,19 @@ const DEFAULT_CACHE_CONTROL = 'no-cache'
 const CACHE_CONTROL_HEADER = 'cache-control'
 const MAX_QUERY_LENGTH = 200
 
-const ROUTE_PATH = '/os-names-search'
+export const NAMES_ROUTE_PATH = '/os/names/find'
 
 function buildUpstreamUrl (query) {
-  const osApiKey = config.get('map.osApiKey')
+  const osApiKey = getApiKey()
   const params = new URLSearchParams()
   params.set('query', query)
   params.set('key', osApiKey)
   return `${OS_NAMES_API_URL}?${params.toString()}`
 }
 
-const searchHandler = {
+const namesSearchHandler = {
   method: 'GET',
-  path: ROUTE_PATH,
+  path: NAMES_ROUTE_PATH,
   async handler (request, h) {
     const query = request.query.query
     if (!query?.trim()) {
@@ -71,4 +71,4 @@ const searchHandler = {
   }
 }
 
-export default [searchHandler]
+export default [namesSearchHandler]

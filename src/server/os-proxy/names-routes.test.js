@@ -22,7 +22,7 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   createLogger: () => mockLogger
 }))
 
-const { default: routes } = await import('./routes.js')
+const { default: routes } = await import('./names-routes.js')
 
 const handler = routes[0].handler
 
@@ -54,10 +54,14 @@ function mockFetchResponse (body, { status = 200, headers = {} } = {}) {
   })
 }
 
-describe('os-names-search proxy routes', () => {
+describe('os-proxy names search routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('fetch', vi.fn())
+  })
+
+  test('route is registered at /os/names/find', () => {
+    expect(routes[0].path).toBe('/os/names/find')
   })
 
   describe('successful responses', () => {

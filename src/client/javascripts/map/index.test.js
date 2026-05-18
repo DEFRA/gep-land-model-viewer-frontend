@@ -57,7 +57,9 @@ describe('map entry point', () => {
     await import('./index.js')
 
     expect(createOpenLayersProvider).toHaveBeenCalledWith({ zoomAlignment: 'world' })
-    expect(searchPlugin).toHaveBeenCalled()
+    expect(searchPlugin).toHaveBeenCalledWith(expect.objectContaining({
+      osNamesURL: '/os/names/find?query={query}'
+    }))
     expect(mapStylesPlugin).toHaveBeenCalled()
     expect(InteractiveMap).toHaveBeenCalledWith(
       'land-map',

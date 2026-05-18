@@ -1,11 +1,11 @@
 {
     "version": 8,
-    "sprite": "/os-base-map/resources/sprites/sprite",
-    "glyphs": "/os-base-map/resources/fonts/{fontstack}/{range}.pbf",
+    "sprite": "/os/vts/resources/sprites/sprite",
+    "glyphs": "/os/vts/resources/fonts/{fontstack}/{range}.pbf",
     "sources": {
         "esri": {
             "type": "vector",
-            "url": "/os-base-map"
+            "url": "/os/vts"
         }
     },
     "layers": [
@@ -5752,7 +5752,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#857660"
@@ -5783,7 +5784,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#7D7D7D"
@@ -5814,7 +5816,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#296314"
@@ -5845,7 +5848,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#318FAE"
@@ -5876,7 +5880,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#655314"
@@ -5907,7 +5912,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#655314"
@@ -5938,7 +5944,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#7D7D7D"
@@ -5969,7 +5976,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#296314"
@@ -6000,7 +6008,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#655314"
@@ -6031,7 +6040,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#7D7D7D"
@@ -6062,7 +6072,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "rgba(240,240,240,0)"
@@ -6093,7 +6104,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#318FAE"
@@ -6124,7 +6136,8 @@
                         ]
                     ]
                 },
-                "icon-allow-overlap": true
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#655314"
@@ -6155,11 +6168,12 @@
                         ]
                     ]
                 },
-                "icon-rotate": {
-                    "property": "angle",
-                    "default": -90
-                },
-                "icon-allow-overlap": true
+                "icon-rotate": [
+                    "get",
+                    "angle"
+                ],
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#318FAE"
@@ -6190,11 +6204,12 @@
                         ]
                     ]
                 },
-                "icon-rotate": {
-                    "property": "angle",
-                    "default": -90
-                },
-                "icon-allow-overlap": true
+                "icon-rotate": [
+                    "get",
+                    "angle"
+                ],
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#655314"
@@ -6225,11 +6240,12 @@
                         ]
                     ]
                 },
-                "icon-rotate": {
-                    "property": "angle",
-                    "default": -90
-                },
-                "icon-allow-overlap": true
+                "icon-rotate": [
+                    "get",
+                    "angle"
+                ],
+                "icon-allow-overlap": true,
+                "icon-rotation-alignment": "map"
             },
             "paint": {
                 "icon-color": "#655314"
@@ -6284,14 +6300,15 @@
                     0.107527,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle79",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle79"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name79}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -6317,7 +6334,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name64}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -6340,14 +6358,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle74",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle74"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name74}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -6371,14 +6390,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle97",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle97"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name97}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6401,14 +6421,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle87",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle87"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name87}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6431,14 +6452,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "center",
-                "text-rotate": {
-                    "property": "_label_angle72",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle72"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name72}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -6461,14 +6483,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle73",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle73"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name73}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -6494,7 +6517,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name61}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -6518,14 +6542,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle99",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle99"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name99}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6549,14 +6574,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle96",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle96"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name96}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6580,14 +6606,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "center",
-                "text-rotate": {
-                    "property": "_label_angle95",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle95"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name95}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6610,14 +6637,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle89",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle89"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name89}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6640,14 +6668,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle86",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle86"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name86}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6670,14 +6699,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "center",
-                "text-rotate": {
-                    "property": "_label_angle85",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle85"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name85}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6700,14 +6730,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle76",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle76"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name76}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -6733,7 +6764,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name66}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -6761,14 +6793,15 @@
                     0.0952381,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle53",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle53"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name53}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -6792,14 +6825,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle54",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle54"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name54}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -6823,14 +6857,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle100",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle100"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name100}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6853,14 +6888,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle90",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle90"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name90}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -6883,14 +6919,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle77",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle77"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name77}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -6916,7 +6953,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name67}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -6940,14 +6978,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle55",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle55"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name55}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -6970,14 +7009,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle78",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle78"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name78}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -7003,7 +7043,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name68}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -7027,14 +7068,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle56",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle56"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name56}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7058,14 +7100,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle101",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle101"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name101}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7088,14 +7131,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle91",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle91"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name91}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7122,14 +7166,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle69",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle69"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name69}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -7153,14 +7198,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle57",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle57"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name57}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7188,14 +7234,15 @@
                     0.117647,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle92",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle92"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name92}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7222,14 +7269,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle82",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle82"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name82}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7255,7 +7303,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name60}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -7279,14 +7328,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle58",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle58"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name58}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7309,14 +7359,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle75",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle75"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name75}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -7340,14 +7391,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle98",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle98"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name98}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7370,14 +7422,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle88",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle88"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name88}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7401,14 +7454,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle59",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle59"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name59}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7434,7 +7488,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name65}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -7458,14 +7513,19 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle52",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle52"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name52}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7493,14 +7553,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle50",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle50"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name50}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7527,14 +7588,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle40",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle40"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name40}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7561,14 +7623,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle43",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle43"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name43}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7591,14 +7654,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle44",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle44"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name44}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7621,14 +7685,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle45",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle45"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name45}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7651,14 +7716,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle46",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle46"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name46}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7681,14 +7747,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle47",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle47"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name47}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7711,14 +7778,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle48",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle48"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name48}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7741,14 +7809,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle49",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle49"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name49}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7772,14 +7841,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle51",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle51"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name51}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7802,14 +7872,19 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle42",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle42"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name42}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -7832,14 +7907,15 @@
                 ],
                 "text-size": 12.4,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle80",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle80"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name80}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -7863,14 +7939,19 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle94",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle94"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name94}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7893,14 +7974,19 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle84",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle84"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name84}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7924,14 +8010,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle93",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle93"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name93}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7954,14 +8041,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle83",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle83"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name83}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#5C5C5C"
@@ -7984,14 +8072,19 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle71",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle71"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name71}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8017,7 +8110,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name63}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -8043,7 +8137,8 @@
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name62}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#857660"
@@ -8066,14 +8161,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle41",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle41"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name41}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#318FAE"
@@ -8096,14 +8192,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle70",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle70"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name70}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8126,14 +8223,19 @@
                 ],
                 "text-size": 12.4,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle81",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle81"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name81}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8156,14 +8258,19 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle32",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle32"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name32}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8186,14 +8293,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle39",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle39"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name39}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8216,14 +8324,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle38",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle38"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name38}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8246,14 +8355,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle37",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle37"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name37}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8276,14 +8386,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle36",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle36"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name36}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8306,14 +8417,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle35",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle35"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name35}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8336,14 +8448,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle34",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle34"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name34}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8370,14 +8483,15 @@
                     0.0930233,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle33",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle33"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name33}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8404,14 +8518,15 @@
                     0.0930233,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle30",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle30"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name30}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8434,14 +8549,15 @@
                 ],
                 "text-size": 14,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle31",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle31"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name31}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#7D7D7D"
@@ -8468,14 +8584,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle20",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle20"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name20}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8498,14 +8615,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle21",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle21"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name21}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8528,14 +8646,19 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle22",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle22"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name22}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8562,14 +8685,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle23",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle23"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name23}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8592,14 +8716,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle24",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle24"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name24}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8622,14 +8747,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle25",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle25"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name25}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8652,14 +8778,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle26",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle26"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name26}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8682,14 +8809,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle27",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle27"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name27}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8712,14 +8840,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle28",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle28"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name28}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8742,14 +8871,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle29",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle29"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name29}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#296314"
@@ -8773,14 +8903,19 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle12",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle12"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name12}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8803,14 +8938,19 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "right",
-                "text-rotate": {
-                    "property": "_label_angle2",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "+",
+                    180,
+                    [
+                        "get",
+                        "_label_angle2"
+                    ]
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name2}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8834,14 +8974,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle11",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle11"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name11}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8864,14 +9005,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "left",
-                "text-rotate": {
-                    "property": "_label_angle1",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle1"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name1}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8899,14 +9041,15 @@
                     0.117647,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle10",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle10"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name10}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8933,14 +9076,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8964,14 +9108,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle17",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle17"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name17}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -8994,14 +9139,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top",
-                "text-rotate": {
-                    "property": "_label_angle7",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle7"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name7}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9025,14 +9171,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle19",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle19"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name19}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9055,14 +9202,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-right",
-                "text-rotate": {
-                    "property": "_label_angle9",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle9"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name9}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9086,14 +9234,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle18",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle18"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name18}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9116,14 +9265,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-right",
-                "text-rotate": {
-                    "property": "_label_angle8",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle8"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name8}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9147,14 +9297,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle16",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle16"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name16}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9177,14 +9328,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "top-left",
-                "text-rotate": {
-                    "property": "_label_angle6",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle6"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name6}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9208,14 +9360,15 @@
                 ],
                 "text-size": 10.5,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle15",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle15"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name15}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9238,14 +9391,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom-left",
-                "text-rotate": {
-                    "property": "_label_angle5",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle5"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name5}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9269,14 +9423,15 @@
                 ],
                 "text-size": 11,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle14",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle14"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name14}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9299,14 +9454,15 @@
                 ],
                 "text-size": 13,
                 "text-anchor": "bottom",
-                "text-rotate": {
-                    "property": "_label_angle4",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle4"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name4}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9334,14 +9490,15 @@
                     0.117647,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle13",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle13"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name13}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"
@@ -9368,14 +9525,15 @@
                     0.103093,
                     0
                 ],
-                "text-rotate": {
-                    "property": "_label_angle3",
-                    "default": 0
-                },
+                "text-rotate": [
+                    "get",
+                    "_label_angle3"
+                ],
                 "text-letter-spacing": 0.05,
                 "text-field": "{_name3}",
                 "text-allow-overlap": true,
-                "text-optional": true
+                "text-optional": true,
+                "text-rotation-alignment": "map"
             },
             "paint": {
                 "text-color": "#655314"

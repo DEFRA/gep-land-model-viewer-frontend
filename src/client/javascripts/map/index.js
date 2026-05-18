@@ -25,7 +25,7 @@ const map = new InteractiveMap(MAP_ID, {
   containerHeight: '100%',
   plugins: [
     searchPlugin({
-      osNamesURL: '/os-names-search?query={query}',
+      osNamesURL: '/os/names/find?query={query}',
       showMarker: true,
       regions: ['england'],
       width: '300px',

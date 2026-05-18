@@ -99,7 +99,7 @@ npm install
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OS_API_KEY` | Yes | OS Maps API (Vector Tile Service) key with premium access. Used by the `/os-base-map` proxy to authenticate tile, sprite and glyph requests. |
+| `OS_API_KEY` | Yes | OS Maps API key with premium access. Used by the `/os/vts`, `/os/ngd` and `/os/raster` proxies to authenticate tile, sprite and glyph requests. |
 
 ### Development
 
