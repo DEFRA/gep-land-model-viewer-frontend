@@ -39,6 +39,14 @@ describe('#renderLayersPanelHtml', () => {
     expect(html).toContain('id="layers-list"')
   })
 
+  test('search is wrapped in a form with role="search"', () => {
+    const html = renderLayersPanelHtml(testDatasets)
+
+    expect(html).toContain('role="search"')
+    expect(html).toContain('data-app-layer-search-form')
+    expect(html).toMatch(/type="submit"/)
+  })
+
   test('empty message has role="status" for screen reader announcements', () => {
     const html = renderLayersPanelHtml(testDatasets)
 

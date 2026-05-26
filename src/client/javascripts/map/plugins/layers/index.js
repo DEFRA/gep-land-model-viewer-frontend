@@ -91,7 +91,15 @@ function registerLayerListPanel (interactiveMap, map) {
     })
   })
 
-  document.addEventListener('input', (event) => {
+  document.addEventListener('submit', (event) => {
+    if (!event.target.matches('[data-app-layer-search-form]')) {
+      return
+    }
+    event.preventDefault()
+    filterLayers(event.target.querySelector('[data-app-layer-search]')?.value ?? '')
+  })
+
+  document.addEventListener('search', (event) => {
     const search = event.target.closest('[data-app-layer-search]')
     if (search) {
       filterLayers(search.value)

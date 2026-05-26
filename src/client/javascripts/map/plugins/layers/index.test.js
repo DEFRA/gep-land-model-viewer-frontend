@@ -67,6 +67,7 @@ vi.mock('ol/source/ImageWMS.js', () => ({
 const { registerLayersPanel, resetCapabilitiesCache } = await import('./index.js')
 const { datasets } = await import('../../config/datasets.js')
 const { renderLayersPanelHtml } = await import('./render.js')
+const layersPanelHtml = (await vi.importActual('./render.js')).renderLayersPanelHtml(datasets)
 
 function makeCapabilitiesXml (layerNames) {
   const layers = layerNames.map(name =>
@@ -504,24 +505,18 @@ describe('#registerLayersPanel', () => {
     })
   })
 
-  test('search input filters layers', () => {
+  test('search form submit filters layers', () => {
     registerLayersPanel(interactiveMap, olMap)
 
-    document.body.innerHTML += `
-      <input data-app-layer-search value="test">
-      <div data-app-layer-item data-label="test dataset"></div>
-      <div data-app-layer-item data-label="other"></div>
-      <div data-app-layer-empty hidden></div>
-    `
+    document.body.innerHTML += layersPanelHtml
 
     const searchInput = document.querySelector('[data-app-layer-search]')
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }))
+    searchInput.value = 'test'
+    const form = document.querySelector('[data-app-layer-search-form]')
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
 
-    const testItem = document.querySelector('[data-label="test dataset"]')
-    const otherItem = document.querySelector('[data-label="other"]')
-
-    expect(testItem.hidden).toBe(false)
-    expect(otherItem.hidden).toBe(true)
+    expect(document.querySelector('[data-label="test dataset"]').hidden).toBe(false)
+    expect(document.querySelector('[data-label="dataset with layers"]').hidden).toBe(true)
   })
 
   test('map click with identify mode queries WMS layers', async () => {
@@ -808,17 +803,60 @@ describe('#registerLayersPanel', () => {
   test('search shows empty message when no items match', () => {
     registerLayersPanel(interactiveMap, olMap)
 
-    document.body.innerHTML += `
-      <input data-app-layer-search value="xyz-no-match">
-      <div data-app-layer-item data-label="flood zones"></div>
-      <div data-app-layer-empty hidden></div>
-    `
+    document.body.innerHTML += layersPanelHtml
 
     const searchInput = document.querySelector('[data-app-layer-search]')
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }))
+    searchInput.value = 'xyz-no-match'
+    const form = document.querySelector('[data-app-layer-search-form]')
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
 
     expect(document.querySelector('[data-app-layer-item]').hidden).toBe(true)
     expect(document.querySelector('[data-app-layer-empty]').hidden).toBe(false)
+  })
+
+  test('typing in search input does not filter layers', () => {
+    registerLayersPanel(interactiveMap, olMap)
+
+    document.body.innerHTML += layersPanelHtml
+
+    const searchInput = document.querySelector('[data-app-layer-search]')
+    searchInput.value = 'xyz-no-match'
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    expect(document.querySelector('[data-app-layer-item]').hidden).toBe(false)
+    expect(document.querySelector('[data-app-layer-empty]').hidden).toBe(true)
+  })
+
+  test('clearing search input via browser X button resets layers', () => {
+    registerLayersPanel(interactiveMap, olMap)
+
+    document.body.innerHTML += layersPanelHtml
+
+    const searchInput = document.querySelector('[data-app-layer-search]')
+    searchInput.value = 'test'
+    const form = document.querySelector('[data-app-layer-search-form]')
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+
+    expect(document.querySelector('[data-label="dataset with layers"]').hidden).toBe(true)
+
+    searchInput.value = ''
+    searchInput.dispatchEvent(new Event('search', { bubbles: true }))
+
+    expect(document.querySelector('[data-label="test dataset"]').hidden).toBe(false)
+    expect(document.querySelector('[data-label="dataset with layers"]').hidden).toBe(false)
+    expect(document.querySelector('[data-app-layer-empty]').hidden).toBe(true)
+  })
+
+  test('search form submit calls preventDefault', () => {
+    registerLayersPanel(interactiveMap, olMap)
+
+    document.body.innerHTML += layersPanelHtml
+
+    const form = document.querySelector('[data-app-layer-search-form]')
+    const event = new Event('submit', { bubbles: true, cancelable: true })
+    form.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
   })
 
   test('re-enabling existing layer sets visible true instead of creating new', async () => {
@@ -941,6 +979,31 @@ describe('#registerLayersPanel', () => {
 
     expect(olMap.addLayer).not.toHaveBeenCalled()
     expect(olMap.removeLayer).not.toHaveBeenCalled()
+  })
+
+  test('submit event on a non-search form is ignored', () => {
+    registerLayersPanel(interactiveMap, olMap)
+
+    document.body.innerHTML += layersPanelHtml
+
+    const form = document.createElement('form')
+    document.body.appendChild(form)
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+
+    expect(document.querySelector('[data-app-layer-item]').hidden).toBe(false)
+  })
+
+  test('search event on a non-search element is ignored', () => {
+    registerLayersPanel(interactiveMap, olMap)
+
+    document.body.innerHTML += layersPanelHtml
+
+    const input = document.createElement('input')
+    input.type = 'search'
+    document.body.appendChild(input)
+    input.dispatchEvent(new Event('search', { bubbles: true }))
+
+    expect(document.querySelector('[data-app-layer-item]').hidden).toBe(false)
   })
 
   test('change event with unknown dataset ID is ignored', () => {

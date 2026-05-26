@@ -40,7 +40,7 @@ export function renderLayersPanelHtml (datasets) {
       <p class="govuk-body-s govuk-!-margin-bottom-4">Select datasets from the GEP repository to visualise on the map viewer</p>
       <div class="govuk-form-group app-map__layer-search">
         <label class="govuk-label" for="layers-search">Search</label>
-        <div class="app-map__layer-search-row">
+        <form class="app-map__layer-search-row" role="search" aria-label="Search layers" data-app-layer-search-form>
           <input
             class="govuk-input app-map__layer-search-input"
             id="layers-search"
@@ -51,13 +51,13 @@ export function renderLayersPanelHtml (datasets) {
           >
           <button
             class="govuk-button app-map__layer-search-button"
-            type="button"
+            type="submit"
             aria-label="Search layers"
             data-module="govuk-button"
           >
             <svg class="app-map__layer-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">${SEARCH_ICON_SVG}</svg>
           </button>
-        </div>
+        </form>
       </div>
       <div data-app-layer-empty class="govuk-body govuk-hint" role="status" hidden>No layers match your search.</div>
       <fieldset class="govuk-fieldset">
