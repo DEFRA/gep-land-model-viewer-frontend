@@ -25,8 +25,8 @@ export const mapStyles = [
     url: '/map/style/OS_VTS_27700_Dark.json',
     thumbnail: '/public/images/os-dark.jpg',
     attribution: OS_ATTRIBUTION,
-    mapColorScheme: 'dark',
-    appColorScheme: 'dark'
+    mapColorScheme: 'light',
+    appColorScheme: 'light'
   },
   {
     id: 'os-outdoor-ngd',
