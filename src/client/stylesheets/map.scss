@@ -296,9 +296,29 @@ html:has(.app-map-page) {
   height: 100%;
 }
 
-.app-map.app-map--grid-info-open .im-o-app--tablet .im-o-app__right .im-c-map-button,
-.app-map.app-map--grid-info-open .im-o-app--desktop .im-o-app__right .im-c-map-button {
+.app-map.app-map--grid-info-open .im-o-app--tablet .im-o-app__right .im-c-tooltip-wrapper,
+.app-map.app-map--grid-info-open .im-o-app--desktop .im-o-app__right .im-c-tooltip-wrapper,
+.app-map.app-map--grid-info-open .im-o-app--tablet .im-o-app__right .im-c-button-wrapper > .im-c-map-button,
+.app-map.app-map--grid-info-open .im-o-app--desktop .im-o-app__right .im-c-button-wrapper > .im-c-map-button {
   transform: translateX(calc(0px - var(--app-map-grid-info-width) - var(--divider-gap)));
+}
+
+.app-map.app-map--grid-info-open .im-o-app--tablet .im-o-app__right .im-c-tooltip,
+.app-map.app-map--grid-info-open .im-o-app--desktop .im-o-app__right .im-c-tooltip {
+  top: 50%;
+  bottom: auto;
+  left: auto;
+  right: calc(100% + var(--tooltip-offset));
+  transform: translateY(-50%);
+}
+
+.app-map.app-map--grid-info-open .im-o-app--tablet .im-o-app__right .im-c-tooltip::after,
+.app-map.app-map--grid-info-open .im-o-app--desktop .im-o-app__right .im-c-tooltip::after {
+  top: 50%;
+  bottom: auto;
+  left: auto;
+  right: calc((var(--tooltip-arrow-size) / 2) * -1);
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .app-map.app-map--grid-info-open .im-o-app--tablet .im-o-app__right-top > .im-c-button-wrapper:first-child,
