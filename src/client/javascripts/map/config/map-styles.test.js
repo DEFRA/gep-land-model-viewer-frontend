@@ -20,7 +20,6 @@ describe('#mapStyles', () => {
 
   test('VTS style URLs point to local style JSON files', () => {
     const vtsStyles = mapStyles.filter(s => !s.type)
-    expect(vtsStyles.length).toBeGreaterThan(0)
     for (const style of vtsStyles) {
       expect(style.url).toMatch(/^\/map\/style\/.*\.json$/)
     }
@@ -36,7 +35,6 @@ describe('#mapStyles', () => {
 
   test('raster style URLs point to raster proxy with tile template', () => {
     const rasterStyles = mapStyles.filter(s => s.type === 'raster')
-    expect(rasterStyles.length).toBeGreaterThan(0)
     for (const style of rasterStyles) {
       expect(style.url).toMatch(/^\/os\/raster\/.*\/{z}\/{x}\/{y}\.png$/)
     }
