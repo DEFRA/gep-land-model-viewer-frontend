@@ -1,9 +1,11 @@
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { statusCodes } from '../common/constants/status-codes.js'
 import {
   getApiKey,
-  getResponseHeaders,
+  getConditionalHeaders,
   handleBinaryResponse,
   handleJsonResponse,
+  handleNotModifiedResponse,
   handleUpstreamError,
   handleNetworkError,
   createUrlRewriter
@@ -50,8 +52,12 @@ const vtsProxyHandler = {
         `Map proxy ${isBinaryResource ? 'binary' : 'json'} request: ${path || '/'}`
       )
       const startTime = Date.now()
-      const res = await fetch(url, { redirect: 'follow' })
+      const res = await fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
       const duration = Date.now() - startTime
+
+      if (res.status === statusCodes.notModified) {
+        return handleNotModifiedResponse(res, h, path, duration)
+      }
 
       if (!res.ok) {
         return handleUpstreamError(res, h, path, duration)
@@ -89,10 +95,14 @@ const ngdProxyHandler = {
     try {
       const url = getNgdUpstreamUrl(path, request.query)
       const startTime = Date.now()
-      const res = await fetch(url, { redirect: 'follow' })
+      const res = await fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
       const duration = Date.now() - startTime
 
-      const { contentType } = getResponseHeaders(res)
+      if (res.status === statusCodes.notModified) {
+        return handleNotModifiedResponse(res, h, path, duration)
+      }
+
+      const contentType = res.headers.get('content-type') || ''
       const isBinaryResource = !isJsonContentType(contentType)
       const logLevel = isBinaryResource ? 'debug' : 'info'
       logger[logLevel](
@@ -122,8 +132,12 @@ const rasterProxyHandler = {
 
     try {
       const startTime = Date.now()
-      const res = await fetch(url, { redirect: 'follow' })
+      const res = await fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
       const duration = Date.now() - startTime
+
+      if (res.status === statusCodes.notModified) {
+        return handleNotModifiedResponse(res, h, path, duration)
+      }
 
       if (!res.ok) {
         return handleUpstreamError(res, h, path, duration)

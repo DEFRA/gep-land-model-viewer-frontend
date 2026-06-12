@@ -186,6 +186,48 @@ describe('os-proxy VTS routes', () => {
     })
   })
 
+  describe('caching', () => {
+    test('passes through upstream 304 responses without a body', async () => {
+      global.fetch.mockReturnValue(mockFetchResponse('', {
+        status: 304,
+        headers: { etag: '"abc123"' }
+      }))
+
+      const request = createMockRequest({ path: 'tile/7/63/42.pbf' })
+      request.headers['if-none-match'] = '"abc123"'
+      const h = createMockH()
+
+      await vtsHandler(request, h)
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ headers: { 'if-none-match': '"abc123"' } })
+      )
+      expect(h.response).toHaveBeenCalledWith()
+      expect(h._response.code).toHaveBeenCalledWith(304)
+      expect(h._response.header).toHaveBeenCalledWith('etag', '"abc123"')
+    })
+
+    test('rewritten JSON responses do not forward upstream validators', async () => {
+      // The proxy rewrites the body, so upstream validators do not describe it.
+      global.fetch.mockReturnValue(mockFetchResponse({ version: 8 }, {
+        headers: {
+          'content-type': 'application/json',
+          etag: '"abc123"',
+          'last-modified': 'Fri, 05 Jun 2026 15:53:08 GMT'
+        }
+      }))
+
+      const request = createMockRequest({ path: 'resources/styles' })
+      const h = createMockH()
+
+      await vtsHandler(request, h)
+
+      expect(h._response.header).not.toHaveBeenCalledWith('etag', expect.anything())
+      expect(h._response.header).not.toHaveBeenCalledWith('last-modified', expect.anything())
+    })
+  })
+
   describe('error handling', () => {
     test('passes through upstream error status codes', async () => {
       global.fetch.mockReturnValue(mockFetchResponse('Forbidden', { status: 403 }))
@@ -381,6 +423,62 @@ describe('os-proxy NGD routes', () => {
     })
   })
 
+  describe('caching', () => {
+    test('binary responses default to one-day private caching and forward validators', async () => {
+      global.fetch.mockReturnValue(mockFetchResponse(new Uint8Array([0x1a]), {
+        headers: {
+          'content-type': 'application/octet-stream',
+          etag: '"abc123"',
+          'last-modified': 'Fri, 05 Jun 2026 15:53:08 GMT'
+        }
+      }))
+
+      const request = createMockRequest({ path: 'collections/ngd-base/tiles/27700/12/2700/2300' })
+      const h = createMockH()
+
+      await ngdHandler(request, h)
+
+      expect(h._response.header).toHaveBeenCalledWith('cache-control', 'private, max-age=86400')
+      expect(h._response.header).toHaveBeenCalledWith('etag', '"abc123"')
+      expect(h._response.header).toHaveBeenCalledWith('last-modified', 'Fri, 05 Jun 2026 15:53:08 GMT')
+    })
+
+    test('forwards conditional request headers upstream', async () => {
+      global.fetch.mockReturnValue(mockFetchResponse(new Uint8Array([0x1a]), {
+        headers: { 'content-type': 'application/octet-stream' }
+      }))
+
+      const request = createMockRequest({ path: 'collections/ngd-base/tiles/27700/12/2700/2300' })
+      request.headers['if-none-match'] = '"abc123"'
+      const h = createMockH()
+
+      await ngdHandler(request, h)
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ headers: { 'if-none-match': '"abc123"' } })
+      )
+    })
+
+    test('passes through upstream 304 responses without a body', async () => {
+      global.fetch.mockReturnValue(mockFetchResponse('', {
+        status: 304,
+        headers: { etag: '"abc123"' }
+      }))
+
+      const request = createMockRequest({ path: 'collections/ngd-base/tiles/27700/12/2700/2300' })
+      request.headers['if-none-match'] = '"abc123"'
+      const h = createMockH()
+
+      await ngdHandler(request, h)
+
+      expect(h.response).toHaveBeenCalledWith()
+      expect(h._response.code).toHaveBeenCalledWith(304)
+      expect(h._response.header).toHaveBeenCalledWith('etag', '"abc123"')
+      expect(h._response.header).not.toHaveBeenCalledWith('cache-control', expect.anything())
+    })
+  })
+
   describe('malformed JSON passthrough', () => {
     test('returns body unchanged when upstream JSON is unparseable', async () => {
       const malformed = '{not valid json'
@@ -482,6 +580,27 @@ describe('os-proxy raster routes', () => {
     expect(fetchUrl).toContain('api.os.uk/maps/raster/v1/zxy/')
     expect(fetchUrl).toContain('key=test-api-key')
     expect(h._response.type).toHaveBeenCalledWith('image/png')
+  })
+
+  test('passes through upstream 304 responses without a body', async () => {
+    global.fetch.mockReturnValue(mockFetchResponse('', {
+      status: 304,
+      headers: { 'last-modified': 'Fri, 05 Jun 2026 15:53:08 GMT' }
+    }))
+
+    const request = createMockRequest({ path: 'Outdoor_27700/7/63/42.png' })
+    request.headers['if-modified-since'] = 'Fri, 05 Jun 2026 15:53:08 GMT'
+    const h = createMockH()
+
+    await rasterHandler(request, h)
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ headers: { 'if-modified-since': 'Fri, 05 Jun 2026 15:53:08 GMT' } })
+    )
+    expect(h.response).toHaveBeenCalledWith()
+    expect(h._response.code).toHaveBeenCalledWith(304)
+    expect(h._response.header).toHaveBeenCalledWith('last-modified', 'Fri, 05 Jun 2026 15:53:08 GMT')
   })
 
   test('passes through upstream errors', async () => {
