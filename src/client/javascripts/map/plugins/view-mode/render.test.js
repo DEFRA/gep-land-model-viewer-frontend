@@ -12,10 +12,6 @@ describe('#renderViewModePanelHtml', () => {
     expect(options).toHaveLength(3)
     expect(Array.from(options).map(o => o.dataset.appViewMode)).toEqual(['map', 'grid', 'feature'])
 
-    const feature = container.querySelector('[data-app-view-mode="feature"]')
-    expect(feature.getAttribute('aria-disabled')).toBe('true')
-    expect(feature.getAttribute('tabindex')).toBe('-1')
-
     const list = container.querySelector('ul')
     expect(list.getAttribute('role')).toBe('group')
     expect(list.getAttribute('aria-label')).toBe('Map view mode')

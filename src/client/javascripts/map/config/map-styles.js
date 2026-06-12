@@ -1,5 +1,10 @@
 export const OS_ATTRIBUTION = `© Crown copyright and database rights ${new Date().getFullYear()} OS AC0000805307`
 
+const OS_NGD_COLLECTION_URL = '/os/ngd/collections/ngd-base'
+
+// The tileset behind the NGD vector styles, and the only one carrying lnd_fts_land
+export const OS_NGD_TILESET_URL = `${OS_NGD_COLLECTION_URL}/tiles/27700`
+
 export const mapStyles = [
   {
     id: 'os-outdoor-ngd',
@@ -40,5 +45,23 @@ export const mapStyles = [
     attribution: OS_ATTRIBUTION,
     mapColorScheme: 'light',
     appColorScheme: 'light'
+  },
+  // For testing a non os-ngd map with features, will be replaced with aerial imagery when available
+  {
+    id: 'os-outdoor-raster',
+    label: 'OS Outdoor (raster)',
+    url: '/os/raster/Outdoor_27700/{z}/{x}/{y}.png',
+    type: 'raster',
+    thumbnail: '/public/images/os-outdoor-raster.jpg',
+    attribution: OS_ATTRIBUTION,
+    mapColorScheme: 'light',
+    appColorScheme: 'light'
   }
 ]
+
+/**
+ * Styles whose basemap draws from the NGD tileset, to test if the source can be reused.
+ */
+export const OS_NGD_STYLE_IDS = mapStyles
+  .filter((style) => style.url.startsWith(OS_NGD_COLLECTION_URL))
+  .map((style) => style.id)

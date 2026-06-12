@@ -5,29 +5,10 @@ vi.mock('./grid-layer.js', () => ({
   createGridLayer: vi.fn()
 }))
 
-vi.mock('@defra/interactive-map', () => ({
-  EVENTS: {
-    MAP_CLICK: 'map:click',
-    APP_PANEL_CLOSED: 'app:panelclosed'
-  }
-}))
-
 const { createGridLayer } = await import('./grid-layer.js')
 const { registerGridController } = await import('./index.js')
 const { GRID_VISIBLE_MIN_ZOOM } = await import('./constants.js')
-
-function createMapHarness () {
-  const handlers = {}
-  return {
-    addPanel: vi.fn(),
-    showPanel: vi.fn(),
-    hidePanel: vi.fn(),
-    on: vi.fn((event, handler) => {
-      handlers[event] = handler
-    }),
-    _handlers: handlers
-  }
-}
+const { renderCellInfoHtml } = await import('./render.js')
 
 function createMockGridLayer () {
   return {
@@ -41,72 +22,65 @@ describe('#registerGridController', () => {
   let interactiveMap
   let mockGridLayer
   let olMap
+  let infoPanel
 
   beforeEach(() => {
-    vi.useFakeTimers()
-    document.body.innerHTML = '<div class="app-map"><div id="map-container"></div></div><div id="gep-grid-info-content"></div>'
+    document.body.innerHTML = '<div class="app-map"><div id="map-container"></div></div>'
     olMap = {
       getTargetElement: vi.fn(() => document.getElementById('map-container'))
     }
-    interactiveMap = createMapHarness()
+    interactiveMap = {}
+    infoPanel = { activate: vi.fn(), deactivate: vi.fn() }
     mockGridLayer = createMockGridLayer()
     createGridLayer.mockReturnValue(mockGridLayer)
   })
 
   afterEach(() => {
-    vi.useRealTimers()
     vi.clearAllMocks()
     document.body.innerHTML = ''
   })
 
+  function registeredInspector () {
+    const api = registerGridController(interactiveMap, olMap, infoPanel)
+    api.setVisible(true)
+    return infoPanel.activate.mock.calls[0][0]
+  }
+
   test('creates grid layer on registration', () => {
-    registerGridController(interactiveMap, olMap)
+    registerGridController(interactiveMap, olMap, infoPanel)
 
     expect(createGridLayer).toHaveBeenCalledWith(interactiveMap, olMap)
   })
 
-  test('adds info panel for cell details', () => {
-    registerGridController(interactiveMap, olMap)
-
-    expect(interactiveMap.addPanel).toHaveBeenCalledWith(
-      'gep-grid-info',
-      expect.objectContaining({
-        id: 'gep-grid-info',
-        label: 'Land model attributes',
-        html: expect.stringContaining('class="app-map__grid-info-panel"'),
-        tablet: expect.objectContaining({ slot: 'right-top', modal: false }),
-        desktop: expect.objectContaining({ slot: 'right-top', modal: false })
-      })
-    )
-  })
-
-  test('setVisible(true) enables the grid layer', () => {
-    const api = registerGridController(interactiveMap, olMap)
-
-    api.setVisible(true)
-
-    expect(mockGridLayer.setEnabled).toHaveBeenCalledWith(true)
-  })
-
   test('exposes the minimum usable grid zoom', () => {
-    const api = registerGridController(interactiveMap, olMap)
+    const api = registerGridController(interactiveMap, olMap, infoPanel)
 
     expect(api.minZoom).toBe(GRID_VISIBLE_MIN_ZOOM)
   })
 
-  test('setVisible(false) hides the grid layer and closes the cell info panel', () => {
-    const api = registerGridController(interactiveMap, olMap)
+  test('setVisible(true) enables the grid layer and activates its inspector', () => {
+    const api = registerGridController(interactiveMap, olMap, infoPanel)
 
     api.setVisible(true)
+
+    expect(mockGridLayer.setEnabled).toHaveBeenCalledWith(true)
+    expect(infoPanel.activate).toHaveBeenCalled()
+  })
+
+  test('setVisible(false) hides the grid layer, clears the highlight and deactivates', () => {
+    const api = registerGridController(interactiveMap, olMap, infoPanel)
+
+    api.setVisible(true)
+    const inspector = infoPanel.activate.mock.calls[0][0]
     api.setVisible(false)
 
     expect(mockGridLayer.setEnabled).toHaveBeenLastCalledWith(false)
     expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
-    expect(interactiveMap.hidePanel).toHaveBeenCalledWith('gep-grid-info')
+    expect(infoPanel.deactivate).toHaveBeenCalledWith(inspector)
   })
 
   test('setVisible toggles the grid cursor class on the map container', () => {
-    const api = registerGridController(interactiveMap, olMap)
+    const api = registerGridController(interactiveMap, olMap, infoPanel)
     const container = document.getElementById('map-container')
 
     api.setVisible(true)
@@ -116,90 +90,32 @@ describe('#registerGridController', () => {
     expect(container.classList.contains('app-map--grid')).toBe(false)
   })
 
-  test('map click shows cell info panel when grid visible', () => {
-    const api = registerGridController(interactiveMap, olMap)
-    api.setVisible(true)
+  test('hitTest snaps the click to a cell and highlights it', () => {
+    const inspector = registeredInspector()
 
-    const clickHandler = interactiveMap._handlers['map:click']
-    clickHandler({ coords: [418725, 385137] })
-
-    vi.advanceTimersByTime(300)
+    const cell = inspector.hitTest([418725, 385137])
 
     expect(mockGridLayer.highlightCell).toHaveBeenCalledWith(418720, 385130)
-    expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-grid-info', { focus: false })
+    expect(cell).toEqual(expect.objectContaining({ easting: 418720, northing: 385130 }))
   })
 
-  test('map click marks the grid info panel as open for layout', () => {
-    const api = registerGridController(interactiveMap, olMap)
-    api.setVisible(true)
+  test('loadDetails resolves null until real cell data exists', async () => {
+    const inspector = registeredInspector()
 
-    const clickHandler = interactiveMap._handlers['map:click']
-    clickHandler({ coords: [418725, 385137] })
-
-    vi.advanceTimersByTime(300)
-
-    expect(document.querySelector('.app-map').classList.contains('app-map--grid-info-open')).toBe(true)
+    await expect(inspector.loadDetails()).resolves.toBeNull()
   })
 
-  test('map click does nothing when grid not visible', () => {
-    registerGridController(interactiveMap, olMap)
+  test('renderHtml is the cell info renderer', () => {
+    const inspector = registeredInspector()
 
-    const clickHandler = interactiveMap._handlers['map:click']
-    clickHandler({ coords: [418725, 385137] })
-
-    vi.advanceTimersByTime(300)
-
-    expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
+    expect(inspector.renderHtml).toBe(renderCellInfoHtml)
   })
 
-  test('hiding the grid cancels a pending cell selection', () => {
-    const api = registerGridController(interactiveMap, olMap)
-    api.setVisible(true)
+  test('clearSelection clears the cell highlight', () => {
+    const inspector = registeredInspector()
 
-    const clickHandler = interactiveMap._handlers['map:click']
-    clickHandler({ coords: [418725, 385137] })
-    api.setVisible(false)
-
-    vi.advanceTimersByTime(300)
-
-    expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
-    expect(interactiveMap.showPanel).not.toHaveBeenCalled()
-  })
-
-  test('double click is ignored', () => {
-    const api = registerGridController(interactiveMap, olMap)
-    api.setVisible(true)
-
-    const clickHandler = interactiveMap._handlers['map:click']
-    clickHandler({ coords: [418725, 385137] })
-    clickHandler({ coords: [418725, 385137] })
-
-    vi.advanceTimersByTime(300)
-
-    expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
-  })
-
-  test('panel close clears cell highlight', () => {
-    const api = registerGridController(interactiveMap, olMap)
-    api.setVisible(true)
-
-    const clickHandler = interactiveMap._handlers['map:click']
-    clickHandler({ coords: [418725, 385137] })
-    vi.advanceTimersByTime(300)
-
-    const closeHandler = interactiveMap._handlers['app:panelclosed']
-    closeHandler({ panelId: 'gep-grid-info' })
+    inspector.clearSelection()
 
     expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
-    expect(document.querySelector('.app-map').classList.contains('app-map--grid-info-open')).toBe(false)
-  })
-
-  test('other panel close does not clear highlight', () => {
-    registerGridController(interactiveMap, olMap)
-
-    const closeHandler = interactiveMap._handlers['app:panelclosed']
-    closeHandler({ panelId: 'other-panel' })
-
-    expect(mockGridLayer.clearHighlight).not.toHaveBeenCalled()
   })
 })

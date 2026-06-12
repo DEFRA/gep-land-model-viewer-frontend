@@ -1,4 +1,4 @@
-import { mapStyles, OS_ATTRIBUTION } from './map-styles.js'
+import { mapStyles, OS_ATTRIBUTION, OS_NGD_STYLE_IDS, OS_NGD_TILESET_URL } from './map-styles.js'
 
 describe('#mapStyles', () => {
   test('exports an array of map styles', () => {
@@ -15,13 +15,6 @@ describe('#mapStyles', () => {
       expect(style).toHaveProperty('attribution')
       expect(style).toHaveProperty('mapColorScheme')
       expect(style).toHaveProperty('appColorScheme')
-    }
-  })
-
-  test('VTS style URLs point to local style JSON files', () => {
-    const vtsStyles = mapStyles.filter(s => !s.type)
-    for (const style of vtsStyles) {
-      expect(style.url).toMatch(/^\/map\/style\/.*\.json$/)
     }
   })
 
@@ -44,5 +37,17 @@ describe('#mapStyles', () => {
     for (const style of mapStyles) {
       expect(style.attribution).toBe(OS_ATTRIBUTION)
     }
+  })
+})
+
+describe('#OS_NGD_STYLE_IDS', () => {
+  test('lists every NGD style and excludes the raster style', () => {
+    expect(OS_NGD_STYLE_IDS).toEqual(['os-outdoor-ngd', 'os-road-ngd', 'os-light-ngd', 'os-bw-ngd'])
+  })
+})
+
+describe('#OS_NGD_TILESET_URL', () => {
+  test('points at the NGD tileset under the proxy', () => {
+    expect(OS_NGD_TILESET_URL).toBe('/os/ngd/collections/ngd-base/tiles/27700')
   })
 })

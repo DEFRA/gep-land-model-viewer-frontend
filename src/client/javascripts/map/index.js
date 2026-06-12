@@ -3,19 +3,21 @@ import createOpenLayersProvider from '@defra/interactive-map/providers/openlayer
 import mapStylesPlugin from '@defra/interactive-map/plugins/map-styles'
 import searchPlugin from '@defra/interactive-map/plugins/search'
 import { mapStyles } from './config/map-styles.js'
+import { registerFeatureController } from './plugins/feature/index.js'
 import { registerGridController } from './plugins/grid/index.js'
+import { registerInfoPanel } from './plugins/info-panel/index.js'
 import { registerLayersPanel } from './plugins/layers/index.js'
 import { createViewModePlugin, registerViewMode } from './plugins/view-mode/index.js'
 
 const MAP_ID = 'land-map'
 const DEFAULT_CENTER = [418700, 385100]
-const DEFAULT_ZOOM = 14
-const MIN_ZOOM = 5
-const MAX_ZOOM = 20
+const DEFAULT_ZOOM = 7
+const MIN_ZOOM = 0
+const MAX_ZOOM = 13
 
 const map = new InteractiveMap(MAP_ID, {
   behaviour: 'inline',
-  mapProvider: createOpenLayersProvider({ zoomAlignment: 'world' }),
+  mapProvider: createOpenLayersProvider({ zoomAlignment: 'uk' }),
   mapStyle: mapStyles[0],
   mapLabel: 'Land model grid viewer',
   center: DEFAULT_CENTER,
@@ -59,8 +61,13 @@ const map = new InteractiveMap(MAP_ID, {
   ]
 })
 
-map.on(EVENTS.MAP_READY, (/** @type {{ map: import('ol/Map').default }} */ { map: olMap }) => {
+map.on(EVENTS.MAP_READY, (/** @type {{ map: import('ol/Map').default, mapStyleId: string }} */ { map: olMap, mapStyleId }) => {
+  // Disable intermediary zoom levels for better rendering quality
+  olMap.getView().setConstrainResolution(true)
+
   registerLayersPanel(map, olMap)
-  const grid = registerGridController(map, olMap)
-  registerViewMode(map, olMap, { grid })
+  const infoPanel = registerInfoPanel(map, olMap)
+  const grid = registerGridController(map, olMap, infoPanel)
+  const feature = registerFeatureController(map, olMap, mapStyleId, infoPanel)
+  registerViewMode(map, olMap, { grid, feature })
 })

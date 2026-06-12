@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { vi, describe, test, expect, beforeEach } from 'vitest'
+import { vi, describe, test, expect, afterEach } from 'vitest'
 
 vi.mock('@defra/interactive-map', () => {
   const handlers = {}
@@ -30,6 +30,14 @@ vi.mock('./config/map-styles.js', () => ({
   mapStyles: [{ id: 'outdoor', label: 'Outdoor', url: '/style.json' }]
 }))
 
+vi.mock('./plugins/feature/index.js', () => ({
+  registerFeatureController: vi.fn(() => ({ minZoom: 10, setVisible: vi.fn() }))
+}))
+
+vi.mock('./plugins/info-panel/index.js', () => ({
+  registerInfoPanel: vi.fn(() => ({ activate: vi.fn(), deactivate: vi.fn() }))
+}))
+
 vi.mock('./plugins/grid/index.js', () => ({
   registerGridController: vi.fn(() => ({ setVisible: vi.fn() }))
 }))
@@ -44,7 +52,7 @@ vi.mock('./plugins/view-mode/index.js', () => ({
 }))
 
 describe('map entry point', () => {
-  beforeEach(() => {
+  afterEach(() => {
     vi.clearAllMocks()
   })
 
@@ -56,7 +64,7 @@ describe('map entry point', () => {
 
     await import('./index.js')
 
-    expect(createOpenLayersProvider).toHaveBeenCalledWith({ zoomAlignment: 'world' })
+    expect(createOpenLayersProvider).toHaveBeenCalledWith({ zoomAlignment: 'uk' })
     expect(searchPlugin).toHaveBeenCalledWith(expect.objectContaining({
       osNamesURL: '/os/names/find?query={query}'
     }))
@@ -66,17 +74,19 @@ describe('map entry point', () => {
       expect.objectContaining({
         mapProvider: { provider: 'openlayers' },
         mapStyle: { id: 'outdoor', label: 'Outdoor', url: '/style.json' },
-        zoom: 14,
-        minZoom: 5,
-        maxZoom: 20
+        zoom: 7,
+        minZoom: 0,
+        maxZoom: 13
       })
     )
   })
 
-  test('registers layers, grid and view-mode plugins when map is ready', async () => {
+  test('registers layers, grid, feature and view-mode plugins when map is ready', async () => {
     const InteractiveMap = (await import('@defra/interactive-map')).default
     const { registerLayersPanel } = await import('./plugins/layers/index.js')
     const { registerGridController } = await import('./plugins/grid/index.js')
+    const { registerFeatureController } = await import('./plugins/feature/index.js')
+    const { registerInfoPanel } = await import('./plugins/info-panel/index.js')
     const { registerViewMode } = await import('./plugins/view-mode/index.js')
 
     await import('./index.js')
@@ -84,11 +94,16 @@ describe('map entry point', () => {
     const readyHandler = InteractiveMap._handlers['map:ready']
     expect(readyHandler).toBeDefined()
 
-    const olMap = {}
-    readyHandler({ map: olMap })
+    const setConstrainResolution = vi.fn()
+    const olMap = { getView: vi.fn(() => ({ setConstrainResolution })) }
+    await readyHandler({ map: olMap, mapStyleId: 'outdoor' })
 
+    const infoPanel = registerInfoPanel.mock.results[0].value
+    expect(setConstrainResolution).toHaveBeenCalledWith(true)
     expect(registerLayersPanel).toHaveBeenCalledWith(expect.any(Object), olMap)
-    expect(registerGridController).toHaveBeenCalledWith(expect.any(Object), olMap)
+    expect(registerInfoPanel).toHaveBeenCalledWith(expect.any(Object), olMap)
+    expect(registerGridController).toHaveBeenCalledWith(expect.any(Object), olMap, infoPanel)
+    expect(registerFeatureController).toHaveBeenCalledWith(expect.any(Object), olMap, 'outdoor', infoPanel)
     expect(registerViewMode).toHaveBeenCalledWith(expect.any(Object), olMap, expect.any(Object))
   })
 })

@@ -8,9 +8,10 @@ vi.mock('@defra/interactive-map', () => ({
   }
 }))
 
-const { registerViewMode } = await import('./index.js')
+const { registerViewMode, applyResolutionLock } = await import('./index.js')
 const { renderViewModePanelHtml } = await import('./render.js')
 const { GRID_VISIBLE_MIN_ZOOM } = await import('../grid/constants.js')
+const { FEATURE_VISIBLE_MIN_ZOOM } = await import('../feature/constants.js')
 
 function createMapHarness () {
   const handlers = {}
@@ -24,25 +25,40 @@ function createMapHarness () {
 }
 
 function createOlMapMock (zoom = 14, minZoom = 5) {
+  let currentZoom = zoom
   let currentMinZoom = minZoom
+  let constraints = { resolution: (resolution) => resolution }
   const view = {
-    getZoom: vi.fn(() => zoom),
+    getZoom: vi.fn(() => currentZoom),
     getMinZoom: vi.fn(() => currentMinZoom),
     getMaxZoom: vi.fn(() => 20),
-    setMinZoom: vi.fn((z) => { currentMinZoom = z }),
+    setMinZoom: vi.fn((z) => {
+      currentMinZoom = z
+      constraints = { resolution: (resolution) => resolution }
+    }),
     getCenter: vi.fn(() => [418700, 385100]),
+    getResolutionForZoom: vi.fn((z) => 896 / 2 ** z),
+    getConstraints: vi.fn(() => constraints),
     animate: vi.fn()
   }
   return {
     getView: vi.fn(() => view),
     getTargetElement: vi.fn(() => document.getElementById('map-container')),
-    _view: view
+    _view: view,
+    _setZoom: (z) => { currentZoom = z }
   }
 }
 
 function createGridApi () {
   return {
     minZoom: GRID_VISIBLE_MIN_ZOOM,
+    setVisible: vi.fn()
+  }
+}
+
+function createFeatureApi () {
+  return {
+    minZoom: FEATURE_VISIBLE_MIN_ZOOM,
     setVisible: vi.fn()
   }
 }
@@ -64,12 +80,14 @@ describe('#registerViewMode', () => {
   let interactiveMap
   let olMap
   let grid
+  let feature
 
   beforeEach(() => {
     mountPanelDom()
     interactiveMap = createMapHarness()
     olMap = createOlMapMock()
     grid = createGridApi()
+    feature = createFeatureApi()
   })
 
   afterEach(() => {
@@ -79,7 +97,7 @@ describe('#registerViewMode', () => {
 
   test('switching to grid mode locks min zoom and enables grid', () => {
     olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM)
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
 
@@ -90,7 +108,7 @@ describe('#registerViewMode', () => {
 
   test('switching to grid mode zooms in if currently zoomed out', () => {
     olMap = createOlMapMock(8)
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
 
@@ -107,7 +125,7 @@ describe('#registerViewMode', () => {
 
   test('switching to grid mode does not zoom if already at threshold', () => {
     olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM)
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
 
@@ -116,7 +134,7 @@ describe('#registerViewMode', () => {
 
   test('switching back to map mode restores original min zoom', () => {
     olMap = createOlMapMock(14, 5)
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
     clickOption('map')
@@ -126,9 +144,33 @@ describe('#registerViewMode', () => {
     expect(grid.setVisible).toHaveBeenLastCalledWith(false)
   })
 
+  test('grid mode clamps the resolution constraint at the mode min zoom', () => {
+    olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM)
+    registerViewMode(interactiveMap, olMap, { grid, feature })
+
+    clickOption('grid')
+
+    const view = olMap._view
+    const lockResolution = view.getResolutionForZoom(GRID_VISIBLE_MIN_ZOOM)
+    expect(view.getConstraints().resolution(lockResolution * 4, 0, [800, 600], true)).toBe(lockResolution)
+    expect(view.getConstraints().resolution(lockResolution / 2, 0, [800, 600], true)).toBe(lockResolution / 2)
+  })
+
+  test('returning to map mode releases the resolution clamp', () => {
+    olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM)
+    registerViewMode(interactiveMap, olMap, { grid, feature })
+
+    clickOption('grid')
+    clickOption('map')
+
+    const view = olMap._view
+    const lockResolution = view.getResolutionForZoom(GRID_VISIBLE_MIN_ZOOM)
+    expect(view.getConstraints().resolution(lockResolution * 4, 0, [800, 600], true)).toBe(lockResolution * 4)
+  })
+
   test('switching back to map mode refreshes zoom button state', () => {
     olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM, 5)
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
     clickOption('map')
@@ -139,16 +181,31 @@ describe('#registerViewMode', () => {
     }))
   })
 
-  test('clicking disabled feature option is a no-op', () => {
-    registerViewMode(interactiveMap, olMap, { grid })
+  test('switching to feature mode locks min zoom and enables feature', () => {
+    olMap = createOlMapMock(FEATURE_VISIBLE_MIN_ZOOM)
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('feature')
 
-    expect(grid.setVisible).not.toHaveBeenCalled()
+    const view = olMap.getView()
+    expect(view.setMinZoom).toHaveBeenCalledWith(FEATURE_VISIBLE_MIN_ZOOM)
+    expect(feature.setVisible).toHaveBeenLastCalledWith(true)
+    expect(grid.setVisible).toHaveBeenLastCalledWith(false)
+  })
+
+  test('switching from feature to grid disables feature and enables grid', () => {
+    olMap = createOlMapMock(GRID_VISIBLE_MIN_ZOOM)
+    registerViewMode(interactiveMap, olMap, { grid, feature })
+
+    clickOption('feature')
+    clickOption('grid')
+
+    expect(feature.setVisible).toHaveBeenLastCalledWith(false)
+    expect(grid.setVisible).toHaveBeenLastCalledWith(true)
   })
 
   test('clicking the active mode is a no-op', () => {
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('map')
 
@@ -158,7 +215,7 @@ describe('#registerViewMode', () => {
   })
 
   test('panel re-renders after mode change to update aria-pressed', () => {
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
 
@@ -169,7 +226,7 @@ describe('#registerViewMode', () => {
   })
 
   test('button label updates to reflect the active mode', () => {
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
 
@@ -185,7 +242,7 @@ describe('#registerViewMode', () => {
   })
 
   test('selecting a mode closes the popover', () => {
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
 
@@ -193,7 +250,7 @@ describe('#registerViewMode', () => {
   })
 
   test('panel content is re-rendered when the panel reopens', () => {
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     clickOption('grid')
 
@@ -206,12 +263,37 @@ describe('#registerViewMode', () => {
   })
 
   test('clicking outside any mode button is a no-op', () => {
-    registerViewMode(interactiveMap, olMap, { grid })
+    registerViewMode(interactiveMap, olMap, { grid, feature })
 
     document.body.dispatchEvent(new globalThis.MouseEvent('click', { bubbles: true }))
 
     expect(grid.setVisible).not.toHaveBeenCalled()
     expect(olMap._view.animate).not.toHaveBeenCalled()
     expect(olMap._view.setMinZoom).not.toHaveBeenCalled()
+  })
+})
+
+describe('#applyResolutionLock', () => {
+  function createViewMock (baseConstraint) {
+    const constraints = { resolution: baseConstraint }
+    const view = {
+      getConstraints: vi.fn(() => constraints),
+      getResolutionForZoom: vi.fn((zoom) => 896 / 2 ** zoom)
+    }
+    return view
+  }
+
+  test('passes the base constraint result through when no lock is active', () => {
+    const view = createViewMock((resolution) => resolution * 0.5)
+    applyResolutionLock(view, () => null)
+
+    expect(view.getConstraints().resolution(100, 0, [800, 600], true)).toBe(50)
+  })
+
+  test('passes undefined through untouched', () => {
+    const view = createViewMock(() => undefined)
+    applyResolutionLock(view, () => 10)
+
+    expect(view.getConstraints().resolution(undefined, 0, [800, 600], false)).toBeUndefined()
   })
 })

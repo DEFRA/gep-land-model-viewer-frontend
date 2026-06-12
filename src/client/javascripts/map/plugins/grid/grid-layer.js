@@ -6,15 +6,12 @@ import VectorSource from 'ol/source/Vector.js'
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
 import { CELL_SIZE_METRES, snapDown, snapUp } from './cell-at-point.js'
 import { GRID_VISIBLE_MIN_ZOOM } from './constants.js'
+import { GOVUK_BLUE, DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../config/colours.js'
 
 const MAX_LINES_PER_AXIS = 1000
 const GRID_PAD_SCREEN_PIXELS = 512
 const GRID_MIN_PAD_CELLS = 80
 const GRID_REDRAW_MARGIN_FACTOR = 0.75
-
-const GOVUK_BLUE = 'rgba(29, 112, 184, 0.7)' // #1d70b8
-const DEFRA_GREEN = 'rgba(0, 133, 49, 0.25)' // #008531
-const DEFRA_GREEN_DARK = 'rgba(0, 106, 39, 1)' // #006a27
 
 const GRID_LINE_STYLE = {
   'stroke-color': GOVUK_BLUE,
@@ -22,13 +19,16 @@ const GRID_LINE_STYLE = {
 }
 
 const HIGHLIGHT_STYLE = {
-  'fill-color': DEFRA_GREEN,
+  'fill-color': withAlpha(DEFRA_GREEN, 0.25),
   'stroke-color': DEFRA_GREEN_DARK,
   'stroke-width': 2,
   'stroke-line-join': 'miter'
 }
 
-/** @param {import('ol/Map').default} map */
+/**
+ * @param {import('@defra/interactive-map').default} interactiveMap
+ * @param {import('ol/Map').default} map
+ */
 export function createGridLayer (interactiveMap, map) {
   const { gridSource, selectedSource, selectedLayer } = addGridLayers(map)
   const grid = createBufferedGrid(map, gridSource)

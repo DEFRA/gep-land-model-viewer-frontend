@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { renderInitialInfoPanelHtml, renderCellInfoHtml } from './render.js'
+import { renderEmptyStateHtml, renderCellInfoHtml } from './render.js'
 
 function renderHtml (html) {
   const container = document.createElement('div')
@@ -7,14 +7,13 @@ function renderHtml (html) {
   return container
 }
 
-describe('#renderInitialInfoPanelHtml', () => {
-  test('renders a grid info panel container with empty guidance', () => {
-    const container = renderHtml(renderInitialInfoPanelHtml('test-content-id'))
-    const panel = container.querySelector('#test-content-id')
+describe('#renderEmptyStateHtml', () => {
+  test('renders guidance to select a grid cell', () => {
+    const container = renderHtml(renderEmptyStateHtml())
+    const message = container.querySelector('.app-map__info-panel-message')
 
-    expect(panel).not.toBeNull()
-    expect(panel.classList.contains('app-map__grid-info-panel')).toBe(true)
-    expect(panel.textContent).toContain('Click a grid cell on the map to view its details.')
+    expect(message).not.toBeNull()
+    expect(message.textContent).toBe('Select a grid cell on the map to view its details.')
   })
 })
 
@@ -22,7 +21,7 @@ describe('#renderCellInfoHtml', () => {
   test('renders cell coordinates and grid square reference', () => {
     const cell = { cellId: 'E418720N385130', easting: 418720, northing: 385130 }
     const container = renderHtml(renderCellInfoHtml(cell))
-    const coordinates = container.querySelector('.app-map__grid-info-coordinates')
+    const coordinates = container.querySelector('.app-map__info-summary')
 
     expect(coordinates).not.toBeNull()
     expect(coordinates.textContent).toContain('Easting')
