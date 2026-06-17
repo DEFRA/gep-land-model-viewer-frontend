@@ -1,14 +1,38 @@
 import { EVENTS } from '@defra/interactive-map'
 import { INFO_PANEL_ID, INFO_PANEL_CONTENT_ID, INFO_PANEL_OPEN_CLASS } from './constants.js'
-import { renderPanelShellHtml, renderMessageHtml } from './render.js'
+import { renderPanelShellHtml, renderMessageHtml, applyBarStyles } from './render.js'
 
-const LOADING_HTML = renderMessageHtml('Loading details')
+const LOADING_HTML = renderMessageHtml('Loading details...')
 const ERROR_HTML = renderMessageHtml('Could not load details. Try selecting again.')
+const SECTION_SELECTOR = '.app-map__info-section'
+const TITLE_SELECTOR = '.app-map__info-section-title'
+const sectionState = new Map()
+
+function saveSectionState (container) {
+  for (const s of container.querySelectorAll(SECTION_SELECTOR)) {
+    const title = s.querySelector(TITLE_SELECTOR)?.textContent.trim()
+    if (title) {
+      sectionState.set(title, s.open)
+    }
+  }
+}
+
+function restoreSectionState (container) {
+  for (const s of container.querySelectorAll(SECTION_SELECTOR)) {
+    const title = s.querySelector(TITLE_SELECTOR)?.textContent.trim()
+    if (title && sectionState.has(title)) {
+      s.open = sectionState.get(title)
+    }
+  }
+}
 
 function updateContent (innerHtml) {
   const el = document.getElementById(INFO_PANEL_CONTENT_ID)
   if (el) {
+    saveSectionState(el)
     el.innerHTML = innerHtml
+    applyBarStyles(el)
+    restoreSectionState(el)
   }
 }
 
@@ -56,8 +80,8 @@ export function registerInfoPanel (interactiveMap, map) {
     label: 'Land model attributes',
     html: renderPanelShellHtml(),
     mobile: { slot: 'drawer', open: false, modal: true, dismissible: true },
-    tablet: { slot: 'right-top', open: false, modal: false, width: '320px', dismissible: true },
-    desktop: { slot: 'right-top', open: false, modal: false, width: '320px', dismissible: true }
+    tablet: { slot: 'right-top', open: false, modal: false, width: '460px', dismissible: true },
+    desktop: { slot: 'right-top', open: false, modal: false, width: '460px', dismissible: true }
   })
 
   function open () {

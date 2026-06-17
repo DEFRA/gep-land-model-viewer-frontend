@@ -34,10 +34,10 @@ describe('#renderCellInfoHtml', () => {
   test('renders open collapsible land model attribute sections', () => {
     const cell = { cellId: 'E418720N385130', easting: 418720, northing: 385130 }
     const container = renderHtml(renderCellInfoHtml(cell))
-    const sections = [...container.querySelectorAll('.app-map__grid-info-section')]
+    const sections = [...container.querySelectorAll('.app-map__info-section')]
 
     expect(sections).toHaveLength(2)
     expect(sections.every(section => section.open)).toBe(true)
-    expect(sections.map(section => section.querySelector('summary').textContent)).toEqual(['Land use', 'Topography'])
+    expect(sections.map(section => section.querySelector('.app-map__info-section-title').textContent.trim())).toEqual(['Land use', 'Topography'])
   })
 })

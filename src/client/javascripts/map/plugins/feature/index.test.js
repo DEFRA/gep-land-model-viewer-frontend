@@ -12,7 +12,7 @@ vi.mock('./feature-layer.js', () => ({
 }))
 
 vi.mock('./data.js', () => ({
-  getFeatureDetails: vi.fn(() => Promise.resolve({ description: null }))
+  getFeatureDetails: vi.fn(() => Promise.resolve(null))
 }))
 
 vi.mock('../../config/map-styles.js', () => ({
@@ -165,28 +165,32 @@ describe('#registerFeatureController', () => {
     expect(getFeatureDetails).toHaveBeenCalledWith('abc-123')
   })
 
-  test('renderHtml prefers the loaded description over the tile description', () => {
+  test('renderHtml renders the loaded parcel attributes', () => {
     const inspector = registeredInspector()
 
-    const html = inspector.renderHtml(
-      { osid: 'abc-123', description: 'Tile Description' },
-      { description: 'Model Description' }
-    )
+    const html = inspector.renderHtml({ osid: 'abc-123' }, {
+      osid: 'abc-123',
+      toid: 'osgb-1',
+      landUse: { label: 'Agriculture', code: 'U011' },
+      landCover: { dominantLabel: 'Improved grass', dominantCode: 'C021', isMixed: false, breakdown: [], source: 'src', date: null },
+      soil: { dominantLabel: 'Brown soils', dominantCode: 'S050', isMixed: false, breakdown: [], source: 'src', date: null },
+      topography: { source: 'LIDAR', date: new Date(2023, 2, 8) },
+      elevation: { min: 1, mean: 2, mode: null, max: 3 },
+      slope: { min: 0, mean: null, mode: 1, max: 2 },
+      aspect: { mean: 0, label: 'FLAT' }
+    })
 
     expect(html).toContain('abc-123')
-    expect(html).toContain('Model Description')
-    expect(html).not.toContain('Tile Description')
+    expect(html).toContain('Land cover')
   })
 
-  test('renderHtml falls back to the tile description', () => {
+  test('renderHtml shows an unavailable message when there are no details', () => {
     const inspector = registeredInspector()
 
-    const html = inspector.renderHtml(
-      { osid: 'abc-123', description: 'Tile Description' },
-      { description: null }
-    )
+    const html = inspector.renderHtml({ osid: 'abc-123' }, null)
 
-    expect(html).toContain('Tile Description')
+    expect(html).toContain('abc-123')
+    expect(html).toContain('unavailable')
   })
 
   test('clearSelection clears the feature selection', () => {

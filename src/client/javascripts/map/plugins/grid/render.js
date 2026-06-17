@@ -1,23 +1,16 @@
-import { renderRowHtml, renderMessageHtml } from '../info-panel/render.js'
+import { renderRowHtml, renderMessageHtml, renderSectionHtml } from '../info-panel/render.js'
 
 function detailSection (title, rows) {
-  return `
-    <details class="app-map__grid-info-section" open>
-      <summary class="app-map__grid-info-section-heading">${title}</summary>
-      <dl class="govuk-summary-list govuk-summary-list--no-border app-map__grid-info-list">
-        ${rows.map(([key, value]) => renderRowHtml(key, value)).join('')}
-      </dl>
-    </details>
+  const detailHtml = `
+    <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-list">
+      ${rows.map(([key, value]) => renderRowHtml(key, value)).join('')}
+    </dl>
   `
+  return renderSectionHtml(title, { detailHtml, open: true })
 }
 
 function valueSection (title, value) {
-  return `
-    <details class="app-map__grid-info-section" open>
-      <summary class="app-map__grid-info-section-heading">${title}</summary>
-      <p class="govuk-body app-map__grid-info-section-value">${value}</p>
-    </details>
-  `
+  return renderSectionHtml(title, { detailHtml: `<p class="govuk-body app-map__info-value">${value}</p>`, open: true })
 }
 
 export function renderEmptyStateHtml () {

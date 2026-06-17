@@ -10,7 +10,7 @@ import { registerLayersPanel } from './plugins/layers/index.js'
 import { createViewModePlugin, registerViewMode } from './plugins/view-mode/index.js'
 
 const MAP_ID = 'land-map'
-const DEFAULT_CENTER = [418700, 385100]
+const DEFAULT_CENTER = [465000, 475000] // center of sample land model area
 const DEFAULT_ZOOM = 7
 const MIN_ZOOM = 0
 const MAX_ZOOM = 13

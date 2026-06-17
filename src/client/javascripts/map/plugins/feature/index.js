@@ -32,11 +32,8 @@ export function registerFeatureController (interactiveMap, map, initialStyleId, 
       return getFeatureDetails(hit.osid)
     },
 
-    renderHtml (hit, details) {
-      return renderFeatureInfoHtml({
-        osid: hit.osid,
-        description: details.description ?? hit.description
-      })
+    renderHtml (hit, parcel) {
+      return renderFeatureInfoHtml(hit, parcel)
     },
 
     clearSelection () {

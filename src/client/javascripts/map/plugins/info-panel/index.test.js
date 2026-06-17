@@ -226,6 +226,35 @@ describe('#registerInfoPanel', () => {
     expect(appMap().classList.contains('app-map--info-panel-open')).toBe(false)
   })
 
+  test('preserves which sections are expanded across content updates', async () => {
+    const sectionHtml = `
+      <details class="app-map__info-section">
+        <summary class="app-map__info-section-heading">
+          <span class="app-map__info-section-title">Land cover</span>
+        </summary>
+        <div>content</div>
+      </details>
+      <details class="app-map__info-section">
+        <summary class="app-map__info-section-heading">
+          <span class="app-map__info-section-title">Topography</span>
+        </summary>
+        <div>content</div>
+      </details>
+    `
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const inspector = createInspector({ renderHtml: vi.fn(() => sectionHtml) })
+    panel.activate(inspector)
+
+    await click()
+    contentEl().querySelectorAll('.app-map__info-section')[0].open = true
+
+    await click()
+    const sections = contentEl().querySelectorAll('.app-map__info-section')
+
+    expect(sections[0].open).toBe(true)
+    expect(sections[1].open).toBe(false)
+  })
+
   test('other panel close events are ignored', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
     const inspector = createInspector()
