@@ -52,6 +52,8 @@ html:has(.app-map-page) {
 .app-map .im-c-panel:has([data-app-layer-list]) .im-c-panel__body {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
 }
