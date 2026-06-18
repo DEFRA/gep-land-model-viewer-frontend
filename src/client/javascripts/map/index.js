@@ -29,14 +29,15 @@ const map = new InteractiveMap(MAP_ID, {
     searchPlugin({
       osNamesURL: '/os/names/find?query={query}',
       showMarker: true,
+      placeholder: 'Search for a location...',
       regions: ['england'],
       width: '300px',
       manifest: {
         controls: [{
           id: 'search',
           mobile: { slot: 'top-left', showLabel: false, order: 2 },
-          tablet: { slot: 'top-left', showLabel: false, order: 2 },
-          desktop: { slot: 'top-left', showLabel: false, order: 2 }
+          tablet: { slot: 'top-left', showLabel: true, order: 2 },
+          desktop: { slot: 'top-left', showLabel: true, order: 2 }
         }]
       }
     }),
@@ -52,8 +53,8 @@ const map = new InteractiveMap(MAP_ID, {
         panels: [{
           id: 'mapStyles',
           mobile: { slot: 'drawer', modal: true, dismissible: true },
-          tablet: { slot: 'mapStyles-button', width: '280px', modal: true, dismissible: true },
-          desktop: { slot: 'mapStyles-button', width: '280px', modal: true, dismissible: true }
+          tablet: { slot: 'mapStyles-button', width: '300px', modal: true, dismissible: true },
+          desktop: { slot: 'mapStyles-button', width: '300px', modal: true, dismissible: true }
         }]
       }
     }),
