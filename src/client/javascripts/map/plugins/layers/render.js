@@ -30,6 +30,7 @@ function renderCheckbox (dataset) {
 }
 
 export function renderLayersPanelHtml (datasets) {
+  const sortedDatasets = datasets.sort((a, b) => a.label.localeCompare(b.label))
   return `
     <div class="app-map__layers-content">
       <h2 class="app-map__layers-header">
@@ -45,6 +46,7 @@ export function renderLayersPanelHtml (datasets) {
             class="govuk-input app-map__layer-search-input"
             id="layers-search"
             type="search"
+            placeholder="Search the GEP repository..."
             autocomplete="off"
             aria-controls="layers-list"
             data-app-layer-search
@@ -63,7 +65,7 @@ export function renderLayersPanelHtml (datasets) {
       <fieldset class="govuk-fieldset">
         <legend class="govuk-visually-hidden">Data layers</legend>
         <div class="govuk-checkboxes govuk-checkboxes--small" id="layers-list" data-app-layer-list>
-          ${datasets.map(renderCheckbox).join('')}
+          ${sortedDatasets.map(renderCheckbox).join('')}
         </div>
       </fieldset>
     </div>
