@@ -40,7 +40,8 @@ describe('#registerInfoPanel', () => {
     document.body.innerHTML = '<div class="app-map"><div id="map-container"></div><div id="gep-info-content"></div></div>'
     interactiveMap = createMapHarness()
     olMap = {
-      getTargetElement: vi.fn(() => document.getElementById('map-container'))
+      getTargetElement: vi.fn(() => document.getElementById('map-container')),
+      getView: vi.fn(() => ({ animate: vi.fn() }))
     }
   })
 
@@ -308,5 +309,23 @@ describe('#registerInfoPanel', () => {
     await pending
 
     expect(replaced.renderHtml).not.toHaveBeenCalled()
+  })
+
+  test('clicking the sample area link jumps the map to the sample area', async () => {
+    const mockSetCenter = vi.fn()
+    const mockSetZoom = vi.fn()
+    olMap.getView.mockReturnValue({ setCenter: mockSetCenter, setZoom: mockSetZoom })
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const unavailableHtml = '<div class="app-map__info-content"><a href="#" class="app-link-button app-map__info-sample-link">Go to the sample area</a></div>'
+    const inspector = createInspector({
+      renderHtml: vi.fn(() => unavailableHtml)
+    })
+    panel.activate(inspector)
+
+    await click()
+    contentEl().querySelector('.app-map__info-sample-link').click()
+
+    expect(mockSetCenter).toHaveBeenCalledWith([465000, 475000])
+    expect(mockSetZoom).toHaveBeenCalledWith(11)
   })
 })

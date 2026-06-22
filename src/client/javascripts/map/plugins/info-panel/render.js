@@ -1,5 +1,8 @@
+import { format, parse, isValid } from 'date-fns'
 import escapeHtml from 'lodash/escape.js'
-import { INFO_PANEL_CONTENT_ID } from './constants.js'
+import { INFO_PANEL_CONTENT_ID, SAMPLE_LINK_CLASS } from './constants.js'
+
+export const EMPTY = '-'
 
 export function renderRowHtml (key, value) {
   return `
@@ -12,6 +15,26 @@ export function renderRowHtml (key, value) {
 
 export function renderMessageHtml (text) {
   return `<p class="govuk-body govuk-hint app-map__info-panel-message">${escapeHtml(text)}</p>`
+}
+
+export function renderUnavailableNoticeHtml (label) {
+  return `
+    <div class="app-map__info-unavailable">
+      <p class="govuk-body">This ${escapeHtml(label)} is not covered by the sample land model.</p>
+      <a href="#" class="app-link-button ${SAMPLE_LINK_CLASS}">Go to the sample area</a>
+    </div>
+  `
+}
+
+export function renderUnavailableContentHtml (idRowsHtml, typeLabel) {
+  return `
+    <div class="app-map__info-content">
+      <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-ids">
+        ${idRowsHtml}
+      </dl>
+      ${renderUnavailableNoticeHtml(typeLabel)}
+    </div>
+  `
 }
 
 /**
@@ -80,4 +103,123 @@ export function applyBarStyles (container) {
 
 export function renderPanelShellHtml () {
   return `<div id="${INFO_PANEL_CONTENT_ID}" class="app-map__info-panel"></div>`
+}
+
+export function formatMetres (value) {
+  if (value == null) {
+    return EMPTY
+  }
+  return `${value}m`
+}
+
+export function formatDegrees (value) {
+  if (value == null) {
+    return EMPTY
+  }
+  return `${value}°`
+}
+
+export function toDate (value) {
+  if (!value) {
+    return null
+  }
+
+  const date = parse(value, 'dd/MM/yyyy', new Date(0))
+  if (!isValid(date)) {
+    return null
+  }
+
+  return date
+}
+
+export function formatDate (value) {
+  if (!value) {
+    return EMPTY
+  }
+  return format(value, 'yyyy-MM-dd')
+}
+
+export function sentenceCase (value) {
+  return value.charAt(0) + value.slice(1).toLowerCase()
+}
+
+export function formatSlope (value, aspectLabel) {
+  if (value == null) {
+    return EMPTY
+  }
+
+  const degrees = `${value}°`
+  if (!aspectLabel) {
+    return degrees
+  }
+  return `${degrees} (${sentenceCase(aspectLabel)})`
+}
+
+function formatAspectMean (value, label) {
+  if (value == null && !label) {
+    return EMPTY
+  }
+  if (value == null) {
+    return sentenceCase(label)
+  }
+
+  const degrees = `${value}°`
+  if (!label) {
+    return degrees
+  }
+  return `${degrees} (${sentenceCase(label)})`
+}
+
+function renderTopoRow (label, elevationValue, slopeValue, aspectValue) {
+  return `
+    <tr class="govuk-table__row">
+      <th scope="row" class="govuk-table__header">${escapeHtml(label)}</th>
+      <td class="govuk-table__cell">${escapeHtml(String(elevationValue))}</td>
+      <td class="govuk-table__cell">${escapeHtml(String(slopeValue))}</td>
+      <td class="govuk-table__cell">${escapeHtml(String(aspectValue))}</td>
+    </tr>
+  `
+}
+
+export function renderLandUseHtml (landUse) {
+  const detail = `
+    <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-list">
+      ${renderRowHtml('Classification', landUse.label ?? EMPTY)}
+      ${renderRowHtml('Code', landUse.code ?? EMPTY)}
+    </dl>
+  `
+  return renderSectionHtml('Land use', { previewHtml: escapeHtml(landUse.label ?? EMPTY), detailHtml: detail })
+}
+
+export function renderTopographyHtml ({ topography, elevation, slope, aspect }) {
+  const summary = [
+    `Elevation: ${escapeHtml(formatMetres(elevation.mean))}`,
+    `Slope: ${escapeHtml(formatSlope(slope.mode, aspect.label))}`
+  ].join(' &nbsp; ')
+
+  const detail = `
+    <div class="app-map__topo-details">
+      <table class="govuk-table app-map__topo-table">
+        <thead>
+          <tr>
+            <td class="app-map__topo-corner"></td>
+            <th scope="col" class="govuk-table__header">Elevation</th>
+            <th scope="col" class="govuk-table__header">Slope</th>
+            <th scope="col" class="govuk-table__header">Aspect</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${renderTopoRow('Minimum', formatMetres(elevation.min), formatDegrees(slope.min), EMPTY)}
+          ${renderTopoRow('Maximum', formatMetres(elevation.max), formatDegrees(slope.max), EMPTY)}
+          ${renderTopoRow('Mean', formatMetres(elevation.mean), formatDegrees(slope.mean), formatAspectMean(aspect.mean, aspect.label))}
+          ${renderTopoRow('Mode', formatMetres(elevation.mode), formatDegrees(slope.mode), EMPTY)}
+        </tbody>
+      </table>
+    </div>
+    <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-list">
+      ${renderRowHtml('Data source', topography.source ?? EMPTY)}
+      ${renderRowHtml('Last updated', formatDate(topography.date))}
+    </dl>
+  `
+  return renderSectionHtml('Topography', { previewHtml: summary, detailHtml: detail })
 }

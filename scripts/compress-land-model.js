@@ -17,6 +17,13 @@ function compressBrotli (input, outputPath) {
   console.log(`  ${rawMB} MB -> ${brMB} MB (brotli)`)
 }
 
+function normalise (value) {
+  if (value == null || value === '' || value === 'NULL') {
+    return null
+  }
+  return value
+}
+
 function dominantLabel (intersecting) {
   let dominant = null
   let max = -1
@@ -26,34 +33,74 @@ function dominantLabel (intersecting) {
       dominant = label
     }
   }
-  return dominant
+  return normalise(dominant)
 }
 
 console.log('Trimming and compressing grids.json...')
 
+const parcelsRaw = readFileSync(resolve(staticDir, 'parcels.json'))
+const parcels = JSON.parse(parcelsRaw)
 const grids = JSON.parse(readFileSync(resolve(staticDir, 'grids.json'), 'utf8'))
 
-// Strip the intersecting properties and keep only the dominant label and code.
-const trimmedGrids = grids.map((raw) => ({
-  bng_ref: raw.bng_ref,
-  land_use: dominantLabel(raw.land_use_intersecting),
-  land_use_code: raw.land_use_code,
-  land_cover: dominantLabel(raw.land_cover_intersecting),
-  land_cover_code: raw.land_cover_code,
-  soil: dominantLabel(raw.soil_intersecting),
-  soil_code: raw.soil_code,
-  elevation_min: raw.elevation_min,
-  elevation_mean: raw.elevation_mean,
-  elevation_max: raw.elevation_max,
-  slope_min: raw.slope_min,
-  slope_mode: raw.slope_mode,
-  slope_max: raw.slope_max,
-  aspect_aspect: raw.aspect_aspect
-}))
+const gridMetadata = {
+  land_cover_source: parcels[0].land_cover_source,
+  land_cover_date: parcels[0].land_cover_date,
+  soil_source: parcels[0].soil_source,
+  soil_date: parcels[0].soil_date,
+  topography_source: 'LIDAR Composite Digital Terrain Model (DTM) 1m',
+  topography_date: '08/03/2023'
+}
 
-compressBrotli(JSON.stringify(trimmedGrids), resolve(staticDir, 'grids.json.br'))
+const gridIndexMaps = {
+  land_use: new Map(),
+  land_use_code: new Map(),
+  land_cover: new Map(),
+  land_cover_code: new Map(),
+  soil: new Map(),
+  soil_code: new Map(),
+  aspect_aspect: new Map()
+}
+
+function lookupIndex (field, value) {
+  if (value == null) {
+    return null
+  }
+  const map = gridIndexMaps[field]
+  if (!map.has(value)) {
+    map.set(value, map.size)
+  }
+  return map.get(value)
+}
+
+const gridRows = grids.map((raw) => [
+  raw.bng_ref,
+  lookupIndex('land_use', dominantLabel(raw.land_use_intersecting)),
+  lookupIndex('land_use_code', normalise(raw.land_use_code)),
+  lookupIndex('land_cover', dominantLabel(raw.land_cover_intersecting)),
+  lookupIndex('land_cover_code', normalise(raw.land_cover_code)),
+  lookupIndex('soil', dominantLabel(raw.soil_intersecting)),
+  lookupIndex('soil_code', normalise(raw.soil_code)),
+  raw.elevation_min,
+  raw.elevation_mean,
+  raw.elevation_max,
+  raw.slope_min,
+  raw.slope_mode,
+  raw.slope_max,
+  lookupIndex('aspect_aspect', normalise(raw.aspect_aspect))
+])
+
+const gridLookups = {}
+for (const [field, map] of Object.entries(gridIndexMaps)) {
+  gridLookups[field] = [...map.keys()]
+  console.log(`  ${field}: ${map.size} unique values`)
+}
+
+compressBrotli(
+  JSON.stringify({ metadata: gridMetadata, lookups: gridLookups, rows: gridRows }),
+  resolve(staticDir, 'grids.json.br')
+)
 
 console.log('Compressing parcels.json...')
-compressBrotli(readFileSync(resolve(staticDir, 'parcels.json')), resolve(staticDir, 'parcels.json.br'))
+compressBrotli(parcelsRaw, resolve(staticDir, 'parcels.json.br'))
 
 console.log('Done.')

@@ -5,10 +5,14 @@ vi.mock('./grid-layer.js', () => ({
   createGridLayer: vi.fn()
 }))
 
+vi.mock('./data.js', () => ({
+  getGridDetails: vi.fn(() => Promise.resolve(null))
+}))
+
 const { createGridLayer } = await import('./grid-layer.js')
+const { getGridDetails } = await import('./data.js')
 const { registerGridController } = await import('./index.js')
 const { GRID_VISIBLE_MIN_ZOOM } = await import('./constants.js')
-const { renderCellInfoHtml } = await import('./render.js')
 
 function createMockGridLayer () {
   return {
@@ -99,16 +103,20 @@ describe('#registerGridController', () => {
     expect(cell).toEqual(expect.objectContaining({ easting: 418720, northing: 385130 }))
   })
 
-  test('loadDetails resolves null until real cell data exists', async () => {
+  test('hitTest returns null for coordinates outside the BNG extent', () => {
     const inspector = registeredInspector()
 
-    await expect(inspector.loadDetails()).resolves.toBeNull()
+    expect(inspector.hitTest([418725, -1])).toBeNull()
+    expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
   })
 
-  test('renderHtml is the cell info renderer', () => {
+  test('loadDetails fetches grid details by bng_ref', async () => {
     const inspector = registeredInspector()
+    const cell = inspector.hitTest([418725, 385137])
 
-    expect(inspector.renderHtml).toBe(renderCellInfoHtml)
+    await inspector.loadDetails(cell)
+
+    expect(getGridDetails).toHaveBeenCalledWith(cell.cellId.compact)
   })
 
   test('clearSelection clears the cell highlight', () => {

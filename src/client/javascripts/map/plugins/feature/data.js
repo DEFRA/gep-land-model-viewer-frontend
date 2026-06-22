@@ -1,4 +1,4 @@
-import { parse, isValid } from 'date-fns'
+import { toDate } from '../info-panel/render.js'
 
 const PARCELS_URL = '/land-model/parcels.json'
 
@@ -89,23 +89,6 @@ function toBreakdown (intersecting) {
   return Object.entries(intersecting ?? {})
     .map(([label, percentage]) => ({ label, percentage }))
     .sort((a, b) => b.percentage - a.percentage)
-}
-
-/**
- * @param {string | null} value
- * @returns {Date | null}
- */
-function toDate (value) {
-  if (!value) {
-    return null
-  }
-
-  const date = parse(value, 'dd/MM/yyyy', new Date(0))
-  if (!isValid(date)) {
-    return null
-  }
-
-  return date
 }
 
 /**

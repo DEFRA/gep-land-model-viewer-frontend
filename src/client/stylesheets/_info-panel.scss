@@ -115,6 +115,16 @@
   padding: 0 govuk-spacing(5) govuk-spacing(4);
 }
 
+.app-map__info-unavailable {
+  padding: govuk-spacing(3) govuk-spacing(4);
+  background-color: govuk-colour("black", $variant: "tint-95");
+  border-left: 4px solid govuk-colour("black", $variant: "tint-80");
+
+  .govuk-body {
+    margin: 0 0 govuk-spacing(2);
+  }
+}
+
 .app-map__info-content {
   padding: 0 govuk-spacing(5) govuk-spacing(4);
 
@@ -126,41 +136,9 @@
   }
 }
 
-// ===== Grid cell summary =====
+// ===== IDs =====
 
-.app-map__info-summary {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 0 0 govuk-spacing(1);
-  column-gap: govuk-spacing(3);
-
-  .govuk-summary-list__row {
-    display: block;
-    margin: 0;
-  }
-
-  .govuk-summary-list__key,
-  .govuk-summary-list__value {
-    display: inline;
-    width: auto;
-    margin: 0;
-    padding: 0;
-  }
-
-  .govuk-summary-list__key {
-    padding-right: govuk-spacing(1);
-    font-weight: $govuk-font-weight-bold;
-  }
-}
-
-.app-map__grid-info-reference {
-  margin: 0 0 govuk-spacing(4);
-  color: govuk-colour("black", $variant: "tint-25");
-}
-
-// ===== Feature IDs =====
-
-.app-map__feature-ids {
+.app-map__info-ids {
   margin: 0 0 govuk-spacing(3);
 
   .govuk-summary-list__row {
@@ -178,7 +156,7 @@
     width: auto;
     margin: 0;
     padding: 0;
-    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .govuk-summary-list__key {
@@ -254,10 +232,6 @@
 
 .app-map__info-section-detail {
   padding-bottom: govuk-spacing(3);
-}
-
-.app-map__info-value {
-  margin: 0;
 }
 
 // ===== Summary lists =====
@@ -379,11 +353,6 @@
   .app-map__info-content {
     padding-right: govuk-spacing(3);
     padding-left: govuk-spacing(3);
-  }
-
-  .app-map__info-summary {
-    grid-template-columns: 1fr;
-    row-gap: govuk-spacing(1);
   }
 
   .app-map__info-list .govuk-summary-list__row {

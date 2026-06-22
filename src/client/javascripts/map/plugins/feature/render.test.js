@@ -156,11 +156,12 @@ describe('#renderFeatureInfoHtml', () => {
     expect(container.querySelector('script')).toBeNull()
   })
 
-  test('renders an unavailable message when there are no attributes', () => {
+  test('renders an unavailable notice when there are no attributes', () => {
     const container = document.createElement('div')
     container.innerHTML = renderFeatureInfoHtml({ osid: 'abc-123' }, null)
 
     expect(container.textContent).toContain('abc-123')
-    expect(container.textContent).toContain('unavailable')
+    expect(container.textContent).toContain('not covered by the sample land model')
+    expect(container.querySelector('.app-map__info-sample-link')).not.toBeNull()
   })
 })

@@ -22,7 +22,7 @@ function rawParcel (overrides = {}) {
     soil_source: 'Cranfield Soils Data',
     soil_date: '28/04/2026',
     elevation_min: 42,
-    elevation_mean: 42,
+    elevation_mean: 42.5,
     elevation_mode: null,
     elevation_max: 43.69,
     slope_min: 0.2,
@@ -74,7 +74,7 @@ describe('#toParcel', () => {
   test('maps elevation and slope values from the wire format', () => {
     const parcel = toParcel(rawParcel())
 
-    expect(parcel.elevation).toEqual({ min: 42, mean: 42, mode: null, max: 43.69 })
+    expect(parcel.elevation).toEqual({ min: 42, mean: 42.5, mode: null, max: 43.69 })
     expect(parcel.slope).toEqual({ min: 0.2, mean: null, mode: 2.8, max: 28 })
   })
 

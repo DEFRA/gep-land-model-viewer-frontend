@@ -1,13 +1,54 @@
-// Example SASS helpers
+@use "govuk-frontend" as *;
+@use "../variables" as *;
 
-@mixin app-link-style {
+.govuk-link:link {
+  color: $defra-green;
+}
+
+.govuk-link:visited {
+  color: $govuk-link-visited-colour;
+}
+
+.govuk-link:hover {
+  color: $defra-green-dark;
+}
+
+.govuk-link:focus {
+  color: govuk-functional-colour("focus-text");
+}
+
+.app-link-button,
+.app-link-button:link,
+.app-link-button:visited {
+  @include govuk-font($size: 19);
+  background: none;
+  border: 0;
+  color: $defra-green;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-thickness: max(1px, .0625rem);
+}
+
+.app-link-button:hover {
+  color: $defra-green-dark;
+  text-decoration-thickness: max(3px, .1875rem, .12em);
+}
+
+.app-link-button:focus,
+.app-link-button:active {
+  background-color: govuk-functional-colour("focus");
+  box-shadow: 0 -2px govuk-functional-colour("focus"), 0 4px govuk-functional-colour("focus-text");
+  color: govuk-functional-colour("focus-text");
+  outline: 3px solid transparent;
   text-decoration: none;
+}
 
-  &:hover {
-    text-decoration: underline;
-  }
-
-  &:focus {
-    text-decoration: none;
-  }
+.app-link-button:focus:not(:focus-visible):not(:active) {
+  background: none;
+  box-shadow: none;
+  color: $defra-green;
+  outline: none;
+  text-decoration: underline;
+  text-decoration-thickness: max(1px, .0625rem);
 }

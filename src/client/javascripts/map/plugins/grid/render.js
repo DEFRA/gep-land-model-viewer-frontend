@@ -1,33 +1,57 @@
-import { renderRowHtml, renderMessageHtml, renderSectionHtml } from '../info-panel/render.js'
-
-function detailSection (title, rows) {
-  const detailHtml = `
-    <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-list">
-      ${rows.map(([key, value]) => renderRowHtml(key, value)).join('')}
-    </dl>
-  `
-  return renderSectionHtml(title, { detailHtml, open: true })
-}
-
-function valueSection (title, value) {
-  return renderSectionHtml(title, { detailHtml: `<p class="govuk-body app-map__info-value">${value}</p>`, open: true })
-}
+import escapeHtml from 'lodash/escape.js'
+import { EMPTY, renderRowHtml, renderMessageHtml, renderSectionHtml, renderUnavailableContentHtml, formatDate, renderLandUseHtml, renderTopographyHtml } from '../info-panel/render.js'
 
 export function renderEmptyStateHtml () {
   return renderMessageHtml('Select a grid cell on the map to view its details.')
 }
 
-export function renderCellInfoHtml ({ cellId, easting, northing }) {
+/**
+ * @param {{ cellId: import('./bng-reference.js').BngReference }} hit
+ * @param {import('./data.js').GridCell | null} details
+ * @returns {string}
+ */
+export function renderCellInfoHtml (hit, details) {
+  if (!details) {
+    return renderUnavailableHtml(hit)
+  }
+
   return `
     <div class="app-map__info-content">
-      <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-summary">
-        ${renderRowHtml('Easting', easting)}
-        ${renderRowHtml('Northing', northing)}
+      <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-ids">
+        ${renderRowHtml('Grid square', hit.cellId)}
       </dl>
-      <p class="govuk-body app-map__grid-info-reference">Grid square: ${cellId}</p>
 
-      ${valueSection('Land use', 'Agriculture')}
-      ${detailSection('Topography', [['Elevation', '85m'], ['Slope', '2 degrees (flat)']])}
+      ${renderLandCoverSection(details.landCover)}
+      ${renderLandUseHtml(details.landUse)}
+      ${renderTopographyHtml(details)}
+      ${renderSoilSection(details.soil)}
     </div>
   `
+}
+
+function renderUnavailableHtml (hit) {
+  return renderUnavailableContentHtml(renderRowHtml('Grid square', hit.cellId), 'grid cell')
+}
+
+function renderLandCoverSection (landCover) {
+  const detail = `
+    <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-list">
+      ${renderRowHtml('Dominant cover', landCover.label ?? EMPTY)}
+      ${renderRowHtml('Code', landCover.code ?? EMPTY)}
+      ${renderRowHtml('Data source', landCover.source ?? EMPTY)}
+      ${renderRowHtml('Last updated', formatDate(landCover.date))}
+    </dl>
+  `
+  return renderSectionHtml('Land cover', { previewHtml: escapeHtml(landCover.label ?? EMPTY), detailHtml: detail })
+}
+
+function renderSoilSection (soil) {
+  const detail = `
+    <dl class="govuk-summary-list govuk-summary-list--no-border app-map__info-list">
+      ${renderRowHtml('Soil type', soil.label ?? EMPTY)}
+      ${renderRowHtml('Data source', soil.source ?? EMPTY)}
+      ${renderRowHtml('Last updated', formatDate(soil.date))}
+    </dl>
+  `
+  return renderSectionHtml('Soils', { previewHtml: escapeHtml(soil.label ?? EMPTY), detailHtml: detail })
 }

@@ -1,5 +1,5 @@
 import { EVENTS } from '@defra/interactive-map'
-import { INFO_PANEL_ID, INFO_PANEL_CONTENT_ID, INFO_PANEL_OPEN_CLASS } from './constants.js'
+import { INFO_PANEL_ID, INFO_PANEL_CONTENT_ID, INFO_PANEL_OPEN_CLASS, SAMPLE_CENTER, SAMPLE_LINK_CLASS, SAMPLE_ZOOM } from './constants.js'
 import { renderPanelShellHtml, renderMessageHtml, applyBarStyles } from './render.js'
 
 const LOADING_HTML = renderMessageHtml('Loading details...')
@@ -43,12 +43,25 @@ async function showDetails (inspector, hit, signal) {
       return
     }
     updateContent(inspector.renderHtml(hit, details))
-  } catch {
+  } catch (err) {
     if (signal.aborted) {
       return
     }
+    console.error('Failed to load details for selection', err)
     updateContent(ERROR_HTML)
   }
+}
+
+function bindSampleLink (mapContainer, map) {
+  mapContainer?.addEventListener('click', (e) => {
+    const link = e.target.closest(`.${SAMPLE_LINK_CLASS}`)
+    if (link) {
+      e.preventDefault()
+      const view = map.getView()
+      view.setCenter(SAMPLE_CENTER)
+      view.setZoom(SAMPLE_ZOOM)
+    }
+  })
 }
 
 /**
@@ -83,6 +96,8 @@ export function registerInfoPanel (interactiveMap, map) {
     tablet: { slot: 'right-top', open: false, modal: false, width: '460px', dismissible: true },
     desktop: { slot: 'right-top', open: false, modal: false, width: '460px', dismissible: true }
   })
+
+  bindSampleLink(mapContainer, map)
 
   function open () {
     isOpen = true
