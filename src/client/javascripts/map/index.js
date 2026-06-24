@@ -7,6 +7,7 @@ import { registerFeatureController } from './plugins/feature/index.js'
 import { registerGridController } from './plugins/grid/index.js'
 import { registerInfoPanel } from './plugins/info-panel/index.js'
 import { registerLayersPanel } from './plugins/layers/index.js'
+import { createNorthIndicatorPlugin } from './plugins/north-indicator/index.js'
 import { createViewModePlugin, registerViewMode } from './plugins/view-mode/index.js'
 
 const MAP_ID = 'land-map'
@@ -46,9 +47,9 @@ const map = new InteractiveMap(MAP_ID, {
       manifest: {
         buttons: [{
           id: 'mapStyles',
-          mobile: { slot: 'right-top', showLabel: false },
-          tablet: { slot: 'right-top', showLabel: false },
-          desktop: { slot: 'right-top', showLabel: false }
+          mobile: { slot: 'right-top', showLabel: false, order: 4 },
+          tablet: { slot: 'right-top', showLabel: false, order: 4 },
+          desktop: { slot: 'right-top', showLabel: false, order: 4 }
         }],
         panels: [{
           id: 'mapStyles',
@@ -58,7 +59,8 @@ const map = new InteractiveMap(MAP_ID, {
         }]
       }
     }),
-    createViewModePlugin()
+    createViewModePlugin(),
+    createNorthIndicatorPlugin()
   ]
 })
 

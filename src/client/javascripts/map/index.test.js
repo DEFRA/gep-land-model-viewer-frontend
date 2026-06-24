@@ -46,6 +46,10 @@ vi.mock('./plugins/layers/index.js', () => ({
   registerLayersPanel: vi.fn()
 }))
 
+vi.mock('./plugins/north-indicator/index.js', () => ({
+  createNorthIndicatorPlugin: vi.fn(() => ({ id: 'northIndicator' }))
+}))
+
 vi.mock('./plugins/view-mode/index.js', () => ({
   registerViewMode: vi.fn(),
   createViewModePlugin: vi.fn(() => ({ id: 'gepViewMode' }))
