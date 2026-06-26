@@ -1,5 +1,6 @@
 import { createServer } from '../server.js'
 import { statusCodes } from '../common/constants/status-codes.js'
+import { mockAuthCredentials } from '../common/test-helpers/auth.js'
 
 describe('#cookiesController', () => {
   let server
@@ -17,7 +18,8 @@ describe('#cookiesController', () => {
     test('should return 200 status code', async () => {
       const { statusCode } = await server.inject({
         method: 'GET',
-        url: '/cookies'
+        url: '/cookies',
+        auth: mockAuthCredentials
       })
 
       expect(statusCode).toBe(statusCodes.ok)
@@ -26,7 +28,8 @@ describe('#cookiesController', () => {
     test('should display cookies page heading', async () => {
       const { result } = await server.inject({
         method: 'GET',
-        url: '/cookies'
+        url: '/cookies',
+        auth: mockAuthCredentials
       })
 
       expect(result).toEqual(expect.stringContaining('Cookies'))
@@ -36,7 +39,8 @@ describe('#cookiesController', () => {
     test('should display breadcrumbs with Home link', async () => {
       const { result } = await server.inject({
         method: 'GET',
-        url: '/cookies'
+        url: '/cookies',
+        auth: mockAuthCredentials
       })
 
       expect(result).toEqual(expect.stringContaining('govuk-breadcrumbs'))
@@ -46,7 +50,8 @@ describe('#cookiesController', () => {
     test('should display success banner when saved query param is true', async () => {
       const { result } = await server.inject({
         method: 'GET',
-        url: '/cookies?saved=true'
+        url: '/cookies?saved=true',
+        auth: mockAuthCredentials
       })
 
       expect(result).toEqual(
@@ -57,7 +62,8 @@ describe('#cookiesController', () => {
     test('should not display success banner by default', async () => {
       const { result } = await server.inject({
         method: 'GET',
-        url: '/cookies'
+        url: '/cookies',
+        auth: mockAuthCredentials
       })
 
       expect(result).not.toEqual(
@@ -68,7 +74,8 @@ describe('#cookiesController', () => {
     test('should not display cookie banner on cookies page', async () => {
       const { result } = await server.inject({
         method: 'GET',
-        url: '/cookies'
+        url: '/cookies',
+        auth: mockAuthCredentials
       })
 
       expect(result).not.toEqual(expect.stringContaining('govuk-cookie-banner'))
@@ -80,7 +87,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies',
-        payload: { analytics: 'yes' }
+        payload: { analytics: 'yes' },
+        auth: mockAuthCredentials
       })
 
       expect(response.statusCode).toBe(302)
@@ -91,7 +99,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies',
-        payload: { analytics: 'yes' }
+        payload: { analytics: 'yes' },
+        auth: mockAuthCredentials
       })
 
       const cookies = response.headers['set-cookie']
@@ -110,7 +119,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies',
-        payload: { analytics: 'no' }
+        payload: { analytics: 'no' },
+        auth: mockAuthCredentials
       })
 
       const cookies = response.headers['set-cookie']
@@ -128,7 +138,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies/accept',
-        payload: { returnUrl: '/accessibility-statement' }
+        payload: { returnUrl: '/accessibility-statement' },
+        auth: mockAuthCredentials
       })
 
       expect(response.statusCode).toBe(302)
@@ -140,7 +151,8 @@ describe('#cookiesController', () => {
     test('should redirect to home when no return URL provided', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/cookies/accept'
+        url: '/cookies/accept',
+        auth: mockAuthCredentials
       })
 
       expect(response.statusCode).toBe(302)
@@ -151,7 +163,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies/accept',
-        payload: { returnUrl: 'https://evil.com' }
+        payload: { returnUrl: 'https://evil.com' },
+        auth: mockAuthCredentials
       })
 
       expect(response.statusCode).toBe(302)
@@ -162,7 +175,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies/accept',
-        payload: { returnUrl: '//evil.com' }
+        payload: { returnUrl: '//evil.com' },
+        auth: mockAuthCredentials
       })
 
       expect(response.statusCode).toBe(302)
@@ -173,7 +187,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies/accept',
-        payload: { returnUrl: '/' }
+        payload: { returnUrl: '/' },
+        auth: mockAuthCredentials
       })
 
       const cookies = response.headers['set-cookie']
@@ -192,7 +207,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies/reject',
-        payload: { returnUrl: '/about' }
+        payload: { returnUrl: '/about' },
+        auth: mockAuthCredentials
       })
 
       expect(response.statusCode).toBe(302)
@@ -204,7 +220,8 @@ describe('#cookiesController', () => {
     test('should redirect to home when no return URL provided', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/cookies/reject'
+        url: '/cookies/reject',
+        auth: mockAuthCredentials
       })
 
       expect(response.statusCode).toBe(302)
@@ -215,7 +232,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies/reject',
-        payload: { returnUrl: 'https://evil.com' }
+        payload: { returnUrl: 'https://evil.com' },
+        auth: mockAuthCredentials
       })
 
       expect(response.statusCode).toBe(302)
@@ -226,7 +244,8 @@ describe('#cookiesController', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/cookies/reject',
-        payload: { returnUrl: '/' }
+        payload: { returnUrl: '/' },
+        auth: mockAuthCredentials
       })
 
       const cookies = response.headers['set-cookie']

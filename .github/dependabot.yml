@@ -66,6 +66,7 @@ updates:
 
       server:
         patterns:
+          - '@aws-sdk/*'
           - '@hapi/*'
           - 'blankie'
           - 'convict'
@@ -77,6 +78,7 @@ updates:
           - 'lodash'
           - 'node-fetch'
           - 'nunjucks'
+          - 'openid-client'
           - 'semver'
           - 'undici'
 
@@ -88,6 +90,10 @@ updates:
       # stylelint 17 not yet supported by stylelint-config-gds
       - dependency-name: 'stylelint'
         versions: ['>=17']
+
+      # global-agent v4 broke TLS under Node 24 corporate proxies
+      - dependency-name: 'global-agent'
+        versions: ['>=4']
 
     # Schedule run every Monday, local time
     schedule:

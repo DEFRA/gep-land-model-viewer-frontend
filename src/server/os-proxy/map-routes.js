@@ -41,6 +41,7 @@ function isVtsBinaryPath (path) {
 const vtsProxyHandler = {
   method: 'GET',
   path: `${VTS_ROUTE_PATH}/{path*}`,
+  options: { tags: ['api'] },
   async handler (request, h) {
     const path = request.params.path || ''
 
@@ -89,6 +90,7 @@ function isJsonContentType (contentType) {
 const ngdProxyHandler = {
   method: 'GET',
   path: `${NGD_ROUTE_PATH}/{path*}`,
+  options: { tags: ['api'] },
   async handler (request, h) {
     const path = request.params.path || ''
 
@@ -125,6 +127,7 @@ const ngdProxyHandler = {
 const rasterProxyHandler = {
   method: 'GET',
   path: `${RASTER_ROUTE_PATH}/{path*}`,
+  options: { tags: ['api'] },
   async handler (request, h) {
     const path = request.params.path || ''
     const apiKey = getApiKey()

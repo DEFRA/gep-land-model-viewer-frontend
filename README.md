@@ -8,8 +8,7 @@ Core delivery platform Node.js Frontend Template.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
-- [Server-side Caching](#server-side-caching)
-- [Redis](#redis)
+- [Caching](#caching)
 - [Local Development](#local-development)
   - [Setup](#setup)
   - [Development](#development)
@@ -19,6 +18,7 @@ Core delivery platform Node.js Frontend Template.
   - [Linting and Formatting](#linting-and-formatting)
   - [Testing](#testing)
   - [CI/CD](#cicd)
+- [Authentication](#authentication)
 - [Docker](#docker)
   - [Development image](#development-image)
   - [Production image](#production-image)
@@ -44,24 +44,11 @@ cd gep-land-model-viewer-frontend
 nvm use
 ```
 
-## Server-side Caching
+## Caching
 
-We use Catbox for server-side caching. By default the service will use CatboxRedis when deployed and CatboxMemory for
-local development.
-You can override the default behaviour by setting the `SESSION_CACHE_ENGINE` environment variable to either `redis` or
-`memory`.
+Server-side session state is stored in Redis via [Catbox](https://hapi.dev/module/catbox/). Local development uses the Redis instance from Docker Compose so sessions survive server restarts. On CDP, Redis is namespaced per service (prefix: `gep-land-model-viewer-frontend:`).
 
-Please note: CatboxMemory (`memory`) is _not_ suitable for production use! The cache will not be shared between each
-instance of the service and it will not persist between restarts.
-
-## Redis
-
-Redis is an in-memory key-value store. Every instance of a service has access to the same Redis key-value store similar
-to how services might have a database (or MongoDB). All frontend services are given access to a namespaced prefixed that
-matches the service name. e.g. `my-service` will have access to everything in Redis that is prefixed with `my-service`.
-
-If your service does not require a session cache to be shared between instances or if you don't require Redis, you can
-disable setting `SESSION_CACHE_ENGINE=false` or changing the default value in `src/config/index.js`.
+Set `SESSION_CACHE_ENGINE=memory` to run without Redis. In-memory sessions are lost on every restart and not suitable for production.
 
 ## Proxy
 
@@ -89,10 +76,16 @@ return await fetch(url, {
 
 ### Setup
 
-Install application dependencies:
+Start local services:
 
 ```bash
-npm install
+docker compose up -d
+```
+
+Install dependencies:
+
+```bash
+npm ci
 ```
 
 ### Environment variables
@@ -184,6 +177,24 @@ When a PR is merged into `main`, the [Auto Back-merge](.github/workflows/auto-ba
 
 Hotfixes are handled by the [Publish Hot Fix](.github/workflows/publish-hotfix.yml) workflow, triggered manually from a hotfix branch. Each trigger builds a new patch version (e.g. `0.2.1`, `0.2.2`) so fixes can be re-tested before merging. Deploy hotfix artifacts via the CDP portal.
 
+## Authentication
+
+The service uses OIDC (authorization code flow with PKCE) for user authentication, implemented as a custom Hapi auth scheme wrapping [openid-client](https://www.npmjs.com/package/openid-client).
+
+Token refresh happens transparently during session validation, if the access token has expired the refresh token is used to obtain a new one before the request continues.
+
+### Deployed environments (CDP)
+
+AWS Cognito provides a short-lived federated token via `GetOpenIdTokenForDeveloperIdentity`. This token is sent as a `client_assertion` (JWT bearer) when communicating with the Azure AD OIDC endpoints. See the [CDP federated credentials guide](https://github.com/DEFRA/cdp-documentation/blob/main/how-to/federated-credentials.md) for background.
+
+### Local development
+
+Keycloak runs via Docker Compose as a local OIDC provider (port 8081). A mock credential provider signs JWTs locally instead of calling Cognito. The Keycloak realm is pre-configured with a test user:
+
+| Username | Password |
+|----------|----------|
+| dev      | dev      |
+
 ## Docker
 
 ### Development image
@@ -222,11 +233,8 @@ docker run -p 3000:3000 gep-land-model-viewer-frontend
 
 A local environment with:
 
-- Localstack for AWS services (S3, SQS)
-- Redis
-- MongoDB
-- This service.
-- A commented out backend example.
+- Redis (session cache)
+- Keycloak (OIDC provider, port 8081)
 
 ```bash
 docker compose up --build -d

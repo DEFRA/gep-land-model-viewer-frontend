@@ -22,6 +22,7 @@ function buildUpstreamUrl (query) {
 const namesSearchHandler = {
   method: 'GET',
   path: NAMES_ROUTE_PATH,
+  options: { tags: ['api'] },
   async handler (request, h) {
     const query = request.query.query
     if (!query?.trim()) {

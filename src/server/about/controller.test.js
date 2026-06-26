@@ -1,5 +1,6 @@
 import { createServer } from '../server.js'
 import { statusCodes } from '../common/constants/status-codes.js'
+import { mockAuthCredentials } from '../common/test-helpers/auth.js'
 
 describe('#aboutController', () => {
   let server
@@ -16,7 +17,8 @@ describe('#aboutController', () => {
   test('Should provide expected response', async () => {
     const { result, statusCode } = await server.inject({
       method: 'GET',
-      url: '/about'
+      url: '/about',
+      auth: mockAuthCredentials
     })
 
     expect(result).toEqual(expect.stringContaining('About |'))

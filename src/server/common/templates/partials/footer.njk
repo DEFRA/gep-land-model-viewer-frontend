@@ -1,7 +1,7 @@
 <footer class="defra-footer" role="contentinfo">
   <div class="govuk-width-container">
     <div class="defra-footer__meta">
-      <div class="defra-footer__meta-item">
+      <div class="defra-footer__meta-item defra-footer__top-row">
         <ul class="defra-footer__inline-list">
           <li class="defra-footer__inline-list-item">
             <a class="defra-footer__link" href="/privacy">Privacy</a>
@@ -13,6 +13,12 @@
             <a class="defra-footer__link" href="/accessibility-statement">Accessibility statement</a>
           </li>
         </ul>
+        {% if user %}
+        <span class="defra-footer__user-info">
+          <span class="defra-footer__link">{{ user.displayName }}</span>
+          <a class="defra-footer__link" href="/auth/logout">Sign out</a>
+        </span>
+        {% endif %}
       </div>
       <div class="defra-footer__meta-item">
         <span class="defra-footer__licence-description">

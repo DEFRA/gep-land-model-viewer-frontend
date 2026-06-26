@@ -2,6 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from 'vitest'
 import { brotliDecompressSync } from 'node:zlib'
 import { createServer } from '../server.js'
 import { statusCodes } from '../common/constants/status-codes.js'
+import { mockAuthCredentials } from '../common/test-helpers/auth.js'
 
 const parcelsUrl = '/land-model/parcels.json'
 
@@ -21,6 +22,7 @@ describe('#landModel', () => {
     const { rawPayload, statusCode, headers } = await server.inject({
       method: 'GET',
       url: parcelsUrl,
+      auth: mockAuthCredentials,
       headers: {
         'accept-encoding': 'br'
       }
@@ -38,6 +40,7 @@ describe('#landModel', () => {
     const { headers } = await server.inject({
       method: 'GET',
       url: parcelsUrl,
+      auth: mockAuthCredentials,
       headers: {
         'accept-encoding': 'br'
       }
@@ -49,7 +52,8 @@ describe('#landModel', () => {
   test('returns 404 for a file not in the allowlist', async () => {
     const { statusCode } = await server.inject({
       method: 'GET',
-      url: '/land-model/does-not-exist.json'
+      url: '/land-model/does-not-exist.json',
+      auth: mockAuthCredentials
     })
 
     expect(statusCode).toBe(statusCodes.notFound)

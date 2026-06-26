@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 import { catchAll } from './errors.js'
 import { createServer } from '../../server.js'
 import { statusCodes } from '../constants/status-codes.js'
+import { mockAuthCredentials } from '../test-helpers/auth.js'
 
 describe('#errors', () => {
   let server
@@ -19,7 +20,8 @@ describe('#errors', () => {
   test('Should provide expected Not Found page', async () => {
     const { result, statusCode } = await server.inject({
       method: 'GET',
-      url: '/non-existent-path'
+      url: '/non-existent-path',
+      auth: mockAuthCredentials
     })
 
     expect(result).toEqual(
@@ -33,7 +35,7 @@ describe('#catchAll', () => {
   const mockErrorLogger = vi.fn()
   const mockStack = 'Mock error stack'
   const errorPage = 'error/index'
-  const mockRequest = (statusCode) => ({
+  const mockRequest = (statusCode, headers = {}) => ({
     response: {
       isBoom: true,
       stack: mockStack,
@@ -41,6 +43,7 @@ describe('#catchAll', () => {
         statusCode
       }
     },
+    headers,
     logger: { error: mockErrorLogger }
   })
   const mockToolkitView = vi.fn()
@@ -122,5 +125,27 @@ describe('#catchAll', () => {
     expect(mockToolkitCode).toHaveBeenCalledWith(
       statusCodes.internalServerError
     )
+  })
+
+  test('Should return JSON for requests with Accept application/json', () => {
+    const mockResponse = vi.fn()
+    const mockType = vi.fn()
+    const jsonToolkit = {
+      response: mockResponse.mockReturnValue({
+        code: mockToolkitCode.mockReturnValue({ type: mockType })
+      })
+    }
+
+    catchAll(
+      mockRequest(statusCodes.unauthorized, { accept: 'application/json' }),
+      jsonToolkit
+    )
+
+    expect(mockResponse).toHaveBeenCalledWith({
+      statusCode: statusCodes.unauthorized,
+      error: 'Unauthorized'
+    })
+    expect(mockToolkitCode).toHaveBeenCalledWith(statusCodes.unauthorized)
+    expect(mockType).toHaveBeenCalledWith('application/json')
   })
 })

@@ -29,6 +29,14 @@ export function catchAll (request, h) {
     request.logger.error(response?.stack)
   }
 
+  const accept = request.headers.accept || ''
+  if (accept.includes('application/json')) {
+    return h
+      .response({ statusCode, error: errorMessage })
+      .code(statusCode)
+      .type('application/json')
+  }
+
   return h
     .view('error/index', {
       pageTitle: errorMessage,

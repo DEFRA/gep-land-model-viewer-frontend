@@ -37,7 +37,13 @@ export function context (request) {
     request.state?.defra_cookies_policy
   )
 
+  const credentials = request.auth?.credentials
+  const user = credentials
+    ? { id: credentials.id, displayName: credentials.displayName, email: credentials.email }
+    : null
+
   return {
+    user,
     assetPath: `${assetPath}/assets`,
     serviceName: config.get('serviceDisplayName'),
     serviceUrl: '/',

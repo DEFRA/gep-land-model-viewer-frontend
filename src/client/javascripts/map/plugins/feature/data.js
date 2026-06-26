@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../../authenticated-fetch.js'
 import { toDate } from '../info-panel/render.js'
 
 const PARCELS_URL = '/land-model/parcels.json'
@@ -164,7 +165,7 @@ function loadParcels () {
 
 async function fetchParcels () {
   try {
-    const res = await fetch(PARCELS_URL)
+    const res = await authenticatedFetch(PARCELS_URL)
     if (!res.ok) {
       throw new Error(`Failed to load parcels (${res.status})`)
     }

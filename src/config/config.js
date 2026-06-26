@@ -6,7 +6,8 @@ import convictFormatWithValidator from 'convict-format-with-validator'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const fourHoursMs = 14400000
+const eightHoursMs = 28800000
+const oneDayMs = 86400000
 const oneWeekMs = 604800000
 
 const isProduction = process.env.NODE_ENV === 'production'
@@ -77,6 +78,12 @@ export const config = convict({
     format: Boolean,
     default: isTest
   },
+  appBaseUrl: {
+    doc: 'Application base URL',
+    format: String,
+    default: 'http://localhost:3000',
+    env: 'APP_BASE_URL'
+  },
   log: {
     enabled: {
       doc: 'Is logging enabled',
@@ -122,7 +129,7 @@ export const config = convict({
       engine: {
         doc: 'backend cache is written to',
         format: ['redis', 'memory'],
-        default: isProduction ? 'redis' : 'memory',
+        default: 'redis',
         env: 'SESSION_CACHE_ENGINE'
       },
       name: {
@@ -134,15 +141,21 @@ export const config = convict({
       ttl: {
         doc: 'server side session cache ttl',
         format: Number,
-        default: fourHoursMs,
+        default: oneDayMs,
         env: 'SESSION_CACHE_TTL'
+      },
+      segment: {
+        doc: 'Isolate cached items within the cache partition',
+        format: String,
+        default: 'session',
+        env: 'SESSION_CACHE_SEGMENT'
       }
     },
     cookie: {
       ttl: {
         doc: 'Session cookie ttl',
         format: Number,
-        default: fourHoursMs,
+        default: eightHoursMs,
         env: 'SESSION_COOKIE_TTL'
       },
       password: {
@@ -197,6 +210,42 @@ export const config = convict({
       format: Boolean,
       default: isProduction,
       env: 'REDIS_TLS'
+    }
+  },
+  oidc: {
+    clientId: {
+      doc: 'OIDC client ID',
+      format: String,
+      env: 'OIDC_CLIENT_ID',
+      default: 'd02ee02c-b8da-483d-8a4e-29de7db48b03'
+    },
+    clientSecret: {
+      doc: 'OIDC client secret, shared between mock credential provider and local Keycloak. Not used in deployed environments.',
+      format: String,
+      sensitive: true,
+      env: 'OIDC_CLIENT_SECRET',
+      default: 'local-dev-secret'
+    },
+    wellKnownConfigurationUrl: {
+      doc: 'OIDC .well-known configuration URL',
+      format: String,
+      env: 'OIDC_WELL_KNOWN_CONFIGURATION_URL',
+      default: 'http://localhost:8081/realms/defra-local/.well-known/openid-configuration'
+    },
+  },
+  cognito: {
+    enabled: {
+      doc: 'Use AWS Cognito for client assertions (false uses local JWT signer)',
+      format: Boolean,
+      default: false,
+      env: 'COGNITO_ENABLED'
+    },
+    identityPoolId: {
+      doc: 'AWS Cognito identity pool ID',
+      format: String,
+      env: 'COGNITO_IDENTITY_POOL_ID',
+      nullable: true,
+      default: null
     }
   },
   nunjucks: {

@@ -24,6 +24,20 @@ describe('context and cache', () => {
 
   describe('#context', () => {
     const mockRequest = { path: '/', state: {}, query: {} }
+    const authenticatedRequest = {
+      path: '/',
+      state: {},
+      query: {},
+      auth: {
+        credentials: {
+          displayName: 'Test User',
+          id: 'user-1',
+          email: 'test@example.com',
+          accessToken: 'should-not-leak',
+          refreshToken: 'should-not-leak'
+        }
+      }
+    }
 
     describe('When webpack manifest file read succeeds', () => {
       let contextImport
@@ -72,7 +86,21 @@ describe('context and cache', () => {
           hasAnalyticsConsent: false,
           currentUrl: '/',
           serviceName: 'Defra Group Land Model',
-          serviceUrl: '/'
+          serviceUrl: '/',
+          user: null
+        })
+      })
+
+      test('sets user to null when unauthenticated', () => {
+        expect(contextResult.user).toBeNull()
+      })
+
+      test('sets user from auth credentials', () => {
+        const result = contextImport.context(authenticatedRequest)
+        expect(result.user).toEqual({
+          displayName: 'Test User',
+          id: 'user-1',
+          email: 'test@example.com'
         })
       })
 
@@ -173,7 +201,8 @@ describe('context and cache', () => {
           hasAnalyticsConsent: false,
           currentUrl: '/',
           serviceName: 'Defra Group Land Model',
-          serviceUrl: '/'
+          serviceUrl: '/',
+          user: null
         })
       })
     })

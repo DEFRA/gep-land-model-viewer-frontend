@@ -20,6 +20,18 @@
   width: 100%;
 }
 
+.defra-footer__top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.defra-footer__user-info {
+  display: flex;
+  gap: 15px;
+  white-space: nowrap;
+}
+
 .defra-footer__inline-list {
   margin: 0;
   padding: 0;

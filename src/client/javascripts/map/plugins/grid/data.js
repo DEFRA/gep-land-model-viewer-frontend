@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../../authenticated-fetch.js'
 import { toDate } from '../info-panel/render.js'
 
 const GRIDS_URL = '/land-model/grids.json'
@@ -124,7 +125,7 @@ function loadGrids () {
 
 async function fetchGrids () {
   try {
-    const res = await fetch(GRIDS_URL)
+    const res = await authenticatedFetch(GRIDS_URL)
     if (!res.ok) {
       throw new Error(`Failed to load grids (${res.status})`)
     }

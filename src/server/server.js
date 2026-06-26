@@ -17,6 +17,13 @@ import { contentSecurityPolicy } from './common/helpers/content-security-policy.
 import { setCacheHeaders } from './common/helpers/cache-headers.js'
 import { securityHeaders } from './common/helpers/security-headers.js'
 import { metrics } from '@defra/cdp-metrics'
+import { setupCaches } from './common/helpers/session/setup-caches.js'
+import { getUserSession } from './common/helpers/auth/decorators.js'
+import { oidcClient } from './common/helpers/auth/oidc-client.js'
+import { federatedOidc } from './common/helpers/auth/federated-oidc.js'
+import { cognitoClientAssertion } from './common/helpers/auth/client-assertion/cognito.js'
+import { mockClientAssertion } from './common/helpers/auth/client-assertion/mock.js'
+import { sessionStrategy } from './common/helpers/auth/session-strategy.js'
 
 export async function createServer () {
   setupProxy()
@@ -24,6 +31,9 @@ export async function createServer () {
     host: config.get('host'),
     port: config.get('port'),
     routes: {
+      auth: {
+        mode: 'required'
+      },
       validate: {
         options: {
           abortEarly: false
@@ -60,18 +70,32 @@ export async function createServer () {
       strictHeader: false
     }
   })
+  setupCaches(server)
+  server.decorate('request', 'getUserSession', getUserSession)
+
   await server.register([
     requestLogger,
     requestTracing,
     metrics,
     secureContext,
-    pulse,
+    pulse
+  ])
+
+  const credentialProvider = config.get('cognito.enabled')
+    ? cognitoClientAssertion
+    : mockClientAssertion
+
+  await server.register([
     sessionCache,
+    credentialProvider,
+    oidcClient,
+    federatedOidc,
+    sessionStrategy,
     nunjucksConfig,
     Scooter,
     contentSecurityPolicy,
     securityHeaders,
-    router // Register all the controllers/routes defined in src/server/router.js
+    router
   ])
 
   server.ext('onPreResponse', catchAll)
