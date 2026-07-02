@@ -1,0 +1,15 @@
+@use "variables/colours" as colours;
+
+$assets-path: "/public/assets/";
+$global-styles: true;
+$include-default-font-face: false;
+$font-family: (
+  "Helvetica",
+  "Arial",
+  sans-serif
+);
+$functional-colours: (
+  brand: colours.$defra-green,
+  link: colours.$defra-green,
+  link-hover: colours.$defra-green-dark
+);

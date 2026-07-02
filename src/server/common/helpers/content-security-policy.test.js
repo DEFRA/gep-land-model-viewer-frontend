@@ -40,7 +40,7 @@ describe('#contentSecurityPolicy', () => {
   test('Should not relax script-src or worker-src on non-map routes', async () => {
     const resp = await server.inject({
       method: 'GET',
-      url: '/'
+      url: '/cookies'
     })
 
     const csp = resp.headers['content-security-policy']

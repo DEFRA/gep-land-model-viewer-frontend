@@ -1,21 +1,4 @@
 @use "govuk-frontend" as *;
-@use "../variables" as *;
-
-.govuk-link:link {
-  color: $defra-green;
-}
-
-.govuk-link:visited {
-  color: $govuk-link-visited-colour;
-}
-
-.govuk-link:hover {
-  color: $defra-green-dark;
-}
-
-.govuk-link:focus {
-  color: govuk-functional-colour("focus-text");
-}
 
 .app-link-button,
 .app-link-button:link,
@@ -23,7 +6,7 @@
   @include govuk-font($size: 19);
   background: none;
   border: 0;
-  color: $defra-green;
+  color: govuk-functional-colour("link");
   cursor: pointer;
   padding: 0;
   text-decoration: underline;
@@ -31,7 +14,7 @@
 }
 
 .app-link-button:hover {
-  color: $defra-green-dark;
+  color: govuk-functional-colour("link-hover");
   text-decoration-thickness: max(3px, .1875rem, .12em);
 }
 
@@ -47,7 +30,7 @@
 .app-link-button:focus:not(:focus-visible):not(:active) {
   background: none;
   box-shadow: none;
-  color: $defra-green;
+  color: govuk-functional-colour("link");
   outline: none;
   text-decoration: underline;
   text-decoration-thickness: max(1px, .0625rem);

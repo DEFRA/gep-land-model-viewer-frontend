@@ -1,10 +1,12 @@
 @use "govuk-settings" as settings;
 
-// Expose the GOV.UK Sass API and output its CSS once, in application.scss.
-@forward "pkg:govuk-frontend" with (
+// Expose the same CSS-free API as GOV.UK Frontend's internal base module.
+@forward "pkg:govuk-frontend/settings" with (
   $govuk-assets-path: settings.$assets-path,
   $govuk-global-styles: settings.$global-styles,
   $govuk-include-default-font-face: settings.$include-default-font-face,
   $govuk-font-family: settings.$font-family,
   $govuk-functional-colours: settings.$functional-colours
 );
+@forward "pkg:govuk-frontend/tools";
+@forward "pkg:govuk-frontend/helpers";

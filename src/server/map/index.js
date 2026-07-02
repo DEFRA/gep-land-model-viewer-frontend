@@ -9,7 +9,7 @@ export const map = {
       server.route([
         {
           method: 'GET',
-          path: '/map',
+          path: '/',
           ...mapController,
           options: {
             plugins: { blankie: mapContentSecurityPolicy }

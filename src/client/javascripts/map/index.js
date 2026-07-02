@@ -7,6 +7,7 @@ import { registerFeatureController } from './plugins/feature/index.js'
 import { registerGridController } from './plugins/grid/index.js'
 import { registerInfoPanel } from './plugins/info-panel/index.js'
 import { registerLayersPanel } from './plugins/layers/index.js'
+import { createInfoLinksPlugin } from './plugins/info-links/index.js'
 import { createNorthIndicatorPlugin } from './plugins/north-indicator/index.js'
 import { createViewModePlugin, registerViewMode } from './plugins/view-mode/index.js'
 
@@ -60,7 +61,8 @@ const map = new InteractiveMap(MAP_ID, {
       }
     }),
     createViewModePlugin(),
-    createNorthIndicatorPlugin()
+    createNorthIndicatorPlugin(),
+    createInfoLinksPlugin()
   ]
 })
 

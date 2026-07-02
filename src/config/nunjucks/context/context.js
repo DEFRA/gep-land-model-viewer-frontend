@@ -2,7 +2,6 @@ import path from 'node:path'
 import { readFileSync } from 'node:fs'
 
 import { config } from '../../config.js'
-import { buildNavigation } from './build-navigation.js'
 import { createLogger } from '../../../server/common/helpers/logging/logger.js'
 
 const logger = createLogger()
@@ -48,7 +47,6 @@ export function context (request) {
     serviceName: config.get('serviceDisplayName'),
     serviceUrl: '/',
     breadcrumbs: [],
-    navigation: buildNavigation(request),
     cspNonce: request.plugins?.blankie?.nonces?.script ?? null,
     gtmContainerId: config.get('googleTagManager.containerId'),
     cookieConsentSet,

@@ -1,6 +1,6 @@
 @use "sass:color";
 @use "variables" as *;
-@use "govuk-frontend" as *;
+@use "govuk-base" as *;
 
 // ===== Info panel shell (shared by grid and feature views) =====
 
@@ -10,7 +10,7 @@
 
 .app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__right {
   top: 0;
-  right: 0;
+  right: calc(var(--app-map-info-panel-width) + var(--divider-gap));
   bottom: 0;
 }
 
@@ -18,40 +18,14 @@
   height: 100%;
 }
 
-.app-map.app-map--info-panel-open
-  :is(.im-o-app--tablet, .im-o-app--desktop)
-  .im-o-app__right
-  .im-c-tooltip-wrapper,
-.app-map.app-map--info-panel-open
-  :is(.im-o-app--tablet, .im-o-app--desktop)
-  .im-o-app__right
-  .im-c-button-wrapper
-  > .im-c-map-button {
-  transform: translateX(
-    calc(0px - var(--app-map-info-panel-width) - var(--divider-gap))
-  );
+.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__right-bottom {
+  position: absolute;
+  bottom: var(--right-offset-bottom);
+  right: 0;
 }
 
-.app-map.app-map--info-panel-open
-  :is(.im-o-app--tablet, .im-o-app--desktop)
-  .im-o-app__right
-  .im-c-tooltip {
-  top: 50%;
-  bottom: auto;
-  left: auto;
-  right: calc(100% + var(--tooltip-offset));
-  transform: translateY(-50%);
-}
-
-.app-map.app-map--info-panel-open
-  :is(.im-o-app--tablet, .im-o-app--desktop)
-  .im-o-app__right
-  .im-c-tooltip::after {
-  top: 50%;
-  bottom: auto;
-  left: auto;
-  right: calc((var(--tooltip-arrow-size) / 2) * -1);
-  transform: translateY(-50%) rotate(45deg);
+.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__attributions {
+  right: calc(var(--app-map-info-panel-width) - var(--primary-gap));
 }
 
 .app-map.app-map--info-panel-open
@@ -67,7 +41,7 @@
   .im-c-panel:has(.app-map__info-panel) {
   position: absolute;
   top: 0;
-  right: 0;
+  right: calc(0px - var(--app-map-info-panel-width) - var(--divider-gap));
   bottom: 0;
   display: flex;
   flex-direction: column;

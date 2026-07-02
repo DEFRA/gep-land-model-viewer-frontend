@@ -62,23 +62,6 @@ describe('context and cache', () => {
           assetPath: '/public/assets',
           breadcrumbs: [],
           getAssetPath: expect.any(Function),
-          navigation: [
-            {
-              current: true,
-              text: 'Home',
-              href: '/'
-            },
-            {
-              current: false,
-              text: 'Map',
-              href: '/map'
-            },
-            {
-              current: false,
-              text: 'About',
-              href: '/about'
-            }
-          ],
           cspNonce: null,
           gtmContainerId: null,
           cookieConsentSet: false,
@@ -177,23 +160,6 @@ describe('context and cache', () => {
           assetPath: '/public/assets',
           breadcrumbs: [],
           getAssetPath: expect.any(Function),
-          navigation: [
-            {
-              current: true,
-              text: 'Home',
-              href: '/'
-            },
-            {
-              current: false,
-              text: 'Map',
-              href: '/map'
-            },
-            {
-              current: false,
-              text: 'About',
-              href: '/about'
-            }
-          ],
           cspNonce: null,
           gtmContainerId: null,
           cookieConsentSet: false,

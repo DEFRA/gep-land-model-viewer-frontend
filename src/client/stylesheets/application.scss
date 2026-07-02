@@ -1,10 +1,4 @@
-@use "variables/colours" as colours;
-
-@use "govuk-frontend" with (
-  $govuk-functional-colours: (
-    brand: colours.$defra-green
-  )
-);
+@use "govuk-frontend";
 
 @use "variables";
 @use "helpers";
