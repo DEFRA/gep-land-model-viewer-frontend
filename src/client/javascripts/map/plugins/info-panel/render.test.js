@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, test, expect } from 'vitest'
-import { renderPanelShellHtml, renderMessageHtml, renderRowHtml, renderSectionHtml, renderProportionHtml, applyBarStyles } from './render.js'
+import { renderPanelShellHtml, renderMessageHtml, renderRowHtml, renderSectionHtml, renderProportionHtml, applyBarStyles, formatMetres, formatDegrees, formatSlope, formatAspectMean } from './render.js'
 import { INFO_PANEL_CONTENT_ID } from './constants.js'
 
 function render (html) {
@@ -116,5 +116,36 @@ describe('#renderProportionHtml', () => {
     const container = render(renderProportionHtml([{ label: '<script>alert(1)</script>', percentage: 100 }]))
 
     expect(container.querySelector('script')).toBeNull()
+  })
+})
+
+describe('#formatMetres', () => {
+  test('appends the unit or falls back to a dash', () => {
+    expect(formatMetres(85)).toBe('85m')
+    expect(formatMetres(null)).toBe('-')
+  })
+})
+
+describe('#formatDegrees', () => {
+  test('appends the unit or falls back to a dash', () => {
+    expect(formatDegrees(4)).toBe('4°')
+    expect(formatDegrees(null)).toBe('-')
+  })
+})
+
+describe('#formatSlope', () => {
+  test('pairs degrees with the aspect label when present', () => {
+    expect(formatSlope(2, 'FLAT')).toBe('2° (Flat)')
+    expect(formatSlope(2, null)).toBe('2°')
+    expect(formatSlope(null, 'FLAT')).toBe('-')
+  })
+})
+
+describe('#formatAspectMean', () => {
+  test('pairs degrees with the aspect label when present', () => {
+    expect(formatAspectMean(147, 'EAST')).toBe('147° (East)')
+    expect(formatAspectMean(147, null)).toBe('147°')
+    expect(formatAspectMean(null, 'EAST')).toBe('East')
+    expect(formatAspectMean(null, null)).toBe('-')
   })
 })

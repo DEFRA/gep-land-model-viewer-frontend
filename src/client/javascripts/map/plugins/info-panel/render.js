@@ -155,7 +155,7 @@ export function formatSlope (value, aspectLabel) {
   return `${degrees} (${sentenceCase(aspectLabel)})`
 }
 
-function formatAspectMean (value, label) {
+export function formatAspectMean (value, label) {
   if (value == null && !label) {
     return EMPTY
   }
@@ -192,6 +192,9 @@ export function renderLandUseHtml (landUse) {
 }
 
 export function renderTopographyHtml ({ topography, elevation, slope, aspect }) {
+  return '' // Topography disabled for R1
+
+  // eslint-disable-next-line no-unreachable
   const summary = [
     `Elevation: ${escapeHtml(formatMetres(elevation.mean))}`,
     `Slope: ${escapeHtml(formatSlope(slope.mode, aspect.label))}`

@@ -51,7 +51,7 @@ describe('#renderCellInfoHtml', () => {
     const sections = [...container.querySelectorAll('.app-map__info-section')]
     const titles = sections.map(s => s.querySelector('.app-map__info-section-title').textContent.trim())
 
-    expect(titles).toEqual(['Land cover', 'Land use', 'Topography', 'Soils'])
+    expect(titles).toEqual(['Land cover', 'Land use', /* 'Topography', */ 'Soils'])
   })
 
   test('renders an unavailable notice when details are null', () => {
@@ -73,7 +73,8 @@ describe('#renderCellInfoHtml', () => {
     expect(preview.textContent).toBe('-')
   })
 
-  test('renders the topography table with metres and degrees', () => {
+  test.skip('renders the topography table with metres and degrees', () => {
+    // Disabled for R1
     const container = renderHtml(renderCellInfoHtml(hit(), gridCell()))
     const table = container.querySelector('.app-map__topo-table')
     const cells = [...table.querySelectorAll('.govuk-table__cell')]
@@ -83,7 +84,8 @@ describe('#renderCellInfoHtml', () => {
     expect(values).toContain('0.5°')
   })
 
-  test('renders aspect label in sentence case in the mean row', () => {
+  test.skip('renders aspect label in sentence case in the mean row', () => {
+    // Disabled for R1
     const container = renderHtml(renderCellInfoHtml(hit(), gridCell()))
     const rows = [...container.querySelectorAll('.app-map__topo-table .govuk-table__row')]
     const meanRow = rows.find(r => r.querySelector('.govuk-table__header')?.textContent === 'Mean')
@@ -92,7 +94,8 @@ describe('#renderCellInfoHtml', () => {
     expect(aspectCell.textContent).toBe('East')
   })
 
-  test('pairs the slope summary with its aspect direction', () => {
+  test.skip('pairs the slope summary with its aspect direction', () => {
+    // Disabled for R1
     const container = renderHtml(renderCellInfoHtml(hit(), gridCell()))
     const topoSection = container.querySelectorAll('.app-map__info-section')[2]
     const preview = topoSection.querySelector('.app-map__info-section-value')
@@ -106,7 +109,8 @@ describe('#renderCellInfoHtml', () => {
 
     expect(text).toContain('UKCEH LCM2024')
     expect(text).toContain('Cranfield Soils Data')
-    expect(text).toContain('LIDAR Composite Digital Terrain Model (DTM) 1m')
+    // Topography disabled for R1
+    // expect(text).toContain('LIDAR Composite Digital Terrain Model (DTM) 1m')
   })
 
   test('renders dominant cover label in the land cover section', () => {
@@ -117,7 +121,8 @@ describe('#renderCellInfoHtml', () => {
     expect(landCoverSection.textContent).toContain('Cropped land')
   })
 
-  test('renders dashes for null elevation, slope, and aspect values', () => {
+  test.skip('renders dashes for null elevation, slope, and aspect values', () => {
+    // Disabled for R1
     const details = gridCell({
       elevation: { min: null, mean: null, max: null, mode: null },
       slope: { min: null, mode: null, max: null, mean: null },
@@ -131,7 +136,8 @@ describe('#renderCellInfoHtml', () => {
     expect(values.every(v => v === '-')).toBe(true)
   })
 
-  test('renders slope without aspect when aspect is null', () => {
+  test.skip('renders slope without aspect when aspect is null', () => {
+    // Disabled for R1
     const details = gridCell({ aspect: { label: null, mean: null } })
     const container = renderHtml(renderCellInfoHtml(hit(), details))
     const topoSection = container.querySelectorAll('.app-map__info-section')[2]
@@ -159,6 +165,5 @@ describe('#renderCellInfoHtml', () => {
     const text = container.textContent
 
     expect(text).toContain('2015-04-28')
-    expect(text).toContain('2023-03-08')
   })
 })

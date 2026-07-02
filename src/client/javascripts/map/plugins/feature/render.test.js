@@ -71,7 +71,7 @@ describe('#renderFeatureInfoHtml', () => {
   test('renders a collapsible section for each attribute category', () => {
     const headings = [...render().querySelectorAll('.app-map__info-section-title')].map((el) => el.textContent.trim())
 
-    expect(headings).toEqual(['Land cover', 'Land use', 'Topography', 'Soils'])
+    expect(headings).toEqual(['Land cover', 'Land use', /* 'Topography', */'Soils'])
   })
 
   test('summarises a mixed category as "Mixed"', () => {
@@ -89,25 +89,29 @@ describe('#renderFeatureInfoHtml', () => {
     expect(landCover.textContent).toContain('82.2%')
   })
 
-  test('renders the topography table with metres and degrees', () => {
+  test.skip('renders the topography table with metres and degrees', () => {
+    // Disabled for R1
     const text = render().querySelector('.app-map__topo-details').textContent
 
     expect(text).toContain('85m')
     expect(text).toContain('4°')
   })
 
-  test('labels elevation by its mean, slope by its mode and aspect by its mean with direction', () => {
+  test.skip('labels elevation by its mean, slope by its mode and aspect by its mean with direction', () => {
+    // Disabled for R1
     const container = render()
 
     expect(topoCells(container, 'Mean')).toEqual(['85m', '-', '147.83° (Flat)'])
     expect(topoCells(container, 'Mode')).toEqual(['-', '2°', '-'])
   })
 
-  test('pairs the slope summary with its aspect', () => {
+  test.skip('pairs the slope summary with its aspect', () => {
+    // Disabled for R1
     expect(render().textContent).toContain('Slope: 2° (Flat)')
   })
 
-  test('renders dashes for missing topography values', () => {
+  test.skip('renders dashes for missing topography values', () => {
+    // Disabled for R1
     const container = render({
       elevation: { min: null, mean: null, mode: null, max: null },
       slope: { min: null, mean: null, mode: null, max: null },
@@ -119,7 +123,8 @@ describe('#renderFeatureInfoHtml', () => {
     expect(topoCells(container, 'Mode')).toEqual(['-', '-', '-'])
   })
 
-  test('omits the aspect from the slope summary when the aspect label is null', () => {
+  test.skip('omits the aspect from the slope summary when the aspect label is null', () => {
+    // Disabled for R1
     const text = render({ slope: { ...parcel().slope, mode: 5 }, aspect: { mean: 0, label: null } }).textContent
 
     expect(text).toContain('Slope: 5°')
