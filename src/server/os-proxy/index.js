@@ -1,5 +1,5 @@
 import { createLogger } from '../common/helpers/logging/logger.js'
-import { getApiKey } from './proxy-helpers.js'
+import { getApiKey } from './config.js'
 import mapRoutes from './map-routes.js'
 import namesRoutes from './names-routes.js'
 

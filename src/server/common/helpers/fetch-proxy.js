@@ -1,6 +1,5 @@
-import { config } from '../../config/config.js'
-import { createLogger } from '../common/helpers/logging/logger.js'
-import { statusCodes } from '../common/constants/status-codes.js'
+import { createLogger } from './logging/logger.js'
+import { statusCodes } from '../constants/status-codes.js'
 
 const logger = createLogger()
 
@@ -8,10 +7,6 @@ const CACHE_CONTROL_HEADER = 'cache-control'
 const CONTENT_TYPE_HEADER = 'content-type'
 const VALIDATOR_HEADERS = ['etag', 'last-modified']
 const CONDITIONAL_HEADERS = ['if-none-match', 'if-modified-since']
-
-export function getApiKey () {
-  return config.get('map.osApiKey')
-}
 
 export function getConditionalHeaders (request) {
   const headers = {}

@@ -104,7 +104,7 @@ describe('map entry point', () => {
 
     const infoPanel = registerInfoPanel.mock.results[0].value
     expect(setConstrainResolution).toHaveBeenCalledWith(true)
-    expect(registerLayersPanel).toHaveBeenCalledWith(expect.any(Object), olMap)
+    expect(registerLayersPanel).toHaveBeenCalledWith(expect.any(Object), olMap, 'outdoor')
     expect(registerInfoPanel).toHaveBeenCalledWith(expect.any(Object), olMap)
     expect(registerGridController).toHaveBeenCalledWith(expect.any(Object), olMap, infoPanel)
     expect(registerFeatureController).toHaveBeenCalledWith(expect.any(Object), olMap, 'outdoor', infoPanel)

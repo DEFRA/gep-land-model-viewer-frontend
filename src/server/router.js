@@ -9,6 +9,7 @@ import { accessibilityStatement } from './accessibility-statement/index.js'
 import { health } from './health/index.js'
 import { map } from './map/index.js'
 import { osProxy } from './os-proxy/index.js'
+import { wmsProxy } from './wms-proxy/index.js'
 import { landModel } from './land-model/index.js'
 import { serveStaticFiles } from './common/helpers/serve-static-files.js'
 
@@ -22,7 +23,7 @@ export const router = {
       await server.register([health])
 
       // Application specific routes, add your own routes here
-      await server.register([auth, home, about, cookies, privacy, accessibilityStatement, map, osProxy, landModel])
+      await server.register([auth, home, about, cookies, privacy, accessibilityStatement, map, osProxy, wmsProxy, landModel])
 
       // Static assets
       await server.register([serveStaticFiles])

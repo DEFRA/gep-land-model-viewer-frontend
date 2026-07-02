@@ -54,8 +54,8 @@ const map = new InteractiveMap(MAP_ID, {
         panels: [{
           id: 'mapStyles',
           mobile: { slot: 'drawer', modal: true, dismissible: true },
-          tablet: { slot: 'mapStyles-button', width: '300px', modal: true, dismissible: true },
-          desktop: { slot: 'mapStyles-button', width: '300px', modal: true, dismissible: true }
+          tablet: { slot: 'mapStyles-button', width: '340px', modal: true, dismissible: true },
+          desktop: { slot: 'mapStyles-button', width: '340px', modal: true, dismissible: true }
         }]
       }
     }),
@@ -68,7 +68,7 @@ map.on(EVENTS.MAP_READY, (/** @type {{ map: import('ol/Map').default, mapStyleId
   // Disable intermediary zoom levels for better rendering quality
   olMap.getView().setConstrainResolution(true)
 
-  registerLayersPanel(map, olMap)
+  registerLayersPanel(map, olMap, mapStyleId)
   const infoPanel = registerInfoPanel(map, olMap)
   const grid = registerGridController(map, olMap, infoPanel)
   const feature = registerFeatureController(map, olMap, mapStyleId, infoPanel)

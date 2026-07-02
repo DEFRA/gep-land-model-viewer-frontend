@@ -1,6 +1,6 @@
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { statusCodes } from '../common/constants/status-codes.js'
-import { getApiKey } from './proxy-helpers.js'
+import { getApiKey } from './config.js'
 
 const logger = createLogger()
 

@@ -1,4 +1,5 @@
 export const OS_ATTRIBUTION = `© Crown copyright and database rights ${new Date().getFullYear()} OS AC0000805307`
+export const APGB_ATTRIBUTION = `© Getmapping Plc and Bluesky International Limited ${new Date().getFullYear()}`
 
 const OS_NGD_COLLECTION_URL = '/os/ngd/collections/ngd-base'
 
@@ -46,14 +47,14 @@ export const mapStyles = [
     mapColorScheme: 'light',
     appColorScheme: 'light'
   },
-  // For testing a non os-ngd map with features, will be replaced with aerial imagery when available
   {
-    id: 'os-outdoor-raster',
-    label: 'OS Outdoor (raster)',
-    url: '/os/raster/Outdoor_27700/{z}/{x}/{y}.png',
-    type: 'raster',
-    thumbnail: '/public/images/os-outdoor-raster.jpg',
-    attribution: OS_ATTRIBUTION,
+    id: 'apgb-aerial',
+    label: 'Aerial',
+    type: 'wms',
+    url: '/wms/apgb',
+    params: { LAYERS: 'APGB_Latest_UK_125mm', BGCOLOR: '0x1E3448', TRANSPARENT: false },
+    thumbnail: '/public/images/aerial.jpg',
+    attribution: APGB_ATTRIBUTION,
     mapColorScheme: 'light',
     appColorScheme: 'light'
   }

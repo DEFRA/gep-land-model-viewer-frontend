@@ -2,7 +2,7 @@ import { EVENTS } from '@defra/interactive-map'
 import ImageLayer from 'ol/layer/Image.js'
 import ImageWMS from 'ol/source/ImageWMS.js'
 import { datasets } from '../../config/datasets.js'
-import { OS_ATTRIBUTION } from '../../config/map-styles.js'
+import { mapStyles } from '../../config/map-styles.js'
 import {
   buildFeatureInfoFragment,
   buildKeyFragment,
@@ -25,15 +25,23 @@ const KEY_BUTTON_ID = 'gep-key'
 const KEY_PANEL_ID = 'gep-key'
 const KEY_CONTENT_ID = 'gep-key-content'
 
-export function registerLayersPanel (interactiveMap, map) {
-  registerLayerListPanel(interactiveMap, map)
+export function registerLayersPanel (interactiveMap, map, initialStyleId) {
+  registerLayerListPanel(interactiveMap, map, initialStyleId)
   registerIdentifyPanel(interactiveMap, map)
 }
 
-function registerLayerListPanel (interactiveMap, map) {
+function setBaseAttribution (mapStyleId) {
+  baseAttribution = mapStyles.find(s => s.id === mapStyleId)?.attribution ?? mapStyles[0].attribution
+}
+
+function registerLayerListPanel (interactiveMap, map, initialStyleId) {
+  setBaseAttribution(initialStyleId)
   const refreshAttributions = () => refreshAttributionsForVisibleLayers(map)
   refreshAttributions()
-  interactiveMap.on(EVENTS.MAP_STYLE_CHANGE, refreshAttributions)
+  interactiveMap.on(EVENTS.MAP_STYLE_CHANGE, ({ mapStyleId }) => {
+    setBaseAttribution(mapStyleId)
+    refreshAttributions()
+  })
 
   interactiveMap.addButton(BUTTON_ID, {
     id: BUTTON_ID,
@@ -417,12 +425,14 @@ function refreshKey (map) {
   contentEl.replaceChildren(buildKeyFragment(entries))
 }
 
+let baseAttribution
+
 function getCurrentAttribution (map) {
   const visibleAttributions = getVisibleWmsLayers(map)
     .map(layer => datasets.find(d => `gep-${d.id}` === layer.get('id'))?.source.attribution)
     .filter(Boolean)
 
-  return [...new Set([OS_ATTRIBUTION, ...visibleAttributions])].join(' | ')
+  return [...new Set([baseAttribution, ...visibleAttributions])].join(' | ')
 }
 
 function refreshAttributionsForVisibleLayers (map) {

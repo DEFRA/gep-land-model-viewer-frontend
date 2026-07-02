@@ -1,4 +1,4 @@
-import { mapStyles, OS_ATTRIBUTION, OS_NGD_STYLE_IDS, OS_NGD_TILESET_URL } from './map-styles.js'
+import { mapStyles, OS_ATTRIBUTION, APGB_ATTRIBUTION, OS_NGD_STYLE_IDS, OS_NGD_TILESET_URL } from './map-styles.js'
 
 describe('#mapStyles', () => {
   test('exports an array of map styles', () => {
@@ -26,17 +26,24 @@ describe('#mapStyles', () => {
     }
   })
 
-  test('raster style URLs point to raster proxy with tile template', () => {
-    const rasterStyles = mapStyles.filter(s => s.type === 'raster')
-    for (const style of rasterStyles) {
-      expect(style.url).toMatch(/^\/os\/raster\/.*\/{z}\/{x}\/{y}\.png$/)
+  test('WMS style URLs point to WMS proxy', () => {
+    const wmsStyles = mapStyles.filter(s => s.type === 'wms')
+    for (const style of wmsStyles) {
+      expect(style.url).toMatch(/^\/wms\//)
+      expect(style.params).toHaveProperty('LAYERS')
     }
   })
 
-  test('each style uses the OS attribution', () => {
-    for (const style of mapStyles) {
+  test('OS styles use the OS attribution', () => {
+    const osStyles = mapStyles.filter(s => s.type === 'ogc-vt')
+    for (const style of osStyles) {
       expect(style.attribution).toBe(OS_ATTRIBUTION)
     }
+  })
+
+  test('aerial style uses the APGB attribution', () => {
+    const aerial = mapStyles.find(s => s.id === 'apgb-aerial')
+    expect(aerial.attribution).toBe(APGB_ATTRIBUTION)
   })
 })
 

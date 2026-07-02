@@ -284,6 +284,13 @@ export const config = convict({
       default: '',
       env: 'OS_API_KEY',
       sensitive: true
+    },
+    apgbUrl: {
+      doc: 'APGB aerial photography WMS endpoint URL',
+      format: String,
+      default: '',
+      env: 'APGB_WMS_URL',
+      sensitive: true
     }
   }
 })

@@ -1,7 +1,6 @@
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { statusCodes } from '../common/constants/status-codes.js'
 import {
-  getApiKey,
   getConditionalHeaders,
   handleBinaryResponse,
   handleJsonResponse,
@@ -9,7 +8,8 @@ import {
   handleUpstreamError,
   handleNetworkError,
   createUrlRewriter
-} from './proxy-helpers.js'
+} from '../common/helpers/fetch-proxy.js'
+import { getApiKey } from './config.js'
 
 const logger = createLogger()
 
