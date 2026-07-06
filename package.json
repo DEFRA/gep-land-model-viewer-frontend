@@ -34,7 +34,7 @@
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
   "dependencies": {
-    "@aws-sdk/client-cognito-identity": "3.1058.0",
+    "@aws-sdk/client-cognito-identity": "3.1075.0",
     "@defra/cdp-auditing": "0.6.1",
     "@defra/cdp-metrics": "0.6.0",
     "@defra/hapi-secure-context": "0.4.0",
@@ -46,8 +46,8 @@
     "@hapi/catbox-redis": "7.0.2",
     "@hapi/cookie": "12.0.1",
     "@hapi/hapi": "21.4.9",
-    "@hapi/inert": "7.1.1",
-    "@hapi/jwt": "3.2.3",
+    "@hapi/inert": "7.1.2",
+    "@hapi/jwt": "3.2.4",
     "@hapi/scooter": "8.0.0",
     "@hapi/vision": "7.0.3",
     "@hapi/yar": "11.0.3",
@@ -60,7 +60,7 @@
     "global-agent": "3.0.0",
     "govuk-frontend": "6.2.0",
     "hapi-pino": "13.0.0",
-    "hapi-pulse": "3.0.1",
+    "hapi-pulse": "4.0.0",
     "ioredis": "5.11.1",
     "lodash": "4.18.1",
     "node-fetch": "3.3.2",
@@ -70,7 +70,7 @@
     "pino": "10.3.1",
     "pino-pretty": "13.1.3",
     "proj4": "2.20.9",
-    "semver": "7.8.4",
+    "semver": "7.8.5",
     "undici": "8.5.0"
   },
   "devDependencies": {
