@@ -1,12 +1,5 @@
 [
   {
-    "id": "6232eb53-0573-4183-bce2-0de344cd3820",
-    "title": "AIMS Structure",
-    "wmsUrl": "https://environment.data.gov.uk/spatialdata/aims-structure/wms",
-    "resourceName": "AIMSStructure_WMS",
-    "description": "AIMS Structure WMS"
-  },
-  {
     "id": "f425f1e1-fc18-4b5a-88d8-76934125627c",
     "title": "Ancient Woodland (England)",
     "wmsUrl": "https://environment.data.gov.uk/spatialdata/ancient-woodland-england/wms",

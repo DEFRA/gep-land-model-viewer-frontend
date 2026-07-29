@@ -3,7 +3,7 @@ import { datasets } from './datasets.js'
 describe('#datasets', () => {
   test('exports an array of datasets from EA catalog', () => {
     expect(Array.isArray(datasets)).toBe(true)
-    expect(datasets.length).toBe(7)
+    expect(datasets.length).toBe(6)
   })
 
   test('each dataset has required properties', () => {
