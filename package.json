@@ -39,7 +39,7 @@
     "@defra/cdp-metrics": "0.6.0",
     "@defra/hapi-secure-context": "0.4.0",
     "@defra/hapi-tracing": "1.30.0",
-    "@defra/interactive-map": "0.0.33-alpha",
+    "@defra/interactive-map": "0.0.35-alpha",
     "@elastic/ecs-pino-format": "1.5.0",
     "@hapi/accept": "6.0.3",
     "@hapi/catbox-memory": "6.0.2",
@@ -81,14 +81,13 @@
     "autoprefixer": "10.5.2",
     "babel-loader": "10.1.1",
     "cheerio": "1.2.0",
-    "clean-webpack-plugin": "4.0.0",
     "copy-webpack-plugin": "14.0.0",
     "eslint": "9.39.4",
     "husky": "9.1.7",
     "jsdom": "29.1.1",
     "neostandard": "0.13.0",
     "nodemon": "3.1.14",
-    "npm-run-all": "4.1.5",
+    "npm-run-all2": "8.0.4",
     "postcss-load-config": "6.0.1",
     "postcss-loader": "8.2.1",
     "sass-embedded": "1.100.0",
@@ -107,6 +106,12 @@
     "tmp": "0.2.5",
     "serialize-javascript": "7.0.5",
     "uuid": "^14.0.0",
-    "sirv": "^3.0.2"
+    "sirv": "^3.0.2",
+    "polygon-splitter": {
+      "glob": "^11.1.0",
+      "brace-expansion": "5.0.8"
+    },
+    "brace-expansion": "5.0.8",
+    "minimatch": "^10.2.6"
   }
 }

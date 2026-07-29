@@ -2,7 +2,6 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import CopyPlugin from 'copy-webpack-plugin'
-import { CleanWebpackPlugin } from 'clean-webpack-plugin'
 import TerserPlugin from 'terser-webpack-plugin'
 import { WebpackAssetsManifest } from 'webpack-assets-manifest'
 
@@ -56,7 +55,8 @@ export default {
     path: path.join(dirname, '.public'),
     publicPath: '/public/',
     libraryTarget: 'module',
-    module: true
+    module: true,
+    clean: true
   },
   resolve: {
     alias: {
@@ -170,7 +170,6 @@ export default {
     usedExports: true
   },
   plugins: [
-    new CleanWebpackPlugin(),
     new WebpackAssetsManifest(),
     new CopyPlugin({
       patterns: [
