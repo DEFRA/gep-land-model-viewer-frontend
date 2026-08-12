@@ -1,18 +1,13 @@
 import { EVENTS } from '@defra/interactive-map'
 import Overlay from 'ol/Overlay.js'
-import ImageLayer from 'ol/layer/Image.js'
-import ImageWMS from 'ol/source/ImageWMS.js'
-import GeoTIFF from 'ol/source/GeoTIFF.js'
-import WebGLTileLayer from 'ol/layer/WebGLTile.js'
-import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
-import VectorSource from 'ol/source/Vector.js'
-import { bbox } from 'ol/loadingstrategy.js'
-import { createLoader } from 'flatgeobuf/lib/mjs/ol.js'
 import { datasets } from '../../config/datasets.js'
 import { mapStyles } from '../../config/map-styles.js'
 import { datasetForLayer, layerIdFor, overviewIdFor } from '../../config/layers.js'
-import { loadLyrxStyle } from './lyrx-style.js'
-import { createPmtilesLayer } from './pmtiles-layer.js'
+import { EPSG_27700, UNKNOWN_LAYER_LABEL } from './constants.js'
+import { createCogLayer } from './cog-layer.js'
+import { createFlatGeobufLayers } from './fgb-layer.js'
+import { createWmsLayer, getSourceUrl, getVisibleWmsLayers } from './wms-layer.js'
+import { valuesAt } from './hit-test.js'
 import {
   buildFeatureInfoFragment,
   buildKeyFragment,
@@ -34,9 +29,6 @@ const INFO_STATUS_ID = 'gep-layer-info-status'
 const KEY_BUTTON_ID = 'gep-key'
 const KEY_PANEL_ID = 'gep-key'
 const KEY_CONTENT_ID = 'gep-key-content'
-
-const EPSG_27700 = 'EPSG:27700'
-const UNKNOWN_LAYER_LABEL = 'Unknown Layer'
 
 let listeners = null
 
@@ -238,20 +230,6 @@ function findDatasetLayers (map, layerId) {
     .filter(l => l.get('id') === layerId || l.get('id') === overviewIdFor(layerId))
 }
 
-function getSourceUrl (source) {
-  return source.getUrls?.()?.[0] ?? source.getUrl?.()
-}
-
-function getVisibleWmsLayers (map) {
-  return map.getLayers().getArray()
-    .filter(layer =>
-      layer.get('wms') &&
-      layer.getVisible() &&
-      layer.getSource()?.getParams()?.LAYERS &&
-      getSourceUrl(layer.getSource())
-    )
-}
-
 async function showFeatureInfo (coords, map, interactiveMap, signal) {
   const contentEl = document.getElementById(INFO_CONTENT_ID)
   const statusEl = document.getElementById(INFO_STATUS_ID)
@@ -340,38 +318,6 @@ function updateStatus (statusEl, message) {
   }
 }
 
-const capabilitiesCache = new Map()
-
-export function resetCapabilitiesCache () {
-  capabilitiesCache.clear()
-}
-
-async function fetchWmsLayerNames (wmsUrl) {
-  if (capabilitiesCache.has(wmsUrl)) {
-    return capabilitiesCache.get(wmsUrl)
-  }
-
-  try {
-    const res = await fetch(`${wmsUrl}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities`)
-    if (!res.ok) {
-      return []
-    }
-
-    const text = await res.text()
-    const doc = new DOMParser().parseFromString(text, 'text/xml')
-    const names = [...doc.querySelectorAll('Layer[queryable="1"] > Name')]
-      .map(el => el.textContent)
-      .filter(Boolean)
-
-    if (names.length) {
-      capabilitiesCache.set(wmsUrl, names)
-    }
-    return names
-  } catch {
-    return []
-  }
-}
-
 function setLayerInputLoading (input, loading) {
   input.disabled = loading
   const item = input.closest('[data-app-layer-item]')
@@ -415,94 +361,6 @@ async function createLayers (dataset, layerId) {
   } else {
     return []
   }
-}
-
-async function createWmsLayer (dataset, layerId) {
-  const layerNames = dataset.source.layers?.length
-    ? dataset.source.layers
-    : await fetchWmsLayerNames(dataset.source.url)
-
-  if (!layerNames.length) {
-    return null
-  }
-
-  const params = {
-    LAYERS: layerNames.join(','),
-    FORMAT: 'image/png',
-    TRANSPARENT: true,
-    CRS: EPSG_27700
-  }
-
-  return new ImageLayer({
-    properties: { id: layerId, wms: true },
-    source: new ImageWMS({
-      url: dataset.source.url,
-      params,
-      attributions: dataset.source.attribution,
-      ratio: 1.5,
-      crossOrigin: 'anonymous'
-    }),
-    opacity: dataset.source.opacity ?? 1
-  })
-}
-
-async function createCogLayer (dataset, layerId) {
-  const { url, opacity, style, normalize, interpolate } = dataset.source
-
-  return new WebGLTileLayer({
-    properties: { id: layerId },
-    source: new GeoTIFF({ sources: [{ url }], normalize, interpolate }),
-    style: { color: style.color },
-    opacity
-  })
-}
-
-// Datasets state the first zoom that draws. OL hides a layer at its minZoom, so
-// step back one to make that level the first that renders.
-function exclusiveMinZoomFor (firstZoom) {
-  if (firstZoom === undefined) {
-    return undefined
-  }
-
-  return firstZoom - 1
-}
-
-async function createFlatGeobufLayers (dataset, layerId) {
-  const { url, styleUrl, attribution, opacity, lowercaseFields = false, style: manualStyle, minZoom } = dataset.source
-  const { overview } = dataset
-  if (overview && overview.type !== 'pmtiles') {
-    throw new Error(`Dataset ${dataset.id} has unsupported overview type "${overview.type}", only pmtiles is supported`)
-  }
-
-  const { style, maxResolution } = styleUrl ? await loadLyrxStyle(styleUrl, { lowercaseFields }) : {}
-  const source = new VectorSource({ strategy: bbox, attributions: attribution })
-
-  source.setLoader(createLoader(source, url, EPSG_27700, bbox))
-
-  // An overview or a configured minZoom overrides the layer file's minScale, and
-  // an overview hands the detail layer the zoom after its own last zoom level.
-  const useLayerFileMinScale = !overview && minZoom === undefined
-  const firstZoom = overview ? overview.maxZoom + 1 : minZoom
-  const detail = new WebGLVectorLayer({
-    properties: { id: layerId },
-    source,
-    maxResolution: useLayerFileMinScale ? maxResolution : undefined,
-    minZoom: exclusiveMinZoomFor(firstZoom),
-    style: manualStyle ?? style,
-    opacity
-  })
-
-  if (!overview) {
-    return [detail]
-  }
-
-  const overviewLayer = await createPmtilesLayer(overview.url, overviewIdFor(layerId), {
-    style: manualStyle ?? style,
-    maxZoom: overview.maxZoom,
-    opacity
-  })
-
-  return [detail, overviewLayer]
 }
 
 function refreshKey (map) {
@@ -569,37 +427,6 @@ function toGroupHtml ({ label, values }) {
   const rows = values.map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
 
   return `<div class="app-map__hover-info-group"><strong>${label}</strong>${rows.join('')}</div>`
-}
-
-function valuesAt (map, pixel) {
-  const groups = []
-
-  map.forEachFeatureAtPixel(pixel, (feature, layer) => {
-    // Overview tiles yield RenderFeatures, which have no named geometry property.
-    const geometryName = feature.getGeometryName?.()
-    groups.push({
-      label: datasetForLayer(layer, datasets)?.label ?? UNKNOWN_LAYER_LABEL,
-      values: Object.entries(feature.getProperties()).filter(([key]) => key !== geometryName)
-    })
-  }, { hitTolerance: 0, layerFilter: (layer) => datasetForLayer(layer, datasets)?.source.type === 'fgb' })
-
-  for (const layer of map.getLayers().getArray()) {
-    const dataset = datasetForLayer(layer, datasets)
-    if (dataset?.source.type !== 'cog' || !layer.getVisible()) {
-      continue
-    }
-
-    // The last band is the mask, so slice it off to get the values.
-    const bands = layer.getData(pixel)
-    if (bands?.at(-1)) {
-      groups.push({
-        label: dataset.label,
-        values: Array.from(bands.slice(0, -1), (value, index) => [`band ${index + 1}`, value])
-      })
-    }
-  }
-
-  return groups
 }
 
 function filterLayers (query) {

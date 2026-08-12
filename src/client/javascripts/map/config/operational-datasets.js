@@ -37,12 +37,12 @@ export const operationalDatasets = [
       type: 'fgb',
       url: `${BASE_URL}/living_england_habitat_map/livingeng.fgb`,
       opacity: 0.7,
-      styleUrl: `${BASE_URL}/living_england_habitat_map/Living%20England%20Habitat%20Map%20Phase%204%20%C2%A9%20Natural%20England.lyrx`
-    },
-    overview: {
-      type: 'pmtiles',
-      url: `${BASE_URL}/living_england_habitat_map/data.pmtiles`,
-      maxZoom: 4
+      styleUrl: `${BASE_URL}/living_england_habitat_map/Living%20England%20Habitat%20Map%20Phase%204%20%C2%A9%20Natural%20England.lyrx`,
+      overview: {
+        type: 'pmtiles',
+        url: `${BASE_URL}/living_england_habitat_map/data.pmtiles`,
+        maxZoom: 4
+      }
     }
   },
   {
@@ -52,12 +52,12 @@ export const operationalDatasets = [
       type: 'fgb',
       url: `${BASE_URL}/ancient_woodland/ancient_woodland_england.fgb`,
       opacity: 0.7,
-      styleUrl: `${BASE_URL}/ancient_woodland/Ancient%20Woodland%20%C2%A9%20Natural%20England.lyrx`
-    },
-    overview: {
-      type: 'pmtiles',
-      url: `${BASE_URL}/ancient_woodland/data.pmtiles`,
-      maxZoom: 4
+      styleUrl: `${BASE_URL}/ancient_woodland/Ancient%20Woodland%20%C2%A9%20Natural%20England.lyrx`,
+      overview: {
+        type: 'pmtiles',
+        url: `${BASE_URL}/ancient_woodland/data.pmtiles`,
+        maxZoom: 4
+      }
     }
   },
   {
@@ -82,12 +82,12 @@ export const operationalDatasets = [
         'fill-color': 'rgb(178, 102, 204)',
         'stroke-color': 'rgb(112, 48, 135)',
         'stroke-width': 1.25
+      },
+      overview: {
+        type: 'pmtiles',
+        url: `${BASE_URL}/protected_areas_sites_of_specific_interest/data.pmtiles`,
+        maxZoom: 4
       }
-    },
-    overview: {
-      type: 'pmtiles',
-      url: `${BASE_URL}/protected_areas_sites_of_specific_interest/data.pmtiles`,
-      maxZoom: 4
     }
   },
   {
@@ -97,12 +97,12 @@ export const operationalDatasets = [
       type: 'fgb',
       url: `${BASE_URL}/agricultural_land_classification/prov_agg_land_class.fgb`,
       opacity: 0.7,
-      styleUrl: `${BASE_URL}/agricultural_land_classification/ALC%20Grades%20(Provisional)%20%E2%94%AC%D0%B9%20ADAS%20%26%20Defra.lyrx`
-    },
-    overview: {
-      type: 'pmtiles',
-      url: `${BASE_URL}/agricultural_land_classification/data.pmtiles`,
-      maxZoom: 4
+      styleUrl: `${BASE_URL}/agricultural_land_classification/ALC%20Grades%20(Provisional)%20%E2%94%AC%D0%B9%20ADAS%20%26%20Defra.lyrx`,
+      overview: {
+        type: 'pmtiles',
+        url: `${BASE_URL}/agricultural_land_classification/data.pmtiles`,
+        maxZoom: 4
+      }
     }
   },
   {
@@ -113,12 +113,12 @@ export const operationalDatasets = [
       url: `${BASE_URL}/crop_map_of_england/crome.fgb`,
       opacity: 0.7,
       styleUrl: `${BASE_URL}/crop_map_of_england/Crop_Map_Of_England_2020.lyrx`,
-      lowercaseFields: true // LUCODE -> lucode for style
-    },
-    overview: {
-      type: 'pmtiles',
-      url: `${BASE_URL}/crop_map_of_england/data.pmtiles`,
-      maxZoom: 4
+      lowercaseFields: true, // LUCODE -> lucode for style
+      overview: {
+        type: 'pmtiles',
+        url: `${BASE_URL}/crop_map_of_england/data.pmtiles`,
+        maxZoom: 4
+      }
     }
   },
   {
@@ -128,12 +128,12 @@ export const operationalDatasets = [
       type: 'fgb',
       url: `${BASE_URL}/flood_map_for_planning_flood_zones/flood_map_for_planning.fgb`,
       opacity: 0.7,
-      styleUrl: `${BASE_URL}/flood_map_for_planning_flood_zones/Flood_Zones_2_3_Rivers_and_Sea.lyrx`
-    },
-    overview: {
-      type: 'pmtiles',
-      url: `${BASE_URL}/flood_map_for_planning_flood_zones/data.pmtiles`,
-      maxZoom: 7
+      styleUrl: `${BASE_URL}/flood_map_for_planning_flood_zones/Flood_Zones_2_3_Rivers_and_Sea.lyrx`,
+      overview: {
+        type: 'pmtiles',
+        url: `${BASE_URL}/flood_map_for_planning_flood_zones/data.pmtiles`,
+        maxZoom: 7
+      }
     }
   },
   {
