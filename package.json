@@ -60,7 +60,7 @@
     "flatgeobuf": "4.4.0",
     "geostyler-lyrx-parser": "2.1.0",
     "global-agent": "3.0.0",
-    "govuk-frontend": "6.2.0",
+    "govuk-frontend": "6.4.0",
     "hapi-pino": "13.0.0",
     "hapi-pulse": "3.0.1",
     "ioredis": "5.11.1",
