@@ -20,6 +20,7 @@ updates:
       dev-tools:
         patterns:
           - '@babel/*'
+          - '@emnapi/*'
           - '@vitest/*'
           - 'autoprefixer'
           - 'babel-loader'
@@ -31,7 +32,7 @@ updates:
           - 'husky'
           - 'jsdom'
           - 'nodemon'
-          - 'npm-run-all'
+          - 'npm-run-all*'
           - 'postcss-*'
           - 'sass-*'
           - 'source-map-loader'
@@ -44,6 +45,15 @@ updates:
       map:
         patterns:
           - '@arcgis/*'
+          - 'flatgeobuf'
+          - 'geostyler-*'
+          - 'ol'
+          - 'pmtiles'
+          - 'proj4'
+
+      frontend:
+        patterns:
+          - 'govuk-*'
 
       lint:
         patterns:
@@ -65,6 +75,9 @@ updates:
           - '@defra/*'
 
       server:
+        # hapi-pino belongs to the logging group
+        exclude-patterns:
+          - 'hapi-pino'
         patterns:
           - '@aws-sdk/*'
           - '@hapi/*'
@@ -111,6 +124,12 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
+
+    # Group every action bump into a single shared PR
+    groups:
+      actions:
+        patterns:
+          - '*'
 
     # Schedule run every Monday, local time
     schedule:
