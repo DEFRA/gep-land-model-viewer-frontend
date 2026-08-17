@@ -1,9 +1,5 @@
 import escapeHtml from 'lodash/escape.js'
-import { EMPTY, renderRowHtml, renderMessageHtml, renderSectionHtml, renderProportionHtml, renderUnavailableContentHtml, formatDate, renderLandUseHtml, renderTopographyHtml } from '../info-panel/render.js'
-
-export function renderEmptyStateHtml () {
-  return renderMessageHtml('Select a land parcel on the map to view its details.')
-}
+import { EMPTY, renderRowHtml, renderSectionHtml, renderProportionHtml, renderUnavailableContentHtml, formatDate, renderLandUseHtml, renderTopographyHtml } from '../info-panel/render.js'
 
 /**
  * @param {{ osid?: string }} hit

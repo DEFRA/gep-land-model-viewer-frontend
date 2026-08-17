@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, test, expect } from 'vitest'
-import { renderEmptyStateHtml, renderFeatureInfoHtml } from './render.js'
+import { renderFeatureInfoHtml } from './render.js'
 
 /**
  * @param {object} [overrides]
@@ -49,16 +49,6 @@ function topoCells (container, label) {
   const row = rows.find((r) => r.querySelector('.govuk-table__header').textContent.trim() === label)
   return [...row.querySelectorAll('.govuk-table__cell')].map((cell) => cell.textContent.trim())
 }
-
-describe('#renderEmptyStateHtml', () => {
-  test('renders guidance to select a land parcel', () => {
-    const container = document.createElement('div')
-    container.innerHTML = renderEmptyStateHtml()
-
-    expect(container.querySelector('.app-map__info-panel-message').textContent)
-      .toBe('Select a land parcel on the map to view its details.')
-  })
-})
 
 describe('#renderFeatureInfoHtml', () => {
   test('renders the OSID and TOID', () => {

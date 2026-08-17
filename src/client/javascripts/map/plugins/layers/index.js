@@ -1,51 +1,54 @@
 import { EVENTS } from '@defra/interactive-map'
-import Overlay from 'ol/Overlay.js'
 import { datasets } from '../../config/datasets.js'
 import { mapStyles } from '../../config/map-styles.js'
 import { datasetForLayer, layerIdFor, overviewIdFor } from '../../config/layers.js'
-import { EPSG_27700, UNKNOWN_LAYER_LABEL } from './constants.js'
+import { UNKNOWN_LAYER_LABEL } from './constants.js'
 import { createCogLayer } from './cog-layer.js'
 import { createFlatGeobufLayers } from './fgb-layer.js'
 import { createWmsLayer, getSourceUrl, getVisibleWmsLayers } from './wms-layer.js'
-import { valuesAt } from './hit-test.js'
+import { registerZoomWarning } from './zoom-warning.js'
 import {
-  buildFeatureInfoFragment,
   buildKeyFragment,
-  buildStatusFragment,
-  renderFeatureInfoPanelHtml,
   renderKeyPanelHtml,
   renderLayersPanelHtml,
-  IDENTIFY_ICON_SVG,
+  SUMMARY_TOGGLES,
   KEY_ICON_SVG,
   LAYERS_ICON_SVG
 } from './render.js'
 
 const BUTTON_ID = 'gep-layers'
 const PANEL_ID = 'gep-layers'
-const INFO_BUTTON_ID = 'gep-layer-info-toggle'
-const INFO_PANEL_ID = 'gep-layer-info'
-const INFO_CONTENT_ID = 'gep-layer-info-content'
-const INFO_STATUS_ID = 'gep-layer-info-status'
 const KEY_BUTTON_ID = 'gep-key'
 const KEY_PANEL_ID = 'gep-key'
 const KEY_CONTENT_ID = 'gep-key-content'
 
 let listeners = null
 
-export function registerLayersPanel (interactiveMap, map, initialStyleId) {
+export function registerLayersPanel (interactiveMap, map, initialStyleId, infoPanel, summaryControllers = {}) {
   listeners?.abort()
   listeners = new AbortController()
 
-  registerLayerListPanel(interactiveMap, map, initialStyleId)
-  registerIdentifyPanel(interactiveMap, map)
-  registerHoverValues(map)
+  registerLayerListPanel(interactiveMap, map, initialStyleId, infoPanel, summaryControllers)
 }
 
 function setBaseAttribution (mapStyleId) {
   baseAttribution = mapStyles.find(s => s.id === mapStyleId)?.attribution ?? mapStyles[0].attribution
 }
 
-function registerLayerListPanel (interactiveMap, map, initialStyleId) {
+// Only one land summary can be shown at a time.
+function setOtherSummaryTogglesDisabled (activeId, disabled) {
+  for (const toggle of SUMMARY_TOGGLES) {
+    if (toggle.id !== activeId) {
+      const input = document.querySelector(`[data-app-summary-id="${toggle.id}"]`)
+      if (input) {
+        input.disabled = disabled
+      }
+    }
+  }
+}
+
+function registerLayerListPanel (interactiveMap, map, initialStyleId, infoPanel, summaryControllers) {
+  const zoomWarning = registerZoomWarning(map)
   setBaseAttribution(initialStyleId)
   const refreshAttributions = () => refreshAttributionsForVisibleLayers(map)
   refreshAttributions()
@@ -54,6 +57,26 @@ function registerLayerListPanel (interactiveMap, map, initialStyleId) {
     refreshAttributions()
   })
 
+  registerLayersButton(interactiveMap)
+  registerKeyPanel(interactiveMap)
+
+  document.addEventListener('change', (event) => {
+    const summaryInput = event.target.closest('[data-app-summary-id]')
+    if (summaryInput) {
+      toggleSummary(summaryInput, summaryControllers, zoomWarning)
+      return
+    }
+
+    const input = event.target.closest('[data-app-layer-id]')
+    if (input) {
+      toggleDataset(input, map, { zoomWarning, infoPanel, refreshAttributions })
+    }
+  }, { signal: listeners.signal })
+
+  registerLayerSearch(listeners.signal)
+}
+
+function registerLayersButton (interactiveMap) {
   interactiveMap.addButton(BUTTON_ID, {
     id: BUTTON_ID,
     label: 'Layers',
@@ -84,47 +107,69 @@ function registerLayerListPanel (interactiveMap, map, initialStyleId) {
       interactiveMap.toggleButtonState(BUTTON_ID, 'hidden', false)
     }
   })
+}
 
-  registerKeyPanel(interactiveMap)
+function toggleSummary (summaryInput, summaryControllers, zoomWarning) {
+  const summaryId = summaryInput.dataset.appSummaryId
+  const controller = summaryControllers[summaryId]
+  if (!controller) {
+    return
+  }
 
-  document.addEventListener('change', (event) => {
-    const input = event.target.closest('[data-app-layer-id]')
-    if (!input) {
-      return
+  controller.setVisible(summaryInput.checked)
+  setOtherSummaryTogglesDisabled(summaryId, summaryInput.checked)
+  zoomWarning.set(`summary-${summaryId}`, {
+    label: SUMMARY_TOGGLES.find(toggle => toggle.id === summaryId).label,
+    minZoom: controller.minZoom,
+    enabled: summaryInput.checked
+  })
+}
+
+function toggleDataset (input, map, { zoomWarning, infoPanel, refreshAttributions }) {
+  const dataset = datasets.find(d => d.id === input.dataset.appLayerId)
+  if (!dataset) {
+    return
+  }
+
+  const visible = input.checked
+  setLayerInputLoading(input, true)
+  toggleLayer(dataset, visible, map).catch((err) => {
+    console.error(`Failed to load data layer ${dataset.id}`, err)
+  }).finally(() => {
+    // Keep UI state in sync with the map even when a layer update fails.
+    const layerId = layerIdFor(dataset)
+    const shown = visible && Boolean(findLayerById(map, layerId))
+    if (visible && !shown) {
+      input.checked = false
     }
-    const dataset = datasets.find(d => d.id === input.dataset.appLayerId)
-    if (!dataset) {
-      return
-    }
-    const visible = input.checked
-    setLayerInputLoading(input, true)
-    toggleLayer(dataset, visible, map).catch((err) => {
-      console.error(`Failed to load data layer ${dataset.id}`, err)
-    }).finally(() => {
-      // Keep UI state in sync with the map even when a layer update fails.
-      if (visible && !findLayerById(map, layerIdFor(dataset))) {
-        input.checked = false
-      }
-      refreshKey(map)
-      refreshAttributions()
-      setLayerInputLoading(input, false)
+    const floor = shown ? datasetZoomFloor(map, layerId) : undefined
+    zoomWarning.set(dataset.id, {
+      label: dataset.label,
+      minZoom: floor,
+      enabled: floor !== undefined
     })
-  }, { signal: listeners.signal })
+    refreshKey(map)
+    refreshAttributions()
+    infoPanel?.refreshHits()
+    setLayerInputLoading(input, false)
+  })
+}
 
+function registerLayerSearch (signal) {
   document.addEventListener('submit', (event) => {
     if (!event.target.matches('[data-app-layer-search-form]')) {
       return
     }
     event.preventDefault()
     filterLayers(event.target.querySelector('[data-app-layer-search]')?.value ?? '')
-  }, { signal: listeners.signal })
+  }, { signal })
 
   document.addEventListener('search', (event) => {
     const search = event.target.closest('[data-app-layer-search]')
     if (search) {
       filterLayers(search.value)
     }
-  }, { signal: listeners.signal })
+  }, { signal })
 }
 
 function registerKeyPanel (interactiveMap) {
@@ -148,174 +193,35 @@ function registerKeyPanel (interactiveMap) {
   })
 }
 
-function registerIdentifyPanel (interactiveMap, map) {
-  let infoEnabled = false
-  let identifyAbortController = null
-  let doubleClickGuardTimeout = null
-
-  const cancelIdentifyRequest = () => {
-    if (doubleClickGuardTimeout) {
-      clearTimeout(doubleClickGuardTimeout)
-      doubleClickGuardTimeout = null
-    }
-    if (identifyAbortController) {
-      identifyAbortController.abort()
-      identifyAbortController = null
-    }
-  }
-
-  interactiveMap.addButton(INFO_BUTTON_ID, {
-    id: INFO_BUTTON_ID,
-    label: 'Identify',
-    iconSvgContent: IDENTIFY_ICON_SVG,
-    isPressed: false,
-    onClick: () => {
-      infoEnabled = !infoEnabled
-      interactiveMap.toggleButtonState(INFO_BUTTON_ID, 'pressed', infoEnabled)
-      map.getTargetElement()?.classList.toggle('app-map--identify', infoEnabled)
-      if (!infoEnabled) {
-        cancelIdentifyRequest()
-        interactiveMap.hidePanel(INFO_PANEL_ID)
-      }
-    },
-    mobile: { slot: 'right-top', showLabel: false, order: 12 },
-    tablet: { slot: 'right-top', showLabel: false, order: 12 },
-    desktop: { slot: 'right-top', showLabel: false, order: 12 }
-  })
-
-  interactiveMap.addPanel(INFO_PANEL_ID, {
-    id: INFO_PANEL_ID,
-    label: 'Data Layer Attributes',
-    html: renderFeatureInfoPanelHtml(INFO_STATUS_ID, INFO_CONTENT_ID),
-    mobile: { slot: 'drawer', open: false, modal: true, dismissible: true },
-    tablet: { slot: 'middle', open: false, modal: true, width: '500px', dismissible: true },
-    desktop: { slot: 'middle', open: false, modal: true, width: '500px', dismissible: true }
-  })
-
-  interactiveMap.on(EVENTS.APP_PANEL_CLOSED, ({ panelId }) => {
-    if (panelId === INFO_PANEL_ID) {
-      cancelIdentifyRequest()
-    }
-  })
-
-  interactiveMap.on(EVENTS.MAP_CLICK, ({ coords }) => {
-    if (!infoEnabled || identifyAbortController) {
-      return
-    }
-    if (doubleClickGuardTimeout) {
-      clearTimeout(doubleClickGuardTimeout)
-      doubleClickGuardTimeout = null
-      return
-    }
-    doubleClickGuardTimeout = setTimeout(() => {
-      doubleClickGuardTimeout = null
-      const abortController = new AbortController()
-      identifyAbortController = abortController
-      showFeatureInfo(coords, map, interactiveMap, abortController.signal)
-        .finally(() => {
-          if (identifyAbortController === abortController) {
-            identifyAbortController = null
-          }
-        })
-    }, 250)
-  })
-}
-
 function findLayerById (map, id) {
   return map.getLayers().getArray().find(l => l.get('id') === id)
+}
+
+// The zoom below which a shown dataset draws nothing, read from the layers on
+// the map so lyrx minScale caps are covered. An overview draws at every zoom.
+function datasetZoomFloor (map, layerId) {
+  if (findLayerById(map, overviewIdFor(layerId))) {
+    return undefined
+  }
+
+  const layer = findLayerById(map, layerId)
+  const maxResolution = layer.getMaxResolution()
+  if (maxResolution !== Infinity) {
+    return map.getView().getZoomForResolution(maxResolution)
+  }
+
+  const minZoom = layer.getMinZoom()
+  if (minZoom !== -Infinity) {
+    // OL's minZoom is exclusive, the first drawn zoom is the one above it.
+    return minZoom + 1
+  }
+
+  return undefined
 }
 
 function findDatasetLayers (map, layerId) {
   return map.getLayers().getArray()
     .filter(l => l.get('id') === layerId || l.get('id') === overviewIdFor(layerId))
-}
-
-async function showFeatureInfo (coords, map, interactiveMap, signal) {
-  const contentEl = document.getElementById(INFO_CONTENT_ID)
-  const statusEl = document.getElementById(INFO_STATUS_ID)
-  if (contentEl) {
-    contentEl.setAttribute('aria-busy', 'true')
-    contentEl.replaceChildren(buildStatusFragment('Loading data layer attributes...'))
-  }
-  updateStatus(statusEl, 'Loading attributes')
-  interactiveMap.showPanel(INFO_PANEL_ID)
-
-  const visibleLayers = getVisibleWmsLayers(map)
-
-  const mapPoint = { x: coords[0], y: coords[1] }
-  const results = await Promise.all(
-    visibleLayers.map(layer => describeLayerFeatures(layer, mapPoint, map, signal))
-  )
-  if (signal.aborted) {
-    return
-  }
-
-  const layersWithFeatures = results.filter(r => r.features.length > 0)
-  const failedLayers = results.filter(r => r.error)
-  if (layersWithFeatures.length === 0 && failedLayers.length === 0) {
-    if (contentEl) {
-      contentEl.removeAttribute('aria-busy')
-      contentEl.replaceChildren(buildStatusFragment('No data layer attributes found at this location.'))
-    }
-    updateStatus(statusEl, 'No attributes found')
-    return
-  }
-
-  if (contentEl) {
-    contentEl.removeAttribute('aria-busy')
-    contentEl.replaceChildren(buildFeatureInfoFragment(results))
-  }
-  updateStatus(statusEl, failedLayers.length > 0 ? 'Some attributes could not be loaded' : 'Attributes loaded')
-}
-
-async function describeLayerFeatures (layer, mapPoint, map, signal) {
-  const dataset = datasetForLayer(layer, datasets)
-  const layerName = dataset?.label ?? UNKNOWN_LAYER_LABEL
-
-  try {
-    const features = await fetchFeatureInfo(layer, mapPoint, map, signal)
-    return { layerName, features, error: false }
-  } catch {
-    return { layerName, features: [], error: !signal.aborted }
-  }
-}
-
-async function fetchFeatureInfo (layer, mapPoint, map, signal) {
-  const source = layer.getSource()
-  const layerNames = source.getParams().LAYERS
-  if (!layerNames) {
-    return []
-  }
-
-  const pixel = map.getPixelFromCoordinate([mapPoint.x, mapPoint.y])
-  const view = map.getView()
-  const size = map.getSize()
-  const extent = view.calculateExtent(size)
-
-  const params = new URLSearchParams({
-    SERVICE: 'WMS',
-    VERSION: '1.3.0',
-    REQUEST: 'GetFeatureInfo',
-    LAYERS: layerNames,
-    QUERY_LAYERS: layerNames,
-    INFO_FORMAT: 'application/json',
-    CRS: EPSG_27700,
-    BBOX: `${extent[0]},${extent[1]},${extent[2]},${extent[3]}`,
-    WIDTH: String(Math.round(size[0])),
-    HEIGHT: String(Math.round(size[1])),
-    I: String(Math.round(pixel[0])),
-    J: String(Math.round(pixel[1]))
-  })
-
-  const response = await fetch(`${getSourceUrl(source)}?${params}`, { signal })
-  const data = await response.json()
-  return data.features ?? []
-}
-
-function updateStatus (statusEl, message) {
-  if (statusEl && statusEl.textContent !== message) {
-    statusEl.textContent = message
-  }
 }
 
 function setLayerInputLoading (input, loading) {
@@ -400,33 +306,6 @@ function refreshAttributionsForVisibleLayers (map) {
   if (attributionEl) {
     attributionEl.textContent = attribution
   }
-}
-
-// TODO: temp output to inspect the new operational dataset layers
-// inspect functionality is being rewritten so dumping out here for now
-function registerHoverValues (map) {
-  if (!new URLSearchParams(window.location.search).has('debug')) {
-    return
-  }
-
-  const element = document.createElement('div')
-  element.className = 'app-map__hover-info'
-  element.setAttribute('aria-hidden', 'true')
-
-  const overlay = new Overlay({ element, offset: [12, 0], positioning: 'center-left' })
-  map.addOverlay(overlay)
-
-  map.on('pointermove', (event) => {
-    const groups = event.dragging ? [] : valuesAt(map, event.pixel)
-    element.innerHTML = groups.map(toGroupHtml).join('')
-    overlay.setPosition(groups.length ? event.coordinate : undefined)
-  })
-}
-
-function toGroupHtml ({ label, values }) {
-  const rows = values.map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
-
-  return `<div class="app-map__hover-info-group"><strong>${label}</strong>${rows.join('')}</div>`
 }
 
 function filterLayers (query) {

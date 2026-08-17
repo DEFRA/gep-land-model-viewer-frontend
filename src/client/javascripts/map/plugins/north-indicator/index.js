@@ -46,9 +46,9 @@ export function createNorthIndicatorPlugin () {
         onClick: (_e, { mapProvider }) => {
           mapProvider.map.getView().animate({ rotation: 0, duration: RESET_NORTH_DURATION })
         },
-        mobile: { slot: 'right-top', showLabel: false, order: 2 },
-        tablet: { slot: 'right-top', showLabel: false, order: 2 },
-        desktop: { slot: 'right-top', showLabel: false, order: 2 }
+        mobile: { slot: 'right-top', showLabel: false, order: 1 },
+        tablet: { slot: 'right-top', showLabel: false, order: 1 },
+        desktop: { slot: 'right-top', showLabel: false, order: 1 }
       }]
     })
   }

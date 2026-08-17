@@ -1,32 +1,64 @@
 /**
- * @typedef {object} InspectController
- * @property {number} minZoom Minimum zoom at which the mode's layer is rendered.
- * @property {(next: boolean) => void} setVisible Show or hide the mode's layer and cursor class.
+ * @typedef {object} Inspector
+ * @property {(coords: number[]) => object | null} hitTest Resolves a click to a hit, without side effects.
+ * @property {(hit: object) => void} select Highlight the hit on the map.
+ * @property {(hit: object, options: { signal: AbortSignal }) => Promise<object | null>} loadDetails
+ * @property {(hit: object, details: object | null) => string} renderHtml
+ * @property {() => void} clearSelection
  */
 /**
- * Pairs an inspect mode's layer and Inspector with the shared info panel,
- * returning the controller that view-mode toggles.
+ * @typedef {object} InspectController
+ * @property {number} minZoom Minimum zoom at which the overlay is rendered.
+ * @property {(next: boolean) => void} setVisible Show or hide the overlay.
+ */
+/**
+ * Adapts a grid or feature overlay to an info-panel hit source.
  * @param {import('ol/Map').default} map
  * @param {object} options
  * @param {number} options.minZoom
  * @param {{ setEnabled: (next: boolean) => void }} options.layer
- * @param {string} options.cursorClass
- * @param {import('./index.js').Inspector} options.inspector
+ * @param {string} options.label Name shown in the panel's multi-hit list.
+ * @param {string} options.panelTitle Panel title while the overlay's details are shown.
+ * @param {Inspector} options.inspector
  * @param {ReturnType<import('./index.js').registerInfoPanel>} options.infoPanel
  * @returns {InspectController}
  */
-export function createInspectController (map, { minZoom, layer, cursorClass, inspector, infoPanel }) {
+export function createInspectController (map, { minZoom, layer, label, panelTitle, inspector, infoPanel }) {
+  const view = map.getView()
+
+  const source = {
+    getHits (coords) {
+      // The layer is not drawn below minZoom, so ignore clicks there.
+      if (view.getZoom() < minZoom) {
+        return []
+      }
+
+      const hit = inspector.hitTest(coords)
+      if (!hit) {
+        return []
+      }
+
+      return [{
+        label,
+        panelTitle,
+        select: () => inspector.select(hit),
+        loadDetails: (options) => inspector.loadDetails(hit, options),
+        renderHtml: (details) => inspector.renderHtml(hit, details)
+      }]
+    },
+
+    clearSelection: () => inspector.clearSelection()
+  }
+
   return {
     minZoom,
 
     setVisible (next) {
       layer.setEnabled(next)
-      map.getTargetElement()?.classList.toggle(cursorClass, next)
       if (next) {
-        infoPanel.activate(inspector)
+        infoPanel.activate(source)
       } else {
-        inspector.clearSelection()
-        infoPanel.deactivate(inspector)
+        infoPanel.deactivate(source)
       }
     }
   }

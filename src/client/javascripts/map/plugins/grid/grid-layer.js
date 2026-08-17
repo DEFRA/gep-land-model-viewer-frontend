@@ -6,7 +6,7 @@ import VectorSource from 'ol/source/Vector.js'
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
 import { CELL_SIZE_METRES, snapDown, snapUp } from './cell-at-point.js'
 import { GRID_VISIBLE_MIN_ZOOM } from './constants.js'
-import { GOVUK_BLUE, DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../config/colours.js'
+import { GOVUK_DARK_GREY, DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../config/colours.js'
 import { OVERLAY_Z_INDEX } from '../../config/layers.js'
 
 const MAX_LINES_PER_AXIS = 1000
@@ -15,7 +15,7 @@ const GRID_MIN_PAD_CELLS = 80
 const GRID_REDRAW_MARGIN_FACTOR = 0.75
 
 const GRID_LINE_STYLE = {
-  'stroke-color': GOVUK_BLUE,
+  'stroke-color': GOVUK_DARK_GREY,
   'stroke-width': 1
 }
 

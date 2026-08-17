@@ -1,6 +1,6 @@
 import { format, parse, isValid } from 'date-fns'
 import escapeHtml from 'lodash/escape.js'
-import { INFO_PANEL_CONTENT_ID, SAMPLE_LINK_CLASS } from './constants.js'
+import { INFO_PANEL_CONTENT_ID, INFO_PANEL_STATUS_ID, SAMPLE_LINK_CLASS } from './constants.js'
 
 export const EMPTY = '-'
 
@@ -102,7 +102,57 @@ export function applyBarStyles (container) {
 }
 
 export function renderPanelShellHtml () {
-  return `<div id="${INFO_PANEL_CONTENT_ID}" class="app-map__info-panel"></div>`
+  return `
+    <div id="${INFO_PANEL_STATUS_ID}" class="govuk-visually-hidden" role="status"></div>
+    <div id="${INFO_PANEL_CONTENT_ID}" class="app-map__info-panel"></div>
+  `
+}
+
+// Lucide "chevron-right" / "chevron-left"
+const CHEVRON_RIGHT_SVG = '<path d="m9 18 6-6-6-6"/>'
+const CHEVRON_LEFT_SVG = '<path d="m15 18-6-6 6-6"/>'
+
+/**
+ * @param {Array<{ label: string }>} hits
+ * @returns {string}
+ */
+export function renderHitListHtml (hits) {
+  const rows = hits.map((hit, index) => `
+    <li class="app-map__info-hit-row">
+      <button type="button" class="app-map__info-hit" data-app-hit-index="${index}">
+        <span>${escapeHtml(hit.label)}</span>
+        <svg class="app-map__info-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">${CHEVRON_RIGHT_SVG}</svg>
+      </button>
+    </li>
+  `).join('')
+
+  return `
+    <div class="app-map__info-content">
+      <p class="govuk-body app-map__info-hit-hint">More than one feature is at this location. Select one to view its attributes.</p>
+      <ul class="app-map__info-hit-list">${rows}</ul>
+    </div>
+  `
+}
+
+/**
+ * Wraps a hit's detail view, prefixing a back link when the hit was picked
+ * from a multi-hit list.
+ * @param {string} bodyHtml
+ * @param {number} backCount Size of the list to go back to, 0 for a direct hit.
+ * @returns {string}
+ */
+export function renderHitDetailHtml (bodyHtml, backCount) {
+  if (!backCount) {
+    return bodyHtml
+  }
+
+  return `
+    <button type="button" class="app-link-button app-map__info-back" data-app-hit-back>
+      <svg class="app-map__info-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">${CHEVRON_LEFT_SVG}</svg>
+      Back to ${backCount} selected
+    </button>
+    ${bodyHtml}
+  `
 }
 
 export function formatMetres (value) {

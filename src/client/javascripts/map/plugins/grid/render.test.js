@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { BngReference } from './bng-reference.js'
-import { renderEmptyStateHtml, renderCellInfoHtml } from './render.js'
+import { renderCellInfoHtml } from './render.js'
 
 function renderHtml (html) {
   const container = document.createElement('div')
@@ -25,16 +25,6 @@ function gridCell (overrides = {}) {
 function hit (overrides = {}) {
   return { cellId: new BngReference('SE', '6000', '7003'), ...overrides }
 }
-
-describe('#renderEmptyStateHtml', () => {
-  test('renders guidance to select a grid cell', () => {
-    const container = renderHtml(renderEmptyStateHtml())
-    const message = container.querySelector('.app-map__info-panel-message')
-
-    expect(message).not.toBeNull()
-    expect(message.textContent).toBe('Select a grid cell on the map to view its details.')
-  })
-})
 
 describe('#renderCellInfoHtml', () => {
   test('renders grid square reference', () => {

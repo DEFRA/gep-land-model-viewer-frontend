@@ -1,5 +1,5 @@
 import {
-  renderFeatureInfoPanelHtml,
+  renderDatasetAttributesHtml,
   renderLayersPanelHtml
 } from './render.js'
 
@@ -18,11 +18,19 @@ describe('#renderLayersPanelHtml', () => {
     expect(html).toContain('data-label="water bodies"')
   })
 
+  test('renders the land summary toggles above the dataset list', () => {
+    const html = renderLayersPanelHtml(testDatasets)
+
+    expect(html).toContain('data-app-summary-id="grid"')
+    expect(html).toContain('data-app-summary-id="features"')
+    expect(html.indexOf('app-map__land-summary')).toBeLessThan(html.indexOf('data-app-layer-list'))
+  })
+
   test('handles empty datasets array', () => {
     const html = renderLayersPanelHtml([])
 
     expect(html).toContain('data-app-layer-list')
-    expect(html).not.toContain('govuk-checkboxes__item')
+    expect(html).not.toContain('data-app-layer-item')
   })
 
   test('wraps checkboxes in a fieldset with visually hidden legend', () => {
@@ -55,14 +63,34 @@ describe('#renderLayersPanelHtml', () => {
   })
 })
 
-describe('#renderFeatureInfoPanelHtml', () => {
-  test('renders status and content regions', () => {
-    const html = renderFeatureInfoPanelHtml('status-id', 'content-id')
+describe('#renderDatasetAttributesHtml', () => {
+  test('renders a summary list per feature under the dataset label', () => {
+    const html = renderDatasetAttributesHtml('Flood Zones', [{ zone: '2' }, { zone: '3' }])
 
-    expect(html).toContain('id="status-id"')
-    expect(html).toContain('role="status"')
-    expect(html).toContain('aria-live="polite"')
-    expect(html).toContain('id="content-id"')
-    expect(html).toContain('app-map__layer-info-panel')
+    expect(html).toContain('Flood Zones')
+    expect(html.match(/app-map__info-attributes/g)).toHaveLength(2)
+    expect(html).toContain('zone')
+    expect(html).toContain('3')
+  })
+
+  test('skips null and empty attribute values', () => {
+    const html = renderDatasetAttributesHtml('Flood Zones', [{ zone: '2', empty: '', missing: null }])
+
+    expect(html).toContain('zone')
+    expect(html).not.toContain('empty')
+    expect(html).not.toContain('missing')
+  })
+
+  test('escapes the label and attribute values', () => {
+    const html = renderDatasetAttributesHtml('<b>Label</b>', [{ name: '<script>x</script>' }])
+
+    expect(html).not.toContain('<b>')
+    expect(html).not.toContain('<script>')
+  })
+
+  test('shows an empty message when no features carry attributes', () => {
+    const html = renderDatasetAttributesHtml('Flood Zones', [])
+
+    expect(html).toContain('No attributes found at this location.')
   })
 })

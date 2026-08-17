@@ -55,7 +55,7 @@
     padding: govuk-spacing(3) 52px govuk-spacing(2) govuk-spacing(5);
     background-color: govuk-colour("white");
     color: govuk-colour("black");
-    @include govuk-font-size($size: 19);
+    @include govuk-font-size($size: 24);
     font-weight: $govuk-font-weight-bold;
   }
 
@@ -208,6 +208,91 @@
   padding-bottom: govuk-spacing(3);
 }
 
+// ===== Hit list (several layers under one click) =====
+
+.app-map__info-content .app-map__info-hit-hint {
+  margin-top: govuk-spacing(1);
+  margin-bottom: govuk-spacing(4);
+  @include govuk-font-size($size: 19);
+}
+
+.app-map__info-hit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-map__info-hit-row {
+  border-top: 1px solid govuk-colour("black", $variant: "tint-80");
+
+  &:last-child {
+    border-bottom: 1px solid govuk-colour("black", $variant: "tint-80");
+  }
+}
+
+// The library resets `font` on every button inside .im-o-app with an
+// (0,1,1) selector, so button rules here need the extra .app-map to win.
+.app-map .app-map__info-hit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: govuk-spacing(2);
+  width: 100%;
+  padding: govuk-spacing(3) 0;
+  border: 0;
+  background: none;
+  color: govuk-colour("black");
+  font-weight: $govuk-font-weight-bold;
+  @include govuk-font-size($size: 19);
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid govuk-functional-colour("focus");
+    outline-offset: 0;
+  }
+}
+
+.app-map__info-chevron {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-map .app-map__info-back {
+  display: inline-flex;
+  align-items: center;
+  gap: govuk-spacing(1);
+  margin: govuk-spacing(2) govuk-spacing(5) govuk-spacing(3);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  @include govuk-font-size($size: 19);
+
+  .app-map__info-chevron {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+.app-map__info-attributes {
+  margin: 0;
+}
+
+.app-map__info-attributes + .app-map__info-attributes {
+  margin-top: govuk-spacing(6);
+}
+
+.app-map__info-content > .govuk-heading-s {
+  margin-top: govuk-spacing(1);
+}
+
 // ===== Summary lists =====
 
 .app-map__info-list {
@@ -327,6 +412,11 @@
   .app-map__info-content {
     padding-right: govuk-spacing(3);
     padding-left: govuk-spacing(3);
+  }
+
+  .app-map .app-map__info-back {
+    margin-right: govuk-spacing(3);
+    margin-left: govuk-spacing(3);
   }
 
   .app-map__info-list .govuk-summary-list__row {

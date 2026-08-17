@@ -171,6 +171,8 @@ function stubLayer (opts) {
   })
   this.getSource = vi.fn(() => opts?.source)
   this.getOpacity = vi.fn(() => opts?.opacity ?? 1)
+  this.getMaxResolution = vi.fn(() => opts?.maxResolution ?? Infinity)
+  this.getMinZoom = vi.fn(() => opts?.minZoom ?? -Infinity)
 }
 
 vi.mock('ol/layer/WebGLTile.js', () => ({
@@ -213,12 +215,21 @@ vi.mock('./pmtiles-layer.js', () => ({
   })
 }))
 
+vi.mock('./zoom-warning.js', () => ({
+  registerZoomWarning: vi.fn(() => ({ set: vi.fn() }))
+}))
+
 const { loadLyrxStyle } = await import('./lyrx-style.js')
+const { registerZoomWarning } = await import('./zoom-warning.js')
 const { registerLayersPanel } = await import('./index.js')
 const { resetCapabilitiesCache } = await import('./wms-layer.js')
 const { datasets } = await import('../../config/datasets.js')
 const { renderLayersPanelHtml } = await import('./render.js')
 const layersPanelHtml = (await vi.importActual('./render.js')).renderLayersPanelHtml(datasets)
+
+function zoomWarningSet () {
+  return registerZoomWarning.mock.results.at(-1).value.set
+}
 
 function makeCapabilitiesXml (layerNames) {
   const layers = layerNames.map(name =>
@@ -313,7 +324,8 @@ function createOlMapMock () {
     getTargetElement: vi.fn(() => document.getElementById('map-container')),
     getPixelFromCoordinate: vi.fn(([x, y]) => [x - 418700, 385300 - y]),
     getView: vi.fn(() => ({
-      calculateExtent: vi.fn(() => [418700, 385100, 418900, 385300])
+      calculateExtent: vi.fn(() => [418700, 385100, 418900, 385300]),
+      getZoomForResolution: vi.fn(() => 9.2)
     })),
     getSize: vi.fn(() => [800, 600]),
     _layers: layers
@@ -348,16 +360,10 @@ function createVisibleWmsLayer (overrides = {}) {
     getSource: vi.fn(() => source),
     setVisible: vi.fn((next) => {
       visible = next
-    })
+    }),
+    getMaxResolution: vi.fn(() => Infinity),
+    getMinZoom: vi.fn(() => -Infinity)
   }
-}
-
-function mockVisibleWmsLayers (olMap, layerSpecs = [{}]) {
-  const wmsLayers = layerSpecs.map(createVisibleWmsLayer)
-  olMap.getLayers.mockImplementation(() => ({
-    getArray: vi.fn(() => [...wmsLayers])
-  }))
-  return wmsLayers
 }
 
 describe('#registerLayersPanel', () => {
@@ -365,7 +371,7 @@ describe('#registerLayersPanel', () => {
   let olMap
 
   beforeEach(() => {
-    document.body.innerHTML = '<div id="map-container"></div><div class="im-c-attributions"></div><div id="gep-layer-info-status" role="status" aria-live="polite" aria-atomic="true"></div><div id="gep-layer-info-content"></div>'
+    document.body.innerHTML = '<div id="map-container"></div><div class="im-c-attributions"></div>'
     window.history.replaceState({}, '', '/')
     localStorage.clear()
     interactiveMap = createMapHarness()
@@ -402,35 +408,6 @@ describe('#registerLayersPanel', () => {
       expect.objectContaining({
         id: 'gep-layers',
         label: 'Layers'
-      })
-    )
-  })
-
-  test('adds identify button', () => {
-    registerLayersPanel(interactiveMap, olMap)
-
-    expect(interactiveMap.addButton).toHaveBeenCalledWith(
-      'gep-layer-info-toggle',
-      expect.objectContaining({
-        id: 'gep-layer-info-toggle',
-        label: 'Identify',
-        isPressed: false
-      })
-    )
-  })
-
-  test('adds feature info panel', () => {
-    registerLayersPanel(interactiveMap, olMap)
-
-    expect(interactiveMap.addPanel).toHaveBeenCalledWith(
-      'gep-layer-info',
-      expect.objectContaining({
-        id: 'gep-layer-info',
-        label: 'Data Layer Attributes',
-        html: expect.stringContaining('id="gep-layer-info-status"'),
-        mobile: expect.objectContaining({ modal: true }),
-        tablet: expect.objectContaining({ slot: 'middle', modal: true }),
-        desktop: expect.objectContaining({ slot: 'middle', modal: true })
       })
     )
   })
@@ -474,32 +451,6 @@ describe('#registerLayersPanel', () => {
         expect.anything()
       )
     })
-  })
-
-  test('identify button toggles info mode', () => {
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-
-    buttonConfig.onClick()
-
-    expect(interactiveMap.toggleButtonState).toHaveBeenCalledWith(
-      'gep-layer-info-toggle',
-      'pressed',
-      true
-    )
-    expect(document.getElementById('map-container').classList.contains('app-map--identify')).toBe(true)
-
-    buttonConfig.onClick()
-
-    expect(interactiveMap.toggleButtonState).toHaveBeenCalledWith(
-      'gep-layer-info-toggle',
-      'pressed',
-      false
-    )
-    expect(interactiveMap.hidePanel).toHaveBeenCalledWith('gep-layer-info')
   })
 
   test('layer checkbox change fetches GetCapabilities and adds WMS layer', async () => {
@@ -785,287 +736,6 @@ describe('#registerLayersPanel', () => {
     expect(document.querySelector('[data-label="dataset with layers"]').hidden).toBe(true)
   })
 
-  test('map click with identify mode queries WMS layers', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({
-        features: [{ properties: { name: 'Test Feature' } }]
-      })
-    }))
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    expect(global.fetch).toHaveBeenCalled()
-    expect(document.getElementById('gep-layer-info-content').hasAttribute('aria-busy')).toBe(false)
-    expect(document.getElementById('gep-layer-info-status').textContent).toBe('Attributes loaded')
-    expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-layer-info')
-  })
-
-  test('shows loading state while feature info is being requested', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    const contentEl = document.getElementById('gep-layer-info-content')
-    expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-layer-info')
-    expect(contentEl.getAttribute('aria-busy')).toBe('true')
-    expect(contentEl.textContent).toContain('Loading data layer attributes...')
-    expect(contentEl.querySelector('[role="status"]')).toBeNull()
-    expect(document.getElementById('gep-layer-info-status').textContent).toBe('Loading attributes')
-  })
-
-  test('does not start another identify request while one is loading', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-    interactiveMap._handlers['map:click']({ coords: [418760, 385160] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    expect(global.fetch).toHaveBeenCalledTimes(1)
-  })
-
-  test('second click before identify starts cancels the pending request', async () => {
-    vi.useFakeTimers()
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn())
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    expect(global.fetch).not.toHaveBeenCalled()
-    expect(interactiveMap.showPanel).not.toHaveBeenCalledWith('gep-layer-info')
-  })
-
-  test('closing the identify panel aborts the active request', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    let requestSignal
-    vi.stubGlobal('fetch', vi.fn((url, options) => {
-      requestSignal = options.signal
-      return new Promise(() => {})
-    }))
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-    interactiveMap._handlers['app:panelclosed']({ panelId: 'gep-layer-info' })
-
-    expect(requestSignal.aborted).toBe(true)
-  })
-
-  test('does not render an error for cancelled feature info requests', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    let rejectRequest
-    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve, reject) => {
-      rejectRequest = reject
-    })))
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-    interactiveMap._handlers['app:panelclosed']({ panelId: 'gep-layer-info' })
-
-    const abortError = new Error('Cancelled')
-    abortError.name = 'AbortError'
-    rejectRequest(abortError)
-    await vi.advanceTimersByTimeAsync(0)
-
-    expect(consoleSpy).not.toHaveBeenCalled()
-    expect(document.getElementById('gep-layer-info-content').textContent).not.toContain('Data layer attributes could not be loaded.')
-    consoleSpy.mockRestore()
-  })
-
-  test('feature properties from WMS are rendered as text, not HTML', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    const injection = '<img src=x onerror="window.__xss=1">'
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({
-        features: [
-          { properties: { 'name<script>': injection, empty: '', missing: null } },
-          { properties: { second: 'feature' } }
-        ]
-      })
-    }))
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    const contentEl = document.getElementById('gep-layer-info-content')
-    expect(contentEl.querySelector('.app-map__layer-info')).not.toBeNull()
-    expect(contentEl.querySelectorAll('.app-map__layer-info-section')).toHaveLength(2)
-    expect(contentEl.querySelectorAll('.app-map__layer-info-list')).toHaveLength(2)
-    expect(contentEl.querySelector('img')).toBeNull()
-    expect(contentEl.querySelector('script')).toBeNull()
-    expect(contentEl.textContent).toContain('name<script>')
-    expect(contentEl.textContent).toContain(injection)
-    expect(contentEl.textContent).not.toContain('empty')
-    expect(contentEl.textContent).not.toContain('missing')
-    expect(window.__xss).toBeUndefined()
-  })
-
-  test('renders each identified layer feature as a repeated title and attributes table', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap, [
-      { id: 'gep-test-dataset' },
-      { id: 'gep-unknown', layerNames: 'layer2', url: 'https://example.com/wms2' }
-    ])
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce({
-        json: vi.fn().mockResolvedValue({
-          features: [
-            { properties: { 'Object ID': '31840', 'Woodland name': 'Green Lane Spring' } },
-            { properties: { 'Object ID': '31841', 'Woodland name': 'Second Wood' } }
-          ]
-        })
-      })
-      .mockResolvedValueOnce({
-        json: vi.fn().mockResolvedValue({
-          features: [
-            { properties: { Status: 'Active' } }
-          ]
-        })
-      }))
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    const sections = document.querySelectorAll('.app-map__layer-info-section')
-    expect(sections).toHaveLength(3)
-    expect(sections[0].querySelector('.app-map__layer-info-heading').textContent).toBe('Test Dataset')
-    expect(sections[0].textContent).toContain('Object ID')
-    expect(sections[0].textContent).toContain('31840')
-    expect(sections[1].querySelector('.app-map__layer-info-heading').textContent).toBe('Test Dataset')
-    expect(sections[1].textContent).toContain('Second Wood')
-    expect(sections[2].querySelector('.app-map__layer-info-heading').textContent).toBe('Unknown Layer')
-    expect(sections[2].textContent).toContain('Active')
-  })
-
-  test('map click without identify mode does nothing', async () => {
-    registerLayersPanel(interactiveMap, olMap)
-
-    vi.stubGlobal('fetch', vi.fn())
-
-    const clickHandler = interactiveMap._handlers['map:click']
-    await clickHandler({ coords: [418750, 385150] })
-
-    expect(global.fetch).not.toHaveBeenCalled()
-  })
-
-  test('map click with identify mode but no WMS layers does nothing', async () => {
-    vi.useFakeTimers()
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn())
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    expect(global.fetch).not.toHaveBeenCalled()
-    expect(document.getElementById('gep-layer-info-content').textContent).toContain('No data layer attributes found at this location.')
-  })
-
-  test('ignores layers that are not queryable WMS layers', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap, [
-      { wms: false },
-      { hasUrl: false },
-      { hasLayers: false },
-      { visible: false }
-    ])
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn())
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    expect(global.fetch).not.toHaveBeenCalled()
-    expect(document.getElementById('gep-layer-info-content').textContent).toContain('No data layer attributes found at this location.')
-  })
-
   test('search shows empty message when no items match', () => {
     registerLayersPanel(interactiveMap, olMap)
 
@@ -1143,77 +813,6 @@ describe('#registerLayersPanel', () => {
     })
   })
 
-  test('GetFeatureInfo shows a generic message when fetch errors', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')))
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    const contentEl = document.getElementById('gep-layer-info-content')
-    expect(consoleSpy).not.toHaveBeenCalled()
-    expect(contentEl.textContent).toContain('Data layer attributes could not be loaded.')
-    expect(contentEl.textContent).not.toContain('No data layer attributes found at this location.')
-    expect(document.getElementById('gep-layer-info-status').textContent).toBe('Some attributes could not be loaded')
-    consoleSpy.mockRestore()
-  })
-
-  test('shows no data when WMS layer has empty LAYERS param', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap, [{ hasLayers: false }])
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn())
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    expect(global.fetch).not.toHaveBeenCalled()
-    expect(document.getElementById('gep-layer-info-content').textContent).toContain('No data layer attributes found at this location.')
-  })
-
-  test('shows no features message when query returns empty', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ features: [] })
-    }))
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-    await vi.advanceTimersByTimeAsync(300)
-
-    const contentEl = document.getElementById('gep-layer-info-content')
-    expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-layer-info')
-    expect(contentEl.hasAttribute('aria-busy')).toBe(false)
-    expect(contentEl.textContent).toContain('No data layer attributes found at this location.')
-    expect(contentEl.querySelector('[role="status"]')).toBeNull()
-    expect(document.getElementById('gep-layer-info-status').textContent).toBe('No attributes found')
-  })
-
   test('change event on non-layer element is ignored', () => {
     registerLayersPanel(interactiveMap, olMap)
 
@@ -1250,6 +849,158 @@ describe('#registerLayersPanel', () => {
     expect(document.querySelector('[data-app-layer-item]').hidden).toBe(false)
   })
 
+  describe('land summary toggles', () => {
+    function createSummaryCheckbox (id, checked) {
+      const checkbox = document.createElement('input')
+      checkbox.type = 'checkbox'
+      checkbox.checked = checked
+      checkbox.dataset.appSummaryId = id
+      document.body.appendChild(checkbox)
+      return checkbox
+    }
+
+    test('checking a summary toggle shows its controller and tracks the zoom warning', () => {
+      const grid = { minZoom: 11, setVisible: vi.fn() }
+      registerLayersPanel(interactiveMap, olMap, undefined, undefined, { grid })
+
+      createSummaryCheckbox('grid', true).dispatchEvent(new Event('change', { bubbles: true }))
+
+      expect(grid.setVisible).toHaveBeenCalledWith(true)
+      expect(olMap.addLayer).not.toHaveBeenCalled()
+      expect(zoomWarningSet()).toHaveBeenCalledWith('summary-grid', {
+        label: 'Grid squares',
+        minZoom: 11,
+        enabled: true
+      })
+    })
+
+    test('unchecking a summary toggle hides its controller', () => {
+      const features = { minZoom: 10, setVisible: vi.fn() }
+      registerLayersPanel(interactiveMap, olMap, undefined, undefined, { features })
+
+      createSummaryCheckbox('features', false).dispatchEvent(new Event('change', { bubbles: true }))
+
+      expect(features.setVisible).toHaveBeenCalledWith(false)
+      expect(zoomWarningSet()).toHaveBeenCalledWith('summary-features', {
+        label: 'OS features',
+        minZoom: 10,
+        enabled: false
+      })
+    })
+
+    test('checking a summary toggle disables the others until it is unchecked', () => {
+      const grid = { minZoom: 11, setVisible: vi.fn() }
+      const features = { minZoom: 10, setVisible: vi.fn() }
+      registerLayersPanel(interactiveMap, olMap, undefined, undefined, { grid, features })
+
+      const gridBox = createSummaryCheckbox('grid', true)
+      const featuresBox = createSummaryCheckbox('features', false)
+      gridBox.dispatchEvent(new Event('change', { bubbles: true }))
+
+      expect(featuresBox.disabled).toBe(true)
+      expect(gridBox.disabled).toBe(false)
+
+      gridBox.checked = false
+      gridBox.dispatchEvent(new Event('change', { bubbles: true }))
+
+      expect(featuresBox.disabled).toBe(false)
+    })
+
+    test('a summary toggle without a registered controller is ignored', () => {
+      const grid = { minZoom: 11, setVisible: vi.fn() }
+      registerLayersPanel(interactiveMap, olMap, undefined, undefined, { grid })
+
+      createSummaryCheckbox('features', true).dispatchEvent(new Event('change', { bubbles: true }))
+
+      expect(grid.setVisible).not.toHaveBeenCalled()
+      expect(olMap.addLayer).not.toHaveBeenCalled()
+      expect(zoomWarningSet()).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('zoom warnings for datasets', () => {
+    test('a dataset with a zoom floor and no overview is tracked when toggled', async () => {
+      vi.stubGlobal('fetch', vi.fn())
+      registerLayersPanel(interactiveMap, olMap)
+
+      createLayerCheckbox('test-fgb-inline').dispatchEvent(new Event('change', { bubbles: true }))
+
+      await vi.waitFor(() => {
+        expect(olMap.addLayer).toHaveBeenCalled()
+      })
+
+      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb-inline', {
+        label: 'Test FlatGeobuf without a layer file',
+        minZoom: 7,
+        enabled: true
+      })
+    })
+
+    test('a dataset capped by its layer file is tracked with the derived floor', async () => {
+      vi.stubGlobal('fetch', vi.fn())
+      registerLayersPanel(interactiveMap, olMap)
+
+      createLayerCheckbox('test-fgb').dispatchEvent(new Event('change', { bubbles: true }))
+
+      await vi.waitFor(() => {
+        expect(olMap.addLayer).toHaveBeenCalled()
+      })
+
+      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb', {
+        label: 'Test FlatGeobuf',
+        minZoom: 9.2,
+        enabled: true
+      })
+    })
+
+    test('a dataset with an overview is never warned about', async () => {
+      vi.stubGlobal('fetch', vi.fn())
+      registerLayersPanel(interactiveMap, olMap)
+
+      createLayerCheckbox('test-fgb-with-overview').dispatchEvent(new Event('change', { bubbles: true }))
+
+      await vi.waitFor(() => {
+        expect(olMap.addLayer).toHaveBeenCalledTimes(2)
+      })
+
+      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb-with-overview', expect.objectContaining({
+        enabled: false
+      }))
+    })
+
+    test('a dataset that fails to load is tracked as disabled', async () => {
+      vi.stubGlobal('fetch', vi.fn())
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      loadLyrxStyle.mockRejectedValueOnce(new Error('lyrx unreachable'))
+      registerLayersPanel(interactiveMap, olMap)
+
+      const checkbox = createLayerCheckbox('test-fgb-min-zoom')
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }))
+
+      await vi.waitFor(() => {
+        expect(consoleError).toHaveBeenCalled()
+      })
+
+      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb-min-zoom', expect.objectContaining({
+        enabled: false
+      }))
+
+      consoleError.mockRestore()
+    })
+  })
+
+  test('toggling a dataset refreshes the info panel hits', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    const infoPanel = { refreshHits: vi.fn() }
+    registerLayersPanel(interactiveMap, olMap, undefined, infoPanel)
+
+    createLayerCheckbox('test-cog').dispatchEvent(new Event('change', { bubbles: true }))
+
+    await vi.waitFor(() => {
+      expect(infoPanel.refreshHits).toHaveBeenCalled()
+    })
+  })
+
   test('change event with unknown dataset ID is ignored', () => {
     registerLayersPanel(interactiveMap, olMap)
 
@@ -1258,27 +1009,6 @@ describe('#registerLayersPanel', () => {
     checkbox.dispatchEvent(new Event('change', { bubbles: true }))
 
     expect(olMap.addLayer).not.toHaveBeenCalled()
-  })
-
-  test('disabling identify mode cancels a pending double-click guard', async () => {
-    vi.useFakeTimers()
-    mockVisibleWmsLayers(olMap)
-    registerLayersPanel(interactiveMap, olMap)
-
-    const buttonConfig = interactiveMap.addButton.mock.calls.find(
-      call => call[0] === 'gep-layer-info-toggle'
-    )[1]
-    buttonConfig.onClick()
-
-    vi.stubGlobal('fetch', vi.fn())
-
-    interactiveMap._handlers['map:click']({ coords: [418750, 385150] })
-
-    buttonConfig.onClick()
-    await vi.advanceTimersByTimeAsync(300)
-
-    expect(global.fetch).not.toHaveBeenCalled()
-    expect(interactiveMap.showPanel).not.toHaveBeenCalledWith('gep-layer-info')
   })
 
   test('adds key button', () => {
@@ -1352,61 +1082,5 @@ describe('#registerLayersPanel', () => {
       expect(keyContent.querySelector('.app-map__key-legend')).toBeNull()
       expect(keyContent.textContent).toContain('Enable data layers to view the key.')
     })
-  })
-
-  test('hover is not registered without the debug query param', () => {
-    registerLayersPanel(interactiveMap, olMap)
-
-    expect(olMap.addOverlay).not.toHaveBeenCalled()
-    expect(olMap.on.mock.calls.some(([type]) => type === 'pointermove')).toBe(false)
-  })
-
-  test('hover reads feature properties and raster bands under the cursor', () => {
-    window.history.replaceState({}, '', '/?debug')
-    olMap._layers.push({
-      get: (key) => (key === 'id' ? 'gep-test-cog' : undefined),
-      getVisible: () => true,
-      getData: () => new Float32Array([142.25, 255])
-    })
-    olMap.forEachFeatureAtPixel.mockImplementation((_pixel, callback, options) => {
-      const layer = { get: (key) => (key === 'id' ? 'gep-test-fgb' : undefined) }
-      if (options.layerFilter(layer)) {
-        callback({
-          getGeometryName: () => 'geometry',
-          getProperties: () => ({ geometry: {}, A_pred: 'Bog' })
-        }, layer)
-      }
-    })
-    registerLayersPanel(interactiveMap, olMap)
-
-    const [, onPointerMove] = olMap.on.mock.calls.find(([type]) => type === 'pointermove')
-    const element = olMap.addOverlay.mock.calls[0][0].getElement()
-
-    onPointerMove({ pixel: [0, 0], coordinate: [1, 2] })
-
-    const groups = [...element.querySelectorAll('.app-map__hover-info-group')]
-    expect(groups.map(group => group.querySelector('strong').textContent)).toEqual(['Test FlatGeobuf', 'Test COG'])
-    expect(element.textContent).toContain('A_pred: Bog')
-    expect(element.textContent).toContain('band 1: 142.25')
-  })
-
-  test('hover reads an overview layer, whose tile features have no geometry name', () => {
-    window.history.replaceState({}, '', '/?debug')
-    olMap.forEachFeatureAtPixel.mockImplementation((_pixel, callback, options) => {
-      const layer = { get: (key) => (key === 'id' ? 'gep-test-fgb-with-overview-overview' : undefined) }
-      if (options.layerFilter(layer)) {
-        callback({ getProperties: () => ({ A_pred: 'Bog' }) }, layer)
-      }
-    })
-    registerLayersPanel(interactiveMap, olMap)
-
-    const [, onPointerMove] = olMap.on.mock.calls.find(([type]) => type === 'pointermove')
-    const element = olMap.addOverlay.mock.calls[0][0].getElement()
-
-    onPointerMove({ pixel: [0, 0], coordinate: [1, 2] })
-
-    const [group] = element.querySelectorAll('.app-map__hover-info-group')
-    expect(group.querySelector('strong').textContent).toBe('Test FlatGeobuf with overview tiles')
-    expect(element.textContent).toContain('A_pred: Bog')
   })
 })

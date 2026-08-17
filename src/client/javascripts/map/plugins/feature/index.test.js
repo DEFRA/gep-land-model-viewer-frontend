@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@defra/interactive-map', () => ({
@@ -42,15 +41,14 @@ describe('#registerFeatureController', () => {
   let infoPanel
 
   beforeEach(() => {
-    document.body.innerHTML = '<div class="app-map"><div id="map-container"></div></div>'
     const handlers = {}
     interactiveMap = {
       on: vi.fn((event, handler) => { handlers[event] = handler }),
       _handlers: handlers
     }
     olMap = {
-      getTargetElement: vi.fn(() => document.getElementById('map-container')),
-      getPixelFromCoordinate: vi.fn(() => [100, 200])
+      getPixelFromCoordinate: vi.fn(() => [100, 200]),
+      getView: vi.fn(() => ({ getZoom: vi.fn(() => 12) }))
     }
     infoPanel = { activate: vi.fn(), deactivate: vi.fn() }
     mockFeatureLayer = createMockFeatureLayer()
@@ -59,10 +57,9 @@ describe('#registerFeatureController', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
-    document.body.innerHTML = ''
   })
 
-  function registeredInspector () {
+  function registeredSource () {
     const api = registerFeatureController(interactiveMap, olMap, 'os-outdoor-ngd', infoPanel)
     api.setVisible(true)
     return infoPanel.activate.mock.calls[0][0]
@@ -113,62 +110,61 @@ describe('#registerFeatureController', () => {
     expect(infoPanel.activate).toHaveBeenCalled()
   })
 
-  test('setVisible(false) hides the layer, clears the selection and deactivates', () => {
+  test('setVisible(false) hides the layer and deactivates its source', () => {
     const controller = registerFeatureController(interactiveMap, olMap, 'os-outdoor-ngd', infoPanel)
 
     controller.setVisible(true)
-    const inspector = infoPanel.activate.mock.calls[0][0]
+    const source = infoPanel.activate.mock.calls[0][0]
     controller.setVisible(false)
 
     expect(mockFeatureLayer.setEnabled).toHaveBeenLastCalledWith(false)
-    expect(mockFeatureLayer.clearSelection).toHaveBeenCalled()
-    expect(infoPanel.deactivate).toHaveBeenCalledWith(inspector)
+    expect(infoPanel.deactivate).toHaveBeenCalledWith(source)
   })
 
-  test('setVisible toggles the feature cursor class on the map container', () => {
-    const controller = registerFeatureController(interactiveMap, olMap, 'os-outdoor-ngd', infoPanel)
-    const container = document.getElementById('map-container')
-
-    controller.setVisible(true)
-    expect(container.classList.contains('app-map--feature')).toBe(true)
-
-    controller.setVisible(false)
-    expect(container.classList.contains('app-map--feature')).toBe(false)
-  })
-
-  test('hitTest selects and returns the feature under the click', () => {
+  test('a click on a feature yields an OS feature hit', () => {
     mockFeatureLayer.findFeatureAtPixel.mockReturnValue({ osid: 'abc-123', description: 'Arable Land' })
-    const inspector = registeredInspector()
+    const source = registeredSource()
 
-    const hit = inspector.hitTest([418700, 385100])
+    const hits = source.getHits([418700, 385100])
 
     expect(olMap.getPixelFromCoordinate).toHaveBeenCalledWith([418700, 385100])
-    expect(mockFeatureLayer.selectFeature).toHaveBeenCalledWith('abc-123')
-    expect(hit).toEqual({ osid: 'abc-123', description: 'Arable Land' })
+    expect(hits).toHaveLength(1)
+    expect(hits[0].label).toBe('OS feature')
+    expect(hits[0].panelTitle).toBe('OS feature')
+    expect(mockFeatureLayer.selectFeature).not.toHaveBeenCalled()
   })
 
-  test('hitTest returns null without selecting when nothing is under the click', () => {
+  test('selecting the hit highlights the feature by osid', () => {
+    mockFeatureLayer.findFeatureAtPixel.mockReturnValue({ osid: 'abc-123' })
+    const source = registeredSource()
+
+    source.getHits([418700, 385100])[0].select()
+
+    expect(mockFeatureLayer.selectFeature).toHaveBeenCalledWith('abc-123')
+  })
+
+  test('a click with nothing under it yields no hits', () => {
     mockFeatureLayer.findFeatureAtPixel.mockReturnValue(null)
-    const inspector = registeredInspector()
+    const source = registeredSource()
 
-    const hit = inspector.hitTest([418700, 385100])
-
-    expect(hit).toBeNull()
+    expect(source.getHits([418700, 385100])).toEqual([])
     expect(mockFeatureLayer.selectFeature).not.toHaveBeenCalled()
   })
 
   test('loadDetails fetches details by osid', async () => {
-    const inspector = registeredInspector()
+    mockFeatureLayer.findFeatureAtPixel.mockReturnValue({ osid: 'abc-123' })
+    const source = registeredSource()
 
-    await inspector.loadDetails({ osid: 'abc-123' })
+    await source.getHits([418700, 385100])[0].loadDetails({ signal: null })
 
     expect(getFeatureDetails).toHaveBeenCalledWith('abc-123')
   })
 
   test('renderHtml renders the loaded parcel attributes', () => {
-    const inspector = registeredInspector()
+    mockFeatureLayer.findFeatureAtPixel.mockReturnValue({ osid: 'abc-123' })
+    const source = registeredSource()
 
-    const html = inspector.renderHtml({ osid: 'abc-123' }, {
+    const html = source.getHits([418700, 385100])[0].renderHtml({
       osid: 'abc-123',
       toid: 'osgb-1',
       landUse: { label: 'Agriculture', code: 'U011' },
@@ -185,18 +181,19 @@ describe('#registerFeatureController', () => {
   })
 
   test('renderHtml shows an unavailable message when there are no details', () => {
-    const inspector = registeredInspector()
+    mockFeatureLayer.findFeatureAtPixel.mockReturnValue({ osid: 'abc-123' })
+    const source = registeredSource()
 
-    const html = inspector.renderHtml({ osid: 'abc-123' }, null)
+    const html = source.getHits([418700, 385100])[0].renderHtml(null)
 
     expect(html).toContain('abc-123')
     expect(html).toContain('unavailable')
   })
 
   test('clearSelection clears the feature selection', () => {
-    const inspector = registeredInspector()
+    const source = registeredSource()
 
-    inspector.clearSelection()
+    source.clearSelection()
 
     expect(mockFeatureLayer.clearSelection).toHaveBeenCalled()
   })

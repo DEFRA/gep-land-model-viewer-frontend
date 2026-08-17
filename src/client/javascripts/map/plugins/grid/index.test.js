@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 
 vi.mock('./grid-layer.js', () => ({
@@ -29,9 +28,8 @@ describe('#registerGridController', () => {
   let infoPanel
 
   beforeEach(() => {
-    document.body.innerHTML = '<div class="app-map"><div id="map-container"></div></div>'
     olMap = {
-      getTargetElement: vi.fn(() => document.getElementById('map-container'))
+      getView: vi.fn(() => ({ getZoom: vi.fn(() => 12) }))
     }
     interactiveMap = {}
     infoPanel = { activate: vi.fn(), deactivate: vi.fn() }
@@ -41,10 +39,9 @@ describe('#registerGridController', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
-    document.body.innerHTML = ''
   })
 
-  function registeredInspector () {
+  function registeredSource () {
     const api = registerGridController(interactiveMap, olMap, infoPanel)
     api.setVisible(true)
     return infoPanel.activate.mock.calls[0][0]
@@ -71,58 +68,55 @@ describe('#registerGridController', () => {
     expect(infoPanel.activate).toHaveBeenCalled()
   })
 
-  test('setVisible(false) hides the grid layer, clears the highlight and deactivates', () => {
+  test('setVisible(false) hides the grid layer and deactivates its source', () => {
     const api = registerGridController(interactiveMap, olMap, infoPanel)
 
     api.setVisible(true)
-    const inspector = infoPanel.activate.mock.calls[0][0]
+    const source = infoPanel.activate.mock.calls[0][0]
     api.setVisible(false)
 
     expect(mockGridLayer.setEnabled).toHaveBeenLastCalledWith(false)
-    expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
-    expect(infoPanel.deactivate).toHaveBeenCalledWith(inspector)
+    expect(infoPanel.deactivate).toHaveBeenCalledWith(source)
   })
 
-  test('setVisible toggles the grid cursor class on the map container', () => {
-    const api = registerGridController(interactiveMap, olMap, infoPanel)
-    const container = document.getElementById('map-container')
+  test('a click snaps to a cell and yields a Grid square hit', () => {
+    const source = registeredSource()
 
-    api.setVisible(true)
-    expect(container.classList.contains('app-map--grid')).toBe(true)
+    const hits = source.getHits([418725, 385137])
 
-    api.setVisible(false)
-    expect(container.classList.contains('app-map--grid')).toBe(false)
+    expect(hits).toHaveLength(1)
+    expect(hits[0].label).toBe('Grid square')
+    expect(hits[0].panelTitle).toBe('Grid square')
+    expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
   })
 
-  test('hitTest snaps the click to a cell and highlights it', () => {
-    const inspector = registeredInspector()
+  test('selecting the hit highlights the snapped cell', () => {
+    const source = registeredSource()
 
-    const cell = inspector.hitTest([418725, 385137])
+    source.getHits([418725, 385137])[0].select()
 
     expect(mockGridLayer.highlightCell).toHaveBeenCalledWith(418720, 385130)
-    expect(cell).toEqual(expect.objectContaining({ easting: 418720, northing: 385130 }))
   })
 
-  test('hitTest returns null for coordinates outside the BNG extent', () => {
-    const inspector = registeredInspector()
+  test('coordinates outside the BNG extent yield no hits', () => {
+    const source = registeredSource()
 
-    expect(inspector.hitTest([418725, -1])).toBeNull()
+    expect(source.getHits([418725, -1])).toEqual([])
     expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
   })
 
   test('loadDetails fetches grid details by bng_ref', async () => {
-    const inspector = registeredInspector()
-    const cell = inspector.hitTest([418725, 385137])
+    const source = registeredSource()
 
-    await inspector.loadDetails(cell)
+    await source.getHits([418725, 385137])[0].loadDetails({ signal: null })
 
-    expect(getGridDetails).toHaveBeenCalledWith(cell.cellId.compact)
+    expect(getGridDetails).toHaveBeenCalledWith('SK18728513')
   })
 
   test('clearSelection clears the cell highlight', () => {
-    const inspector = registeredInspector()
+    const source = registeredSource()
 
-    inspector.clearSelection()
+    source.clearSelection()
 
     expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
   })

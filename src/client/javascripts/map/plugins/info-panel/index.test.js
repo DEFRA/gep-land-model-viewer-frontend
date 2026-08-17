@@ -3,11 +3,15 @@ import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@defra/interactive-map', () => ({
   EVENTS: {
-    MAP_CLICK: 'map:click',
     APP_PANEL_CLOSED: 'app:panelclosed'
   }
 }))
 
+vi.mock('../../pointer.js', () => ({
+  isCoarsePointer: vi.fn(() => false)
+}))
+
+const { isCoarsePointer } = await import('../../pointer.js')
 const { registerInfoPanel } = await import('./index.js')
 
 function createMapHarness () {
@@ -21,12 +25,19 @@ function createMapHarness () {
   }
 }
 
-function createInspector (overrides = {}) {
+function createHit (overrides = {}) {
   return {
-    emptyHtml: '<p>empty state</p>',
-    hitTest: vi.fn(() => ({ id: 'hit-1' })),
+    label: 'Test layer',
+    select: vi.fn(),
     loadDetails: vi.fn(async () => ({ detail: 'value' })),
     renderHtml: vi.fn(() => '<p>rendered</p>'),
+    ...overrides
+  }
+}
+
+function createSource (overrides = {}) {
+  return {
+    getHits: vi.fn(() => []),
     clearSelection: vi.fn(),
     ...overrides
   }
@@ -37,15 +48,20 @@ describe('#registerInfoPanel', () => {
   let olMap
 
   beforeEach(() => {
-    document.body.innerHTML = '<div class="app-map"><div id="map-container"></div><div id="gep-info-content"></div></div>'
+    vi.useFakeTimers()
+    document.body.innerHTML = '<div class="app-map"><div id="map-container"></div><div class="im-c-panel"><h2 class="im-c-panel__heading">Land model attributes</h2><div id="gep-info-status" class="govuk-visually-hidden" role="status"></div><div id="gep-info-content"></div></div></div>'
     interactiveMap = createMapHarness()
+    const olHandlers = {}
     olMap = {
       getTargetElement: vi.fn(() => document.getElementById('map-container')),
-      getView: vi.fn(() => ({ animate: vi.fn() }))
+      getView: vi.fn(() => ({ animate: vi.fn() })),
+      on: vi.fn((event, handler) => { olHandlers[event] = handler }),
+      _handlers: olHandlers
     }
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.clearAllMocks()
     document.body.innerHTML = ''
   })
@@ -54,12 +70,21 @@ describe('#registerInfoPanel', () => {
     return document.getElementById('gep-info-content')
   }
 
+  function statusText () {
+    return document.getElementById('gep-info-status').textContent
+  }
+
+  function panelTitle () {
+    return document.querySelector('.im-c-panel__heading').textContent
+  }
+
   function appMap () {
     return document.querySelector('.app-map')
   }
 
-  function click (coords = [418700, 385100]) {
-    return interactiveMap._handlers['map:click']({ coords })
+  async function click (coordinate = [418700, 385100]) {
+    olMap._handlers.singleclick({ coordinate })
+    await vi.advanceTimersByTimeAsync(0)
   }
 
   test('registers the panel with the shared shell', () => {
@@ -77,7 +102,7 @@ describe('#registerInfoPanel', () => {
     )
   })
 
-  test('click with no active inspector does nothing', async () => {
+  test('click with no active sources does nothing', async () => {
     registerInfoPanel(interactiveMap, olMap)
 
     await click()
@@ -86,44 +111,134 @@ describe('#registerInfoPanel', () => {
     expect(contentEl().innerHTML).toBe('')
   })
 
-  test('click on a hit opens the panel with a loading state then the rendered content', async () => {
+  test('a single hit opens the panel, highlights it and renders its details', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
-    let resolveDetails
-    const inspector = createInspector({
-      loadDetails: vi.fn(() => new Promise((resolve) => { resolveDetails = resolve }))
-    })
-    panel.activate(inspector)
+    const hit = createHit()
+    panel.activate(createSource({ getHits: vi.fn(() => [hit]) }))
 
-    const pending = click()
-    expect(contentEl().textContent).toContain('Loading details')
+    await click()
+
     expect(interactiveMap.showPanel).toHaveBeenCalledWith('gep-info', { focus: false })
     expect(appMap().classList.contains('app-map--info-panel-open')).toBe(true)
-
-    resolveDetails({ detail: 'value' })
-    await pending
-
-    expect(inspector.renderHtml).toHaveBeenCalledWith({ id: 'hit-1' }, { detail: 'value' })
+    expect(hit.select).toHaveBeenCalled()
+    expect(hit.renderHtml).toHaveBeenCalledWith({ detail: 'value' })
     expect(contentEl().innerHTML).toBe('<p>rendered</p>')
   })
 
-  test('click on a miss keeps the panel open and shows the empty state', async () => {
+  test('a single hit shows no back link', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
-    const inspector = createInspector()
-    panel.activate(inspector)
+    panel.activate(createSource({ getHits: vi.fn(() => [createHit()]) }))
+
     await click()
 
-    inspector.hitTest.mockReturnValue(null)
-    await click()
-
-    expect(inspector.clearSelection).toHaveBeenCalled()
-    expect(interactiveMap.hidePanel).not.toHaveBeenCalled()
-    expect(contentEl().innerHTML).toBe('<p>empty state</p>')
+    expect(contentEl().querySelector('[data-app-hit-back]')).toBeNull()
   })
 
-  test('click on a miss with the panel closed does not open it', async () => {
+  test('several hits render a list ordered by label', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
-    const inspector = createInspector({ hitTest: vi.fn(() => null) })
-    panel.activate(inspector)
+    panel.activate(createSource({ getHits: vi.fn(() => [createHit({ label: 'Grid square' })]) }))
+    panel.activate(createSource({ getHits: vi.fn(() => [createHit({ label: 'Ancient Woodland' })]) }))
+
+    await click()
+
+    const labels = [...contentEl().querySelectorAll('[data-app-hit-index]')].map(el => el.textContent.trim())
+    expect(labels).toEqual(['Ancient Woodland', 'Grid square'])
+    expect(panelTitle()).toBe('2 layers selected')
+    expect(contentEl().textContent).toContain('More than one feature is at this location')
+  })
+
+  test('hits are not highlighted until one is picked from the list', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const first = createHit({ label: 'First' })
+    const second = createHit({ label: 'Second' })
+    panel.activate(createSource({ getHits: vi.fn(() => [first, second]) }))
+
+    await click()
+
+    expect(first.select).not.toHaveBeenCalled()
+    expect(second.select).not.toHaveBeenCalled()
+  })
+
+  test('picking a hit from the list shows its details with a back link', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const first = createHit({ label: 'First', renderHtml: vi.fn(() => '<p>first details</p>') })
+    panel.activate(createSource({ getHits: vi.fn(() => [first, createHit({ label: 'Second' })]) }))
+    await click()
+
+    contentEl().querySelector('[data-app-hit-index="0"]').click()
+
+    await vi.waitFor(() => {
+      expect(contentEl().innerHTML).toContain('first details')
+    })
+    expect(first.select).toHaveBeenCalled()
+    expect(panelTitle()).toBe('Land model attributes')
+    expect(contentEl().querySelector('[data-app-hit-back]').textContent).toContain('Back to 2 selected')
+  })
+
+  test('a hit with a panel title shows it while its details are open', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const hit = createHit({ panelTitle: 'Data layer attributes' })
+    panel.activate(createSource({ getHits: vi.fn(() => [hit]) }))
+
+    await click()
+
+    expect(panelTitle()).toBe('Data layer attributes')
+  })
+
+  test('the back link returns to the list and clears selections', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const source = createSource({ getHits: vi.fn(() => [createHit({ label: 'First' }), createHit({ label: 'Second' })]) })
+    panel.activate(source)
+    await click()
+    contentEl().querySelector('[data-app-hit-index="0"]').click()
+    await vi.waitFor(() => {
+      expect(contentEl().querySelector('[data-app-hit-back]')).not.toBeNull()
+    })
+    source.clearSelection.mockClear()
+
+    contentEl().querySelector('[data-app-hit-back]').click()
+
+    expect(source.clearSelection).toHaveBeenCalled()
+    expect(panelTitle()).toBe('2 layers selected')
+    expect(contentEl().querySelectorAll('[data-app-hit-index]')).toHaveLength(2)
+  })
+
+  test('revisiting a hit reuses its loaded details', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const first = createHit({ label: 'First' })
+    panel.activate(createSource({ getHits: vi.fn(() => [first, createHit({ label: 'Second' })]) }))
+    await click()
+
+    contentEl().querySelector('[data-app-hit-index="0"]').click()
+    await vi.waitFor(() => {
+      expect(contentEl().querySelector('[data-app-hit-back]')).not.toBeNull()
+    })
+    contentEl().querySelector('[data-app-hit-back]').click()
+    contentEl().querySelector('[data-app-hit-index="0"]').click()
+    await vi.waitFor(() => {
+      expect(contentEl().querySelector('[data-app-hit-back]')).not.toBeNull()
+    })
+
+    expect(first.loadDetails).toHaveBeenCalledTimes(1)
+  })
+
+  test('click with no hits keeps the panel open and shows the empty state', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const source = createSource({ getHits: vi.fn(() => [createHit()]) })
+    panel.activate(source)
+    await click()
+
+    source.getHits.mockReturnValue([])
+    await click()
+
+    expect(source.clearSelection).toHaveBeenCalled()
+    expect(interactiveMap.hidePanel).not.toHaveBeenCalled()
+    expect(contentEl().textContent).toContain('No information found at this location')
+  })
+
+  test('click with no hits and the panel closed does not open it', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    panel.activate(createSource())
 
     await click()
 
@@ -131,100 +246,307 @@ describe('#registerInfoPanel', () => {
     expect(contentEl().innerHTML).toBe('')
   })
 
+  test('a failing source does not break hits from the others', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    panel.activate(createSource({ getHits: vi.fn(() => { throw new Error('source broke') }) }))
+    panel.activate(createSource({ getHits: vi.fn(() => [createHit()]) }))
+
+    await click()
+
+    expect(contentEl().innerHTML).toBe('<p>rendered</p>')
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
   test('a stale details response does not overwrite a newer selection', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
     let resolveFirst
-    const inspector = createInspector()
-    inspector.loadDetails
-      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
-      .mockImplementationOnce(async () => ({ id: 'second' }))
-    inspector.renderHtml.mockImplementation((hit, details) => `<p>${details.id}</p>`)
-    panel.activate(inspector)
+    const hitFactory = vi.fn()
+      .mockImplementationOnce(() => [createHit({
+        loadDetails: vi.fn(() => new Promise((resolve) => { resolveFirst = resolve })),
+        renderHtml: vi.fn((details) => `<p>${details.id}</p>`)
+      })])
+      .mockImplementationOnce(() => [createHit({
+        loadDetails: vi.fn(async () => ({ id: 'second' })),
+        renderHtml: vi.fn((details) => `<p>${details.id}</p>`)
+      })])
+    panel.activate(createSource({ getHits: hitFactory }))
 
-    const first = click()
-    const second = click()
-    await second
+    await click()
+    expect(typeof resolveFirst).toBe('function')
+    await click()
     resolveFirst({ id: 'first' })
-    await first
+    await vi.advanceTimersByTimeAsync(0)
 
     expect(contentEl().innerHTML).toBe('<p>second</p>')
   })
 
-  test('loadDetails receives an abort signal that a newer click aborts', async () => {
+  test('getHits receives an abort signal that a newer click aborts', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
-    const inspector = createInspector()
-    panel.activate(inspector)
+    const source = createSource()
+    panel.activate(source)
 
-    const first = click()
-    const { signal } = inspector.loadDetails.mock.calls[0][1]
+    await click()
+    const { signal } = source.getHits.mock.calls[0][1]
     expect(signal.aborted).toBe(false)
 
-    const second = click()
+    await click()
     expect(signal.aborted).toBe(true)
-    await Promise.all([first, second])
   })
 
-  test('a click on a miss invalidates a pending details load', async () => {
-    const panel = registerInfoPanel(interactiveMap, olMap)
-    let resolveFirst
-    const inspector = createInspector()
-    inspector.loadDetails.mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
-    panel.activate(inspector)
+  test('fine pointers identify on singleclick so double-click stays clean', () => {
+    registerInfoPanel(interactiveMap, olMap)
 
-    const first = click()
-    inspector.hitTest.mockReturnValue(null)
+    expect(olMap.on).toHaveBeenCalledWith('singleclick', expect.any(Function))
+  })
+
+  test('coarse pointers identify on plain click without the singleclick delay', () => {
+    isCoarsePointer.mockReturnValueOnce(true)
+
+    registerInfoPanel(interactiveMap, olMap)
+
+    expect(olMap.on).toHaveBeenCalledWith('click', expect.any(Function))
+  })
+
+  test('going back while details are loading aborts the stale load', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    let resolveDetails
+    const slow = createHit({
+      label: 'First',
+      loadDetails: vi.fn(() => new Promise((resolve) => { resolveDetails = resolve })),
+      renderHtml: vi.fn(() => '<p>first details</p>')
+    })
+    panel.activate(createSource({ getHits: vi.fn(() => [slow, createHit({ label: 'Second' })]) }))
     await click()
 
-    resolveFirst({ detail: 'late' })
-    await first
+    contentEl().querySelector('[data-app-hit-index="0"]').click()
+    const { signal } = slow.loadDetails.mock.calls[0][0]
 
-    expect(inspector.renderHtml).not.toHaveBeenCalled()
-    expect(contentEl().innerHTML).toBe('<p>empty state</p>')
+    contentEl().querySelector('[data-app-hit-back]').click()
+    expect(signal.aborted).toBe(true)
+
+    resolveDetails({ id: 'first' })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(panelTitle()).toBe('2 layers selected')
+    expect(contentEl().querySelectorAll('[data-app-hit-index]')).toHaveLength(2)
+  })
+
+  test('hits from a source deactivated during collection are dropped', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    let resolveHits
+    const source = createSource({
+      getHits: vi.fn(() => new Promise((resolve) => { resolveHits = resolve }))
+    })
+    panel.activate(source)
+    await click()
+
+    panel.deactivate(source)
+    resolveHits([createHit()])
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(interactiveMap.showPanel).not.toHaveBeenCalled()
+    expect(contentEl().innerHTML).toBe('')
   })
 
   test('a failed details load shows the error state', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const panel = registerInfoPanel(interactiveMap, olMap)
-    const inspector = createInspector({
+    const hit = createHit({
       loadDetails: vi.fn(async () => { throw new Error('request failed') })
     })
-    panel.activate(inspector)
+    panel.activate(createSource({ getHits: vi.fn(() => [hit]) }))
 
     await click()
 
-    expect(inspector.renderHtml).not.toHaveBeenCalled()
+    expect(hit.renderHtml).not.toHaveBeenCalled()
     expect(contentEl().textContent).toContain('Could not load details')
     expect(appMap().classList.contains('app-map--info-panel-open')).toBe(true)
+    consoleError.mockRestore()
   })
 
-  test('a stale failed load does not overwrite a newer selection', async () => {
+  test('panel close clears selections and the layout class', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
-    let rejectFirst
-    const inspector = createInspector()
-    inspector.loadDetails
-      .mockImplementationOnce(() => new Promise((resolve, reject) => { rejectFirst = reject }))
-      .mockImplementationOnce(async () => ({ id: 'second' }))
-    inspector.renderHtml.mockImplementation((hit, details) => `<p>${details.id}</p>`)
-    panel.activate(inspector)
-
-    const first = click()
-    const second = click()
-    await second
-    rejectFirst(new Error('request failed'))
-    await first
-
-    expect(contentEl().innerHTML).toBe('<p>second</p>')
-  })
-
-  test('panel close clears the selection and the layout class', async () => {
-    const panel = registerInfoPanel(interactiveMap, olMap)
-    const inspector = createInspector()
-    panel.activate(inspector)
+    const source = createSource({ getHits: vi.fn(() => [createHit()]) })
+    panel.activate(source)
     await click()
 
     interactiveMap._handlers['app:panelclosed']({ panelId: 'gep-info' })
 
-    expect(inspector.clearSelection).toHaveBeenCalled()
+    expect(source.clearSelection).toHaveBeenCalled()
     expect(appMap().classList.contains('app-map--info-panel-open')).toBe(false)
+  })
+
+  test('other panel close events are ignored', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const source = createSource({ getHits: vi.fn(() => [createHit()]) })
+    panel.activate(source)
+    await click()
+    source.clearSelection.mockClear()
+
+    interactiveMap._handlers['app:panelclosed']({ panelId: 'some-other-panel' })
+
+    expect(source.clearSelection).not.toHaveBeenCalled()
+    expect(appMap().classList.contains('app-map--info-panel-open')).toBe(true)
+  })
+
+  test('deactivating the source behind the current content closes the panel', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const source = createSource({ getHits: vi.fn(() => [createHit()]) })
+    panel.activate(source)
+    await click()
+
+    panel.deactivate(source)
+
+    expect(interactiveMap.hidePanel).toHaveBeenCalledWith('gep-info')
+    expect(appMap().classList.contains('app-map--info-panel-open')).toBe(false)
+
+    await click()
+    expect(interactiveMap.showPanel).toHaveBeenCalledTimes(1)
+  })
+
+  test('deactivating an unrelated source leaves the panel open', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    const withHits = createSource({ getHits: vi.fn(() => [createHit()]) })
+    const without = createSource()
+    panel.activate(withHits)
+    panel.activate(without)
+    await click()
+
+    panel.deactivate(without)
+
+    expect(interactiveMap.hidePanel).not.toHaveBeenCalled()
+    expect(appMap().classList.contains('app-map--info-panel-open')).toBe(true)
+  })
+
+  test('deactivating a source that is not active is a no-op', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    panel.activate(createSource({ getHits: vi.fn(() => [createHit()]) }))
+    await click()
+
+    panel.deactivate(createSource())
+
+    expect(interactiveMap.hidePanel).not.toHaveBeenCalled()
+    expect(appMap().classList.contains('app-map--info-panel-open')).toBe(true)
+  })
+
+  test('refreshHits drops a hit whose layer is no longer shown', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    let secondShown = true
+    const first = createHit({ label: 'First', renderHtml: vi.fn(() => '<p>first details</p>') })
+    const second = createHit({ label: 'Second', stillValid: () => secondShown })
+    panel.activate(createSource({ getHits: vi.fn(() => [first, second]) }))
+    await click()
+    expect(contentEl().querySelectorAll('[data-app-hit-index]')).toHaveLength(2)
+
+    secondShown = false
+    panel.refreshHits()
+
+    await vi.waitFor(() => {
+      expect(contentEl().innerHTML).toContain('first details')
+    })
+    expect(contentEl().querySelector('[data-app-hit-back]')).toBeNull()
+  })
+
+  test('refreshHits closes the panel when nothing under the click remains shown', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    let shown = true
+    const source = createSource({ getHits: vi.fn(() => [createHit({ stillValid: () => shown })]) })
+    panel.activate(source)
+    await click()
+
+    shown = false
+    panel.refreshHits()
+
+    expect(interactiveMap.hidePanel).toHaveBeenCalledWith('gep-info')
+    expect(source.clearSelection).toHaveBeenCalled()
+  })
+
+  test('a layer unchecked while details load corrects the back count when they land', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    let resolveDetails
+    let thirdShown = true
+    const slow = createHit({
+      label: 'First',
+      loadDetails: vi.fn(() => new Promise((resolve) => { resolveDetails = resolve })),
+      renderHtml: vi.fn(() => '<p>first details</p>')
+    })
+    panel.activate(createSource({
+      getHits: vi.fn(() => [
+        slow,
+        createHit({ label: 'Second' }),
+        createHit({ label: 'Third', stillValid: () => thirdShown })
+      ])
+    }))
+    await click()
+    contentEl().querySelector('[data-app-hit-index="0"]').click()
+    expect(contentEl().textContent).toContain('Back to 3 selected')
+
+    thirdShown = false
+    panel.refreshHits()
+    expect(contentEl().textContent).toContain('Loading details')
+    expect(contentEl().textContent).toContain('Back to 2 selected')
+
+    resolveDetails({ detail: 'value' })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(contentEl().innerHTML).toContain('first details')
+    expect(contentEl().textContent).toContain('Back to 2 selected')
+  })
+
+  test('a loading hit pruned from the list cannot overwrite it when it resolves', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    let resolveDetails
+    let firstShown = true
+    const slow = createHit({
+      label: 'First',
+      stillValid: () => firstShown,
+      loadDetails: vi.fn(() => new Promise((resolve) => { resolveDetails = resolve })),
+      renderHtml: vi.fn(() => '<p>first details</p>')
+    })
+    panel.activate(createSource({
+      getHits: vi.fn(() => [
+        slow,
+        createHit({ label: 'Second' }),
+        createHit({ label: 'Third' })
+      ])
+    }))
+    await click()
+    contentEl().querySelector('[data-app-hit-index="0"]').click()
+    expect(contentEl().textContent).toContain('Loading details')
+
+    firstShown = false
+    panel.refreshHits()
+    expect(contentEl().textContent).toContain('Second')
+
+    resolveDetails({ detail: 'value' })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(contentEl().innerHTML).not.toContain('first details')
+    expect(contentEl().textContent).toContain('Second')
+  })
+
+  test('refreshHits updates the back count on an open detail view', async () => {
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    let thirdShown = true
+    panel.activate(createSource({
+      getHits: vi.fn(() => [
+        createHit({ label: 'First' }),
+        createHit({ label: 'Second' }),
+        createHit({ label: 'Third', stillValid: () => thirdShown })
+      ])
+    }))
+    await click()
+    contentEl().querySelector('[data-app-hit-index="0"]').click()
+    await vi.waitFor(() => {
+      expect(contentEl().textContent).toContain('Back to 3 selected')
+    })
+
+    thirdShown = false
+    panel.refreshHits()
+
+    expect(contentEl().textContent).toContain('Back to 2 selected')
   })
 
   test('preserves which sections are expanded across content updates', async () => {
@@ -243,8 +565,9 @@ describe('#registerInfoPanel', () => {
       </details>
     `
     const panel = registerInfoPanel(interactiveMap, olMap)
-    const inspector = createInspector({ renderHtml: vi.fn(() => sectionHtml) })
-    panel.activate(inspector)
+    panel.activate(createSource({
+      getHits: vi.fn(() => [createHit({ renderHtml: vi.fn(() => sectionHtml) })])
+    }))
 
     await click()
     contentEl().querySelectorAll('.app-map__info-section')[0].open = true
@@ -256,59 +579,65 @@ describe('#registerInfoPanel', () => {
     expect(sections[1].open).toBe(false)
   })
 
-  test('other panel close events are ignored', async () => {
+  test('announces the details once they are loaded', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
-    const inspector = createInspector()
-    panel.activate(inspector)
+    panel.activate(createSource({ getHits: vi.fn(() => [createHit({ label: 'Ancient Woodland' })]) }))
+
     await click()
 
-    interactiveMap._handlers['app:panelclosed']({ panelId: 'some-other-panel' })
-
-    expect(inspector.clearSelection).not.toHaveBeenCalled()
-    expect(appMap().classList.contains('app-map--info-panel-open')).toBe(true)
+    expect(statusText()).toBe('Ancient Woodland details loaded')
   })
 
-  test('deactivate closes the panel and ignores further clicks', async () => {
+  test('announces how many layers are under the click', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
-    const inspector = createInspector()
-    panel.activate(inspector)
-    await click()
-
-    panel.deactivate(inspector)
-
-    expect(interactiveMap.hidePanel).toHaveBeenCalledWith('gep-info')
-    expect(appMap().classList.contains('app-map--info-panel-open')).toBe(false)
+    panel.activate(createSource({
+      getHits: vi.fn(() => [createHit({ label: 'Peat' }), createHit({ label: 'Woodland' })])
+    }))
 
     await click()
-    expect(interactiveMap.showPanel).toHaveBeenCalledTimes(1)
+
+    expect(statusText()).toBe('2 layers found at this location')
   })
 
-  test('deactivate by an inspector that is not active is a no-op', async () => {
+  test('announces a click that finds nothing', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
-    const active = createInspector()
-    panel.activate(active)
+    panel.activate(createSource())
+
     await click()
 
-    panel.deactivate(createInspector())
-
-    expect(interactiveMap.hidePanel).not.toHaveBeenCalled()
-    expect(appMap().classList.contains('app-map--info-panel-open')).toBe(true)
+    expect(statusText()).toBe('No information found at this location')
   })
 
-  test('a details response from a replaced inspector is discarded', async () => {
+  test('announces a failed details load', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const panel = registerInfoPanel(interactiveMap, olMap)
+    panel.activate(createSource({
+      getHits: vi.fn(() => [createHit({ loadDetails: vi.fn(async () => { throw new Error('request failed') }) })])
+    }))
+
+    await click()
+
+    expect(statusText()).toBe('Could not load details')
+    consoleError.mockRestore()
+  })
+
+  test('marks the content busy while details load', async () => {
     const panel = registerInfoPanel(interactiveMap, olMap)
     let resolveDetails
-    const replaced = createInspector({
-      loadDetails: vi.fn(() => new Promise((resolve) => { resolveDetails = resolve }))
-    })
-    panel.activate(replaced)
-    const pending = click()
+    panel.activate(createSource({
+      getHits: vi.fn(() => [createHit({
+        loadDetails: vi.fn(() => new Promise(resolve => { resolveDetails = resolve }))
+      })])
+    }))
 
-    panel.activate(createInspector())
-    resolveDetails({ detail: 'late' })
-    await pending
+    await click()
+    expect(contentEl().getAttribute('aria-busy')).toBe('true')
+    expect(statusText()).toBe('Loading details')
 
-    expect(replaced.renderHtml).not.toHaveBeenCalled()
+    resolveDetails({ detail: 'value' })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(contentEl().hasAttribute('aria-busy')).toBe(false)
   })
 
   test('clicking the sample area link jumps the map to the sample area', async () => {
@@ -317,10 +646,9 @@ describe('#registerInfoPanel', () => {
     olMap.getView.mockReturnValue({ setCenter: mockSetCenter, setZoom: mockSetZoom })
     const panel = registerInfoPanel(interactiveMap, olMap)
     const unavailableHtml = '<div class="app-map__info-content"><a href="#" class="app-link-button app-map__info-sample-link">Go to the sample area</a></div>'
-    const inspector = createInspector({
-      renderHtml: vi.fn(() => unavailableHtml)
-    })
-    panel.activate(inspector)
+    panel.activate(createSource({
+      getHits: vi.fn(() => [createHit({ renderHtml: vi.fn(() => unavailableHtml) })])
+    }))
 
     await click()
     contentEl().querySelector('.app-map__info-sample-link').click()

@@ -5,7 +5,7 @@ import Style from 'ol/style/Style.js'
 import Fill from 'ol/style/Fill.js'
 import Stroke from 'ol/style/Stroke.js'
 import { getBasemapLayer } from '../../basemap.js'
-import { FEATURE_SOURCE_LAYER, MVT_LAYER_PROPERTY } from './constants.js'
+import { FEATURE_SOURCE_LAYER, FEATURE_VISIBLE_MIN_ZOOM, MVT_LAYER_PROPERTY } from './constants.js'
 import { DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../config/colours.js'
 import { OVERLAY_Z_INDEX } from '../../config/layers.js'
 
@@ -46,6 +46,8 @@ export function createFeatureLayer (map, tilesetUrl) {
     style: styleFn,
     renderMode: 'vector',
     visible: false,
+    // OL's minZoom is exclusive, so step back one from the first zoom that draws.
+    minZoom: FEATURE_VISIBLE_MIN_ZOOM - 1,
     zIndex: OVERLAY_Z_INDEX,
     properties: { id: 'gep-feature-overlay' }
   })

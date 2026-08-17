@@ -1,4 +1,5 @@
 export const GOVUK_BLUE = '#1d70b8'
+export const GOVUK_DARK_GREY = '#505a5f'
 export const DEFRA_GREEN = '#008531'
 export const DEFRA_GREEN_DARK = '#006a27'
 

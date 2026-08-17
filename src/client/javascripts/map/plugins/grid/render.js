@@ -1,9 +1,5 @@
 import escapeHtml from 'lodash/escape.js'
-import { EMPTY, renderRowHtml, renderMessageHtml, renderSectionHtml, renderUnavailableContentHtml, formatDate, renderLandUseHtml, renderTopographyHtml } from '../info-panel/render.js'
-
-export function renderEmptyStateHtml () {
-  return renderMessageHtml('Select a grid cell on the map to view its details.')
-}
+import { EMPTY, renderRowHtml, renderSectionHtml, renderUnavailableContentHtml, formatDate, renderLandUseHtml, renderTopographyHtml } from '../info-panel/render.js'
 
 /**
  * @param {{ cellId: import('./bng-reference.js').BngReference }} hit

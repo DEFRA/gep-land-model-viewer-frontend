@@ -46,13 +46,12 @@ vi.mock('./plugins/layers/index.js', () => ({
   registerLayersPanel: vi.fn()
 }))
 
-vi.mock('./plugins/north-indicator/index.js', () => ({
-  createNorthIndicatorPlugin: vi.fn(() => ({ id: 'northIndicator' }))
+vi.mock('./plugins/layers/dataset-hits.js', () => ({
+  createDatasetHitSource: vi.fn(() => ({ getHits: vi.fn(), clearSelection: vi.fn() }))
 }))
 
-vi.mock('./plugins/view-mode/index.js', () => ({
-  registerViewMode: vi.fn(),
-  createViewModePlugin: vi.fn(() => ({ id: 'gepViewMode' }))
+vi.mock('./plugins/north-indicator/index.js', () => ({
+  createNorthIndicatorPlugin: vi.fn(() => ({ id: 'northIndicator' }))
 }))
 
 describe('map entry point', () => {
@@ -85,29 +84,38 @@ describe('map entry point', () => {
     )
   })
 
-  test('registers layers, grid, feature and view-mode plugins when map is ready', async () => {
+  test('registers layers, grid and feature plugins when map is ready', async () => {
     const InteractiveMap = (await import('@defra/interactive-map')).default
     const { registerLayersPanel } = await import('./plugins/layers/index.js')
     const { registerGridController } = await import('./plugins/grid/index.js')
     const { registerFeatureController } = await import('./plugins/feature/index.js')
     const { registerInfoPanel } = await import('./plugins/info-panel/index.js')
-    const { registerViewMode } = await import('./plugins/view-mode/index.js')
+    const { createDatasetHitSource } = await import('./plugins/layers/dataset-hits.js')
 
     await import('./index.js')
 
     const readyHandler = InteractiveMap._handlers['map:ready']
     expect(readyHandler).toBeDefined()
 
+    const DoubleClickZoom = (await import('ol/interaction/DoubleClickZoom.js')).default
     const setConstrainResolution = vi.fn()
-    const olMap = { getView: vi.fn(() => ({ setConstrainResolution })) }
+    const olMap = {
+      getView: vi.fn(() => ({ setConstrainResolution })),
+      addInteraction: vi.fn()
+    }
     await readyHandler({ map: olMap, mapStyleId: 'outdoor' })
 
+    expect(olMap.addInteraction).toHaveBeenCalledWith(expect.any(DoubleClickZoom))
+
     const infoPanel = registerInfoPanel.mock.results[0].value
+    const grid = registerGridController.mock.results[0].value
+    const features = registerFeatureController.mock.results[0].value
     expect(setConstrainResolution).toHaveBeenCalledWith(true)
-    expect(registerLayersPanel).toHaveBeenCalledWith(expect.any(Object), olMap, 'outdoor')
     expect(registerInfoPanel).toHaveBeenCalledWith(expect.any(Object), olMap)
+    expect(createDatasetHitSource).toHaveBeenCalledWith(olMap)
+    expect(infoPanel.activate).toHaveBeenCalledWith(createDatasetHitSource.mock.results[0].value)
     expect(registerGridController).toHaveBeenCalledWith(expect.any(Object), olMap, infoPanel)
     expect(registerFeatureController).toHaveBeenCalledWith(expect.any(Object), olMap, 'outdoor', infoPanel)
-    expect(registerViewMode).toHaveBeenCalledWith(expect.any(Object), olMap, expect.any(Object))
+    expect(registerLayersPanel).toHaveBeenCalledWith(expect.any(Object), olMap, 'outdoor', infoPanel, { grid, features })
   })
 })

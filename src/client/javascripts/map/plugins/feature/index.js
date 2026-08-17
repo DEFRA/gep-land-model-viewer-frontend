@@ -4,7 +4,7 @@ import { FEATURE_VISIBLE_MIN_ZOOM } from './constants.js'
 import { createFeatureLayer } from './feature-layer.js'
 import { createInspectController } from '../info-panel/controller.js'
 import { getFeatureDetails } from './data.js'
-import { renderEmptyStateHtml, renderFeatureInfoHtml } from './render.js'
+import { renderFeatureInfoHtml } from './render.js'
 
 /**
  * @param {import('@defra/interactive-map').default} interactiveMap
@@ -17,15 +17,13 @@ export function registerFeatureController (interactiveMap, map, initialStyleId, 
   featureLayer.refreshSource(OS_NGD_STYLE_IDS.includes(initialStyleId))
 
   const inspector = {
-    emptyHtml: renderEmptyStateHtml(),
-
     hitTest (coords) {
       const pixel = map.getPixelFromCoordinate(coords)
-      const hit = featureLayer.findFeatureAtPixel(pixel)
-      if (hit) {
-        featureLayer.selectFeature(hit.osid)
-      }
-      return hit
+      return featureLayer.findFeatureAtPixel(pixel)
+    },
+
+    select (hit) {
+      featureLayer.selectFeature(hit.osid)
     },
 
     loadDetails (hit) {
@@ -49,7 +47,8 @@ export function registerFeatureController (interactiveMap, map, initialStyleId, 
   return createInspectController(map, {
     minZoom: FEATURE_VISIBLE_MIN_ZOOM,
     layer: featureLayer,
-    cursorClass: 'app-map--feature',
+    label: 'OS feature',
+    panelTitle: 'OS feature',
     inspector,
     infoPanel
   })

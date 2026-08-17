@@ -4,12 +4,6 @@
 
 // ===== Map page layout =====
 
-.app-map--identify,
-.app-map--grid,
-.app-map--feature {
-  cursor: crosshair;
-}
-
 // Full-bleed layout: flex column fills space after header without calc or overflow.
 .app-map-page {
   margin: 0;
@@ -62,8 +56,20 @@ html:has(.app-map-page) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 12px 12px 0;
+  padding: 12px 0 0;
   overflow: hidden;
+}
+
+.app-map__layers-content > .app-map__layers-header {
+  padding: 0 12px;
+}
+
+// Everything below the fixed panel title scrolls together.
+.app-map__layers-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 12px 12px;
 }
 
 .app-map__layers-header {
@@ -72,7 +78,7 @@ html:has(.app-map-page) {
   gap: 8px;
   margin: 0 0 16px;
   padding-right: 32px;
-  @include govuk-font-size($size: 19);
+  @include govuk-font-size($size: 24);
   font-weight: $govuk-font-weight-bold;
 }
 
@@ -150,18 +156,7 @@ html:has(.app-map-page) {
   stroke-linejoin: round;
 }
 
-.app-map__layers-content > .govuk-fieldset {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-// Layer list scrolls within the fixed header/search area.
 .app-map [data-app-layer-list] {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
   margin-left: -10px;
   padding: 0 0 12px 10px;
 }
@@ -207,207 +202,54 @@ html:has(.app-map-page) {
   height: auto;
 }
 
-// ===== Layer identify popup =====
+// ===== Layers panel: land summary =====
 
-.app-map .im-c-panel:has(.app-map__layer-info-panel) {
-  .im-c-panel__heading {
-    margin: 0;
-    padding: 10px 52px 10px 15px;
-    background-color: $defra-green;
-    color: govuk-colour("white");
-    @include govuk-font-size($size: 16);
-    font-weight: $govuk-font-weight-bold;
-  }
-
-  .im-c-panel__close {
-    top: 0;
-    right: 0;
-    color: govuk-colour("white");
-
-    &:hover {
-      background-color: $defra-green-dark;
-    }
-
-    &:focus-visible {
-      color: govuk-functional-colour("focus-text");
-      background-color: govuk-functional-colour("focus");
-    }
-  }
-
-  .im-c-panel__body {
-    padding: 0;
-    background-color: govuk-colour("white");
-  }
+.app-map__land-summary {
+  margin-bottom: govuk-spacing(4);
+  padding: govuk-spacing(3);
+  background-color: govuk-colour("black", $variant: "tint-95");
 }
 
-.app-map__layer-info {
-  padding: 16px 20px 18px;
-  @include govuk-font-size($size: 16);
+// ===== Zoom warning banner =====
 
-  .govuk-summary-list {
-    font-size: inherit;
-    line-height: inherit;
-  }
+.app-map__zoom-warning {
+  position: absolute;
+  top: govuk-spacing(6);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(2);
+  padding: govuk-spacing(2) govuk-spacing(3);
+  border-bottom: 4px solid govuk-colour("yellow");
+  background-color: govuk-colour("black");
+  color: govuk-colour("white");
+  white-space: nowrap;
+  pointer-events: none; // purely informational, map interactions pass through
+  @include govuk-font($size: 16);
 }
 
-.app-map__layer-info-section + .app-map__layer-info-section {
-  margin-top: 18px;
-}
-
-.app-map__layer-info-heading {
-  margin: 0 0 12px;
-  color: govuk-colour("black");
-}
-
-.app-map__layer-info-list {
-  margin-bottom: 0;
-
-  .govuk-summary-list__row {
-    display: grid;
-    grid-template-columns: minmax(150px, 42%) minmax(0, 1fr);
-    border-bottom: 1px solid govuk-colour("black", $variant: "tint-80");
-
-    &:last-child {
-      border-bottom: 0;
-    }
-  }
-
-  .govuk-summary-list__key,
-  .govuk-summary-list__value {
-    width: auto;
-    margin: 0;
-    padding: 8px 0;
-    overflow-wrap: anywhere;
-  }
-
-  .govuk-summary-list__key {
-    padding-right: 15px;
-    font-weight: $govuk-font-weight-bold;
-  }
-
-  .govuk-summary-list__value {
-    color: govuk-colour("black");
-  }
-}
-
+// The top button slots collapse towards the centre on small screens, so push
+// the banner down below the button row
 @include govuk-media-query($until: tablet) {
-  .app-map__layer-info {
-    padding: 14px 15px 16px;
-  }
-
-  .app-map__layer-info-list {
-    .govuk-summary-list__row {
-      grid-template-columns: 1fr;
-      row-gap: 2px;
-      padding: 8px 0;
-    }
-
-    .govuk-summary-list__key,
-    .govuk-summary-list__value {
-      padding: 0;
-    }
+  .app-map__zoom-warning {
+    top: calc(var(--primary-gap, 12px) + var(--button-size, 40px) + 8px);
   }
 }
 
-// ===== View mode plugin =====
-
-.app-map .im-c-map-button--gep-view-mode > span::after {
-  content: "";
-  display: inline-block;
-  width: 0;
-  height: 0;
-  margin-left: 6px;
-  vertical-align: middle;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 5px solid currentcolor;
+.app-map__zoom-warning[hidden] {
+  display: none;
 }
 
-.app-map .im-c-map-button--gep-view-mode {
-  background-color: $defra-green;
-  border-color: $defra-green-dark;
-  color: govuk-colour("white");
-
-  --pressed-button-background-color: #{$defra-green-dark};
-  --pressed-button-foreground-color: #{govuk-colour("white")};
-  --pressed-button-border-color: #{$defra-green-dark};
+.app-map__zoom-warning-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: govuk-colour("yellow");
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.app-map .im-c-map-button--gep-view-mode:hover,
-.app-map .im-c-map-button--gep-view-mode:focus-visible {
-  background-color: $defra-green-dark;
-  color: govuk-colour("white");
-}
-
-.app-map .im-o-app .im-o-app__modal .im-c-panel.im-c-panel--gep-view-mode-button {
-  inset: calc(var(--primary-gap) + var(--button-size) + 4px) var(--primary-gap) auto auto;
-  max-height: none;
-}
-
-.app-map.app-map--info-panel-open .im-o-app--tablet .im-o-app__modal .im-c-panel.im-c-panel--gep-view-mode-button,
-.app-map.app-map--info-panel-open .im-o-app--desktop .im-o-app__modal .im-c-panel.im-c-panel--gep-view-mode-button {
-  inset: calc(var(--primary-gap) + var(--button-size) + 4px) calc(var(--app-map-info-panel-width) + var(--divider-gap)) auto auto;
-}
-
-.app-map .im-o-app .im-o-app__modal .im-c-panel--gep-view-mode-button + .im-o-app__modal-backdrop {
-  background-color: transparent;
-  opacity: 0;
-}
-
-.app-map .im-c-panel:has(.app-map__view-mode) .im-c-panel__body {
-  padding: 0;
-}
-
-.app-map__view-mode {
-  margin: 0;
-  padding: 8px;
-  list-style: none;
-}
-
-.app-map__view-mode-item {
-  margin: 0;
-  padding: 0;
-}
-
-.app-map__view-mode-option {
-  display: block;
-  width: 100%;
-  padding: 8px 16px;
-  border: 0;
-  background: transparent;
-  font-family: inherit;
-  @include govuk-font-size($size: 16);
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
-}
-
-.app-map__view-mode-option:hover {
-  background: govuk-colour("black", $variant: "tint-25");
-  color: govuk-colour("white");
-}
-
-.app-map__view-mode-option:focus-visible {
-  outline: 3px solid transparent;
-  box-shadow:
-    0 0 0 4px govuk-colour("yellow"),
-    0 0 0 8px govuk-colour("black");
-}
-
-.app-map__view-mode-option[aria-pressed="true"] {
-  font-weight: $govuk-font-weight-bold;
-}
-
-.app-map__hover-info {
-  max-width: 480px;
-  padding: govuk-spacing(1);
-  border: 1px solid govuk-colour("black", $variant: "tint-80");
-  background: govuk-colour("white");
-  @include govuk-font-size($size: 16);
-  overflow-wrap: anywhere;
-  pointer-events: none;
-}
-
-.app-map__hover-info-group + .app-map__hover-info-group {
-  margin-top: govuk-spacing(2);
-}
