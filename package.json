@@ -34,7 +34,7 @@
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
   "dependencies": {
-    "@aws-sdk/client-cognito-identity": "3.1106.0",
+    "@aws-sdk/client-cognito-identity": "3.1107.0",
     "@defra/cdp-auditing": "0.6.1",
     "@defra/cdp-metrics": "0.6.0",
     "@defra/hapi-secure-context": "0.4.0",
