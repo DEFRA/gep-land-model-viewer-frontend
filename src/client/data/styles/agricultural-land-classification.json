@@ -1,0 +1,76 @@
+{
+  "name": "Agricultural Land Classification",
+  "field": "ALC_GRADE",
+  "classes": [
+    {
+      "fieldValue": "Grade 1",
+      "label": "Grade 1",
+      "fill": [
+        55,
+        226,
+        254,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Grade 2",
+      "label": "Grade 2",
+      "fill": [
+        194,
+        251,
+        254,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Grade 3",
+      "label": "Grade 3",
+      "fill": [
+        178,
+        254,
+        153,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Grade 4",
+      "label": "Grade 4",
+      "fill": [
+        254,
+        248,
+        164,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Grade 5",
+      "label": "Grade 5",
+      "fill": [
+        178,
+        136,
+        100,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Non Agricultural",
+      "label": "Non Agricultural",
+      "fill": [
+        254,
+        196,
+        85,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Urban",
+      "label": "Urban",
+      "fill": [
+        255,
+        99,
+        71,
+        1
+      ]
+    }
+  ]
+}

@@ -60,8 +60,7 @@ export default {
   },
   resolve: {
     alias: {
-      '/public/assets': path.join(govukFrontendPath, 'dist/govuk/assets'),
-      jimp: path.join(dirname, 'webpack/jimp-stub.js')
+      '/public/assets': path.join(govukFrontendPath, 'dist/govuk/assets')
     }
   },
   module: {

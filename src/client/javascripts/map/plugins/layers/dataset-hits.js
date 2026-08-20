@@ -1,9 +1,11 @@
 import Feature from 'ol/Feature.js'
+import Point from 'ol/geom/Point.js'
 import VectorLayer from 'ol/layer/Vector.js'
 import VectorSource from 'ol/source/Vector.js'
 import GeoJSON from 'ol/format/GeoJSON.js'
 import Style from 'ol/style/Style.js'
 import Fill from 'ol/style/Fill.js'
+import RegularShape from 'ol/style/RegularShape.js'
 import Stroke from 'ol/style/Stroke.js'
 import { datasets } from '../../config/datasets.js'
 import { datasetForLayer, layerIdFor, overviewIdFor, OVERLAY_Z_INDEX } from '../../config/layers.js'
@@ -13,6 +15,7 @@ import { getSourceUrl, getVisibleWmsLayers } from './wms-layer.js'
 import { isCoarsePointer } from '../../pointer.js'
 import { queryFgbNearPoint } from './fgb-lookup.js'
 import { renderDatasetAttributesHtml } from './render.js'
+import { classForBands } from './style-config.js'
 
 const DATASET_PANEL_TITLE = 'Data layer attributes'
 
@@ -22,6 +25,15 @@ const COARSE_POINTER_HIT_TOLERANCE = 12
 const HIGHLIGHT_STYLE = new Style({
   fill: new Fill({ color: withAlpha(DEFRA_GREEN, 0.25) }),
   stroke: new Stroke({ color: DEFRA_GREEN_DARK, width: 2 })
+})
+
+const CROSSHAIR_STYLE = new Style({
+  image: new RegularShape({
+    points: 4,
+    radius: 11,
+    radius2: 0,
+    stroke: new Stroke({ color: DEFRA_GREEN_DARK, width: 2 })
+  })
 })
 
 const geojson = new GeoJSON()
@@ -46,6 +58,13 @@ function createHighlight (map) {
       }
     },
 
+    showPoint (coords) {
+      source.clear()
+      const feature = new Feature(new Point(coords))
+      feature.setStyle(CROSSHAIR_STYLE)
+      source.addFeature(feature)
+    },
+
     clear () {
       source.clear()
     }
@@ -53,9 +72,7 @@ function createHighlight (map) {
 }
 
 /**
- * A hit source for the info panel covering every visible operational dataset
- * layer: FlatGeobuf features (and their overview tiles), COG raster bands and
- * WMS GetFeatureInfo.
+ * A hit source for visible FlatGeobuf, COG and WMS datasets.
  *
  * @param {import('ol/Map').default} map
  * @returns {import('../info-panel/index.js').HitSource}
@@ -66,10 +83,11 @@ export function createDatasetHitSource (map) {
   return {
     async getHits (coords, { signal }) {
       const pixel = map.getPixelFromCoordinate(coords)
-      const vectorHits = vectorHitsAt(map, highlight, pixel, coords)
-      const rasterHits = rasterHitsAt(map, pixel)
+      const { hits: vectorHits, datasetIds: vectorHitDatasetIds } = vectorHitsAt(map, highlight, pixel, coords)
+      const cogOverviewHits = cogOverviewHitsAt(map, highlight, pixel, coords, vectorHitDatasetIds)
+      const rasterHits = rasterHitsAt(map, highlight, pixel, coords)
       const wmsHits = await wmsHitsAt(map, highlight, coords, signal)
-      return [...vectorHits, ...rasterHits, ...wmsHits]
+      return [...vectorHits, ...cogOverviewHits, ...rasterHits, ...wmsHits]
     },
 
     clearSelection () {
@@ -113,7 +131,10 @@ function vectorHitsAt (map, highlight, pixel, coords) {
     hitTolerance: isCoarsePointer() ? COARSE_POINTER_HIT_TOLERANCE : FINE_POINTER_HIT_TOLERANCE
   })
 
-  return [...grouped.values()].map(({ dataset, matches }) => makeVectorHit(map, highlight, dataset, matches, coords))
+  return {
+    hits: [...grouped.values()].map(({ dataset, matches }) => makeVectorHit(map, highlight, dataset, matches, coords)),
+    datasetIds: new Set(grouped.keys())
+  }
 }
 
 function makeVectorHit (map, highlight, dataset, matches, coords) {
@@ -152,6 +173,78 @@ function makeVectorHit (map, highlight, dataset, matches, coords) {
   }
 }
 
+function cogOverviewHitsAt (map, highlight, pixel, coords, vectorHitDatasetIds) {
+  const hits = []
+  const layers = map.getLayers().getArray()
+
+  for (const layer of layers) {
+    const dataset = datasetForLayer(layer, datasets)
+    if (dataset?.source.overview?.type !== 'cog' || layer.get('id') !== overviewIdFor(layerIdFor(dataset))) {
+      continue
+    }
+
+    // Loaded vectors give an exact hit. Only fall back to the COG while it is
+    // visible and the detail layer has no hit.
+    if (!layer.getVisible() || vectorHitDatasetIds.has(dataset.id)) {
+      continue
+    }
+
+    const detailId = layerIdFor(dataset)
+    const detailLayer = layers.find((candidate) => candidate.get('id') === detailId)
+    if (!detailLayer?.getVisible()) {
+      continue
+    }
+
+    const styleConfig = dataset.source.styleConfig
+    const classDefinition = classForBands(styleConfig, layer.getData(pixel))
+    if (!classDefinition) {
+      continue
+    }
+
+    hits.push(makeCogOverviewHit(map, highlight, dataset, detailLayer, styleConfig, classDefinition, coords))
+  }
+
+  return hits
+}
+
+function makeCogOverviewHit (map, highlight, dataset, detailLayer, styleConfig, classDefinition, coords) {
+  // The COG pixel has a class but no geometry, so the FGB lookup supplies it.
+  let geometries = []
+
+  return {
+    label: dataset.label,
+    panelTitle: DATASET_PANEL_TITLE,
+    // Both layers toggle together; detail is the dataset's visibility state.
+    stillValid: () => detailLayer.getVisible(),
+
+    select () {
+      highlight.show(geometries)
+    },
+
+    async loadDetails ({ signal }) {
+      const resolution = map.getView().getResolution()
+      const nearest = await queryFgbNearPoint(dataset.source.url, coords, resolution, { signal })
+      if (!nearest) {
+        return [attributesForClass(styleConfig, classDefinition)]
+      }
+
+      geometries = [geojson.readGeometry(nearest.geometry)]
+      highlight.show(geometries)
+      return [nearest.properties ?? {}]
+    },
+
+    renderHtml: (details) => renderDatasetAttributesHtml(dataset.label, details)
+  }
+}
+
+function attributesForClass (styleConfig, classDefinition) {
+  if (styleConfig.field && classDefinition.fieldValue !== undefined) {
+    return { [styleConfig.field]: classDefinition.fieldValue }
+  }
+
+  return { Classification: classDefinition.label }
+}
+
 function featureProperties (feature) {
   const geometryName = feature.getGeometryName?.()
   return Object.fromEntries(
@@ -159,7 +252,7 @@ function featureProperties (feature) {
   )
 }
 
-function rasterHitsAt (map, pixel) {
+function rasterHitsAt (map, highlight, pixel, coords) {
   const hits = []
 
   for (const layer of map.getLayers().getArray()) {
@@ -168,20 +261,19 @@ function rasterHitsAt (map, pixel) {
       continue
     }
 
-    // The last band is the mask, zero means no data under the pixel.
-    const bands = layer.getData(pixel)
-    if (!bands?.at(-1)) {
+    const styleConfig = dataset.source.styleConfig
+    const classDefinition = classForBands(styleConfig, layer.getData(pixel))
+    if (!classDefinition) {
       continue
     }
 
-    const values = Object.fromEntries(
-      Array.from(bands.slice(0, -1), (value, index) => [`Band ${index + 1}`, value])
-    )
+    const attributes = attributesForClass(styleConfig, classDefinition)
     hits.push({
       label: dataset.label,
       panelTitle: DATASET_PANEL_TITLE,
       stillValid: () => layer.getVisible(),
-      loadDetails: async () => [values],
+      select: () => highlight.showPoint(coords),
+      loadDetails: async () => [attributes],
       renderHtml: (details) => renderDatasetAttributesHtml(dataset.label, details)
     })
   }

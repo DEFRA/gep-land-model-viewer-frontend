@@ -1,0 +1,201 @@
+{
+  "name": "Living England 2022-2023 primary habitat",
+  "field": "A_pred",
+  "classes": [
+    {
+      "bandValue": 1,
+      "fieldValue": "Arable and Horticultural",
+      "label": "Arable and Horticultural",
+      "fill": [
+        255,
+        211,
+        127,
+        1
+      ]
+    },
+    {
+      "bandValue": 2,
+      "fieldValue": "Water",
+      "label": "Water",
+      "fill": [
+        190,
+        232,
+        255,
+        1
+      ]
+    },
+    {
+      "bandValue": 3,
+      "fieldValue": "Bog",
+      "label": "Bog",
+      "fill": [
+        194,
+        158,
+        215,
+        1
+      ]
+    },
+    {
+      "bandValue": 4,
+      "fieldValue": "Built-up Areas and Gardens",
+      "label": "Built-up Areas and Gardens",
+      "fill": [
+        52,
+        52,
+        52,
+        1
+      ]
+    },
+    {
+      "bandValue": 5,
+      "fieldValue": "Bare Ground",
+      "label": "Bare Ground",
+      "fill": [
+        156,
+        156,
+        156,
+        1
+      ]
+    },
+    {
+      "bandValue": 6,
+      "fieldValue": "Dwarf Shrub Heath",
+      "label": "Dwarf Shrub Heath",
+      "fill": [
+        170,
+        102,
+        205,
+        1
+      ]
+    },
+    {
+      "bandValue": 7,
+      "fieldValue": "Improved Grassland",
+      "label": "Improved and Semi-Improved Grassland",
+      "fill": [
+        205,
+        245,
+        122,
+        1
+      ]
+    },
+    {
+      "bandValue": 8,
+      "fieldValue": "Acid, Calcareous, Neutral Grassland",
+      "label": "Unimproved Grassland",
+      "fill": [
+        255,
+        190,
+        232,
+        1
+      ]
+    },
+    {
+      "bandValue": 9,
+      "fieldValue": "Scrub",
+      "label": "Scrub",
+      "fill": [
+        137,
+        112,
+        68,
+        1
+      ]
+    },
+    {
+      "bandValue": 10,
+      "fieldValue": "Coastal Sand Dunes",
+      "label": "Coastal Sand Dunes",
+      "fill": [
+        255,
+        255,
+        190,
+        1
+      ]
+    },
+    {
+      "bandValue": 11,
+      "fieldValue": "Coniferous Woodland",
+      "label": "Coniferous Woodland",
+      "fill": [
+        0,
+        168,
+        132,
+        1
+      ]
+    },
+    {
+      "bandValue": 12,
+      "fieldValue": "Bracken",
+      "label": "Bracken",
+      "fill": [
+        205,
+        137,
+        102,
+        1
+      ]
+    },
+    {
+      "bandValue": 13,
+      "fieldValue": "Bare Sand",
+      "label": "Bare Sand",
+      "fill": [
+        255,
+        255,
+        0,
+        1
+      ]
+    },
+    {
+      "bandValue": 14,
+      "fieldValue": "Solar Farms",
+      "label": "Solar Farms",
+      "fill": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "bandValue": 15,
+      "fieldValue": "Broadleaved, Mixed and Yew Woodland",
+      "label": "Broadleaved, Mixed and Yew Woodland",
+      "fill": [
+        56,
+        168,
+        0,
+        1
+      ]
+    },
+    {
+      "bandValue": 16,
+      "fieldValue": "Fen, Marsh and Swamp",
+      "label": "Fen, Marsh and Swamp",
+      "fill": [
+        122,
+        142,
+        245,
+        1
+      ]
+    },
+    {
+      "bandValue": 17,
+      "fieldValue": "Coastal Saltmarsh",
+      "label": "Coastal Saltmarsh",
+      "fill": [
+        0,
+        169,
+        230,
+        1
+      ]
+    }
+  ],
+  "default": {
+    "fill": [
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}

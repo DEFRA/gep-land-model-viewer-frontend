@@ -1,0 +1,36 @@
+{
+  "name": "Ancient Woodland",
+  "field": "THEMNAME",
+  "classes": [
+    {
+      "fieldValue": "Ancient & Semi-Natural Woodland",
+      "label": "Ancient & Semi-Natural Woodland",
+      "fill": [
+        59,
+        104,
+        0,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Ancient Replanted Woodland",
+      "label": "Ancient Replanted Woodland",
+      "fill": [
+        158,
+        172,
+        98,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Ancient Wood Pasture",
+      "label": "Ancient Wood Pasture",
+      "fill": [
+        0,
+        132,
+        168,
+        1
+      ]
+    }
+  ]
+}

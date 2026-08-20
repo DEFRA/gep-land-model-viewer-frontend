@@ -5,8 +5,36 @@ import Polygon from 'ol/geom/Polygon.js'
 vi.mock('../../config/datasets.js', () => ({
   datasets: [
     { id: 'woodland', label: 'Ancient Woodland', source: { type: 'fgb', url: '/vector/woodland.fgb' } },
-    { id: 'peat', label: 'Peaty Soils', source: { type: 'cog', url: '/raster/peat.tif' } },
-    { id: 'flood', label: 'Flood Zones', source: { type: 'wms', url: 'https://example.com/wms' } }
+    {
+      id: 'peat',
+      label: 'Peaty Soils',
+      source: {
+        type: 'cog',
+        url: '/raster/peat.tif',
+        styleConfig: {
+          classes: [
+            { maxBandValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] },
+            { label: 'Over 20cm', fill: [0, 0, 224, 1] }
+          ]
+        }
+      }
+    },
+    { id: 'flood', label: 'Flood Zones', source: { type: 'wms', url: 'https://example.com/wms' } },
+    {
+      id: 'habitats',
+      label: 'Living England',
+      source: {
+        type: 'fgb',
+        url: '/vector/habitats.fgb',
+        minZoom: 5,
+        styleConfig: {
+          field: 'A_pred',
+          classes: [{ bandValue: 2, fieldValue: 'Water', label: 'Water', fill: [190, 232, 255, 1] }],
+          default: { fill: [0, 0, 0, 0] }
+        },
+        overview: { type: 'cog', url: '/raster/habitats.tif' }
+      }
+    }
   ]
 }))
 
@@ -24,6 +52,7 @@ vi.mock('./fgb-lookup.js', () => ({
 }))
 
 const { isCoarsePointer } = await import('../../pointer.js')
+const { datasets } = await import('../../config/datasets.js')
 const { getVisibleWmsLayers } = await import('./wms-layer.js')
 const { queryFgbNearPoint } = await import('./fgb-lookup.js')
 const { createDatasetHitSource } = await import('./dataset-hits.js')
@@ -40,6 +69,28 @@ function stubLayer (id, { visible = true } = {}) {
   }
 }
 
+const STYLE_CONFIG = {
+  field: 'A_pred',
+  classes: [{ bandValue: 2, fieldValue: 'Water', label: 'Water', fill: [190, 232, 255, 1] }],
+  default: { fill: [0, 0, 0, 0] }
+}
+
+function stubCogOverviewLayer ({ visible = true, bands = new Float32Array([2]) } = {}) {
+  const properties = { id: 'gep-habitats-overview' }
+  return {
+    get: vi.fn((key) => properties[key]),
+    getVisible: vi.fn(() => visible),
+    getData: vi.fn(() => bands)
+  }
+}
+
+function stubDetailLayer ({ visible = true, minZoom = 4 } = {}) {
+  return {
+    ...stubLayer('gep-habitats', { visible }),
+    getMinZoom: vi.fn(() => minZoom)
+  }
+}
+
 function stubFeature (properties, geometryName = 'geometry') {
   return {
     getGeometryName: geometryName ? () => geometryName : undefined,
@@ -48,7 +99,7 @@ function stubFeature (properties, geometryName = 'geometry') {
   }
 }
 
-function createOlMap ({ vectorHits = [], layers = [] } = {}) {
+function createOlMap ({ vectorHits = [], layers = [], zoom = 2 } = {}) {
   return {
     addLayer: vi.fn(),
     getPixelFromCoordinate: vi.fn(() => [100, 200]),
@@ -62,6 +113,7 @@ function createOlMap ({ vectorHits = [], layers = [] } = {}) {
     getLayers: vi.fn(() => ({ getArray: () => layers })),
     getView: vi.fn(() => ({
       getResolution: vi.fn(() => 50),
+      getZoom: vi.fn(() => zoom),
       calculateExtent: vi.fn(() => [418000, 384000, 419000, 386000])
     })),
     getSize: vi.fn(() => [800, 600])
@@ -79,6 +131,7 @@ function highlightedFeatures (map) {
 describe('#createDatasetHitSource', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
+    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = STYLE_CONFIG
   })
 
   afterEach(() => {
@@ -173,11 +226,11 @@ describe('#createDatasetHitSource', () => {
     expect(queryFgbNearPoint).not.toHaveBeenCalled()
   })
 
-  test('a COG layer with data under the pixel yields its band values', async () => {
+  test('a COG layer with data under the pixel yields its class label', async () => {
     const layer = {
       ...stubLayer('gep-peat'),
       getVisible: vi.fn(() => true),
-      getData: vi.fn(() => new Float32Array([7, 3, 255]))
+      getData: vi.fn(() => new Float32Array([7, 255]))
     }
     const map = createOlMap({ layers: [layer] })
 
@@ -185,18 +238,127 @@ describe('#createDatasetHitSource', () => {
 
     expect(hits).toHaveLength(1)
     expect(hits[0].label).toBe('Peaty Soils')
-    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ 'Band 1': 7, 'Band 2': 3 }])
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ Classification: 'Up to 20cm' }])
   })
 
   test('a masked COG pixel yields no hit', async () => {
     const layer = {
       ...stubLayer('gep-peat'),
       getVisible: vi.fn(() => true),
-      getData: vi.fn(() => new Float32Array([7, 3, 0]))
+      getData: vi.fn(() => new Float32Array([7, 0]))
     }
     const map = createOlMap({ layers: [layer] })
 
     await expect(getHits(map)).resolves.toEqual([])
+  })
+
+  test('a COG overview pixel yields a hit that upgrades to the FlatGeobuf feature', async () => {
+    queryFgbNearPoint.mockResolvedValue({
+      geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 0]]] },
+      properties: { A_pred: 'Water', area: 3 }
+    })
+    const map = createOlMap({ layers: [stubCogOverviewLayer(), stubDetailLayer()], zoom: 2 })
+
+    const hits = await getHits(map)
+
+    expect(hits).toHaveLength(1)
+    expect(hits[0].label).toBe('Living England')
+
+    hits[0].select()
+    expect(highlightedFeatures(map)).toHaveLength(0)
+
+    const details = await hits[0].loadDetails({ signal: SIGNAL })
+
+    expect(queryFgbNearPoint).toHaveBeenCalledWith('/vector/habitats.fgb', COORDS, 50, { signal: SIGNAL })
+    expect(details).toEqual([{ A_pred: 'Water', area: 3 }])
+    expect(highlightedFeatures(map)).toHaveLength(1)
+  })
+
+  test('a COG overview click with no FlatGeobuf match falls back to the class fieldValue', async () => {
+    queryFgbNearPoint.mockResolvedValue(null)
+    const map = createOlMap({ layers: [stubCogOverviewLayer(), stubDetailLayer()], zoom: 2 })
+
+    const hits = await getHits(map)
+
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water' }])
+  })
+
+  test('a COG-only class fallback has a readable attribute name', async () => {
+    const styleConfig = {
+      classes: [{ bandValue: 2, label: 'Water', fill: [190, 232, 255, 1] }]
+    }
+    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = styleConfig
+    const overview = stubCogOverviewLayer()
+    const hits = await getHits(createOlMap({ layers: [overview, stubDetailLayer()], zoom: 2 }))
+
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ Classification: 'Water' }])
+  })
+
+  test('the COG underlay is a fallback when detail has no vector hit', async () => {
+    const map = createOlMap({ layers: [stubCogOverviewLayer(), stubDetailLayer()], zoom: 6 })
+
+    const hits = await getHits(map)
+
+    expect(hits).toHaveLength(1)
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water' }])
+  })
+
+  test('an exact detail hit takes precedence over the visible COG overview', async () => {
+    const overview = stubCogOverviewLayer()
+    const detail = stubDetailLayer()
+    const feature = stubFeature({ geometry: {}, A_pred: 'Water', area: 3 })
+    const map = createOlMap({
+      vectorHits: [{ feature, layer: detail }],
+      layers: [overview, detail],
+      zoom: 6
+    })
+
+    const hits = await getHits(map)
+
+    expect(hits).toHaveLength(1)
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water', area: 3 }])
+    expect(overview.getData).not.toHaveBeenCalled()
+    expect(queryFgbNearPoint).not.toHaveBeenCalled()
+  })
+
+  test('a COG fallback hit remains valid while the dataset is visible', async () => {
+    const detail = stubDetailLayer()
+    const hits = await getHits(createOlMap({ layers: [stubCogOverviewLayer(), detail], zoom: 6 }))
+
+    expect(hits[0].stillValid()).toBe(true)
+
+    detail.getVisible.mockReturnValue(false)
+    expect(hits[0].stillValid()).toBe(false)
+  })
+
+  test('a non-integer COG overview pixel matches no class and yields no hit', async () => {
+    const layers = [stubCogOverviewLayer({ bands: new Float32Array([1.9999998]) }), stubDetailLayer()]
+
+    await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
+  })
+
+  test('a COG overview pixel with no class yields no hit', async () => {
+    const layers = [stubCogOverviewLayer({ bands: new Float32Array([99]) }), stubDetailLayer()]
+
+    await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
+  })
+
+  test('a COG overview pixel with no data yields no hit', async () => {
+    const layers = [stubCogOverviewLayer({ bands: null }), stubDetailLayer()]
+
+    await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
+  })
+
+  test('a masked COG overview pixel yields no hit', async () => {
+    const layers = [stubCogOverviewLayer({ bands: new Float32Array([2, 0]) }), stubDetailLayer()]
+
+    await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
+  })
+
+  test('a hidden COG overview yields no hit', async () => {
+    const layers = [stubCogOverviewLayer({ visible: false }), stubDetailLayer({ visible: false })]
+
+    await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
   })
 
   test('a WMS layer with features at the point yields a hit with them preloaded', async () => {
@@ -266,6 +428,23 @@ describe('#createDatasetHitSource', () => {
 
     expect(highlightedFeatures(map)).toHaveLength(1)
     expect(highlightedFeatures(map)[0].getGeometry()).toBe(GEOMETRY)
+  })
+
+  test('selecting a standalone COG hit marks the sampled point', async () => {
+    const layer = {
+      ...stubLayer('gep-peat'),
+      getVisible: vi.fn(() => true),
+      getData: vi.fn(() => new Float32Array([7, 255]))
+    }
+    const map = createOlMap({ layers: [layer] })
+
+    const hits = await getHits(map)
+    hits[0].select()
+
+    const [feature] = highlightedFeatures(map)
+    expect(feature.getGeometry().getType()).toBe('Point')
+    expect(feature.getGeometry().getCoordinates()).toEqual(COORDS)
+    expect(feature.getStyle().getImage()).toBeTruthy()
   })
 
   test('an overview hit highlights the geometry fetched from the FlatGeobuf', async () => {

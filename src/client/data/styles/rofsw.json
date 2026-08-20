@@ -1,0 +1,36 @@
+{
+  "name": "Risk of Flooding from Surface Water",
+  "field": "Risk_band",
+  "classes": [
+    {
+      "fieldValue": "High",
+      "label": "High risk",
+      "fill": [
+        61,
+        68,
+        137,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Medium",
+      "label": "Medium risk",
+      "fill": [
+        102,
+        153,
+        205,
+        1
+      ]
+    },
+    {
+      "fieldValue": "Low",
+      "label": "Low risk",
+      "fill": [
+        162,
+        207,
+        255,
+        1
+      ]
+    }
+  ]
+}

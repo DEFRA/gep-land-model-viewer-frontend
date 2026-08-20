@@ -46,7 +46,6 @@ updates:
         patterns:
           - '@arcgis/*'
           - 'flatgeobuf'
-          - 'geostyler-*'
           - 'ol'
           - 'pmtiles'
           - 'proj4'

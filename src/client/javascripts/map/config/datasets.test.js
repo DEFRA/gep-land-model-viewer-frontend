@@ -1,6 +1,7 @@
 import { parse, newParsingContext, ColorType } from 'ol/expr/expression.js'
 import { datasets } from './datasets.js'
 import { operationalDatasets } from './operational-datasets.js'
+import { validateStyleConfig, vectorStyleFor, cogColorFor } from '../plugins/layers/style-config.js'
 
 const wmsDatasets = datasets.filter(dataset => dataset.source.type === 'wms')
 
@@ -31,27 +32,30 @@ describe('#datasets', () => {
     }
   })
 
-  test('every FlatGeobuf dataset styles itself from a layer file or an inline style that compiles', () => {
+  test('every operational dataset carries a valid style config', () => {
+    for (const dataset of operationalDatasets) {
+      expect(dataset.source.styleConfig, dataset.id).toBeDefined()
+      const requireBandValues = dataset.source.overview?.type === 'cog'
+      expect(() => validateStyleConfig(dataset.source.styleConfig, dataset.id, { requireBandValues })).not.toThrow()
+    }
+  })
+
+  test('vector style expressions compile with the OpenLayers parser', () => {
     const fgbDatasets = datasets.filter(dataset => dataset.source.type === 'fgb')
     expect(fgbDatasets.length).toBeGreaterThan(0)
 
     for (const dataset of fgbDatasets) {
-      const { styleUrl, style } = dataset.source
-      expect(styleUrl ?? style).toBeDefined()
-      if (style) {
-        expect(() => parse(style['fill-color'], ColorType, newParsingContext())).not.toThrow()
-      } else {
-        expect(styleUrl).toMatch(/\.lyrx$/)
-      }
+      const style = vectorStyleFor(dataset.source.styleConfig)
+      expect(() => parse(style['fill-color'], ColorType, newParsingContext())).not.toThrow()
     }
   })
 
   test('COG style expressions compile with the OpenLayers parser', () => {
-    const cogDatasets = datasets.filter(dataset => dataset.source.type === 'cog')
-    expect(cogDatasets.length).toBeGreaterThan(0)
+    const cogStyled = datasets.filter(dataset => dataset.source.type === 'cog' || dataset.source.overview?.type === 'cog')
+    expect(cogStyled.length).toBeGreaterThan(0)
 
-    for (const dataset of cogDatasets) {
-      expect(() => parse(dataset.source.style.color, ColorType, newParsingContext())).not.toThrow()
+    for (const dataset of cogStyled) {
+      expect(() => parse(cogColorFor(dataset.source.styleConfig), ColorType, newParsingContext())).not.toThrow()
     }
   })
 })

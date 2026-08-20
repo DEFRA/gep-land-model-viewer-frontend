@@ -1,11 +1,11 @@
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
 import VectorSource from 'ol/source/Vector.js'
 import { bbox } from 'ol/loadingstrategy.js'
-import { createLoader } from 'flatgeobuf/lib/mjs/ol.js'
 import { overviewIdFor } from '../../config/layers.js'
-import { EPSG_27700 } from './constants.js'
-import { loadLyrxStyle } from './lyrx-style.js'
 import { createPmtilesLayer } from './pmtiles-layer.js'
+import { createCogOverviewLayer } from './cog-layer.js'
+import { createFgbLoadController } from './fgb-loader.js'
+import { validateStyleConfig, vectorStyleFor } from './style-config.js'
 
 // Datasets state the first zoom that draws. OL hides a layer at its minZoom, so
 // step back one to make that level the first that renders.
@@ -17,47 +17,105 @@ function exclusiveMinZoomFor (firstZoom) {
   return firstZoom - 1
 }
 
+function registerLoadRecovery (map, detailLayer, loadController) {
+  const view = map.getView()
+
+  function retryFailedViewport () {
+    const size = map.getSize()
+    const detailIsVisible = detailLayer.getVisible() && view.getZoom() > detailLayer.getMinZoom()
+    if (!size || !detailIsVisible) {
+      return
+    }
+
+    loadController.retryFailedExtents(view.calculateExtent(size))
+  }
+
+  // A failed extent stays counted as loaded, so without this it would stay
+  // blank for the whole session. One retry per user action avoids timers
+  // and failure loops.
+  map.on('moveend', retryFailedViewport)
+  detailLayer.on('change:visible', retryFailedViewport)
+}
+
+function registerSharedCanvasOpacity (layers, opacity) {
+  const canvasOpacity = String(opacity)
+  const applyOpacity = (event) => {
+    const { style } = event.context.canvas
+    if (style.opacity !== canvasOpacity) {
+      style.opacity = canvasOpacity
+    }
+  }
+
+  // Either layer may render alone, so both set opacity on their shared canvas.
+  for (const layer of layers) {
+    layer.addEventListener('precompose', applyOpacity)
+  }
+}
+
 /**
- * Creates the layers for a FlatGeobuf dataset: a WebGL vector detail layer,
- * plus an overview layer when the source supplies one.
+ * Creates a FlatGeobuf detail layer and its optional PMTiles or COG overview.
  *
  * @param {object} dataset Dataset definition with an fgb source
  * @param {string} layerId Map layer id for the detail layer
+ * @param {import('ol/Map.js').default} map Map that will own the layers
  * @returns {Promise<import('ol/layer/Layer.js').default[]>}
  */
-export async function createFlatGeobufLayers (dataset, layerId) {
-  const { url, styleUrl, attribution, opacity, lowercaseFields = false, style: manualStyle, minZoom, overview } = dataset.source
-  if (overview && overview.type !== 'pmtiles') {
-    throw new Error(`Dataset ${dataset.id} has unsupported overview type "${overview.type}", only pmtiles is supported`)
+export async function createFlatGeobufLayers (dataset, layerId, map) {
+  const { url, styleConfig, attribution, opacity, minZoom, overview } = dataset.source
+  const hasCogOverview = overview?.type === 'cog'
+  const hasPmtilesOverview = overview?.type === 'pmtiles'
+  if (overview && !hasPmtilesOverview && !hasCogOverview) {
+    throw new Error(`Dataset ${dataset.id} has unsupported overview type "${overview.type}", only pmtiles and cog are supported`)
   }
 
-  const { style, maxResolution } = styleUrl ? await loadLyrxStyle(styleUrl, { lowercaseFields }) : {}
-  const source = new VectorSource({ strategy: bbox, attributions: attribution })
+  validateStyleConfig(styleConfig, dataset.id, { requireBandValues: hasCogOverview })
 
-  source.setLoader(createLoader(source, url, EPSG_27700, bbox))
+  const vectorStyle = vectorStyleFor(styleConfig)
+  const source = new VectorSource({
+    strategy: bbox,
+    attributions: attribution,
+    // WebGL has its own render batch and hit buffer; this source is not queried by extent.
+    useSpatialIndex: false
+  })
+  const compositeClassName = hasCogOverview ? `ol-layer ${layerId}-composite` : undefined
 
-  // An overview or a configured minZoom overrides the layer file's minScale, and
-  // an overview hands the detail layer the zoom after its own last zoom level.
-  const useLayerFileMinScale = !overview && minZoom === undefined
-  const firstZoom = overview ? overview.maxZoom + 1 : minZoom
+  // PMTiles hands over above its last zoom. A COG has no upper zoom, so the
+  // dataset controls where detail starts.
+  const firstZoom = hasPmtilesOverview ? overview.maxZoom + 1 : minZoom
   const detail = new WebGLVectorLayer({
     properties: { id: layerId },
     source,
-    maxResolution: useLayerFileMinScale ? maxResolution : undefined,
     minZoom: exclusiveMinZoomFor(firstZoom),
-    style: manualStyle ?? style,
-    opacity
+    style: vectorStyle,
+    // Consecutive WebGL layers with the same className share a canvas:
+    // https://openlayers.org/en/latest/examples/webgl-layer-swipe.html
+    // Opaque detail pixels replace the COG before dataset opacity is applied.
+    opacity: hasCogOverview ? 1 : opacity,
+    className: compositeClassName
   })
 
+  let layers
   if (!overview) {
-    return [detail]
+    layers = [detail]
+  } else if (hasCogOverview) {
+    const overviewLayer = await createCogOverviewLayer(overview, overviewIdFor(layerId), {
+      styleConfig,
+      className: compositeClassName
+    })
+    registerSharedCanvasOpacity([overviewLayer, detail], opacity ?? 1)
+    layers = [overviewLayer, detail]
+  } else {
+    const overviewLayer = await createPmtilesLayer(overview.url, overviewIdFor(layerId), {
+      style: vectorStyle,
+      maxZoom: overview.maxZoom,
+      opacity
+    })
+    layers = [detail, overviewLayer]
   }
 
-  const overviewLayer = await createPmtilesLayer(overview.url, overviewIdFor(layerId), {
-    style: manualStyle ?? style,
-    maxZoom: overview.maxZoom,
-    opacity
-  })
+  const loadController = createFgbLoadController(source, url, detail)
+  source.setLoader(loadController.loader)
+  registerLoadRecovery(map, detail, loadController)
 
-  return [detail, overviewLayer]
+  return layers
 }

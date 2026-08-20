@@ -1,0 +1,26 @@
+{
+  "name": "Flood Map for Planning, Flood Zones 2 and 3",
+  "field": "flood_zone",
+  "classes": [
+    {
+      "fieldValue": "FZ2",
+      "label": "Flood Zone 2",
+      "fill": [
+        156,
+        208,
+        252,
+        1
+      ]
+    },
+    {
+      "fieldValue": "FZ3",
+      "label": "Flood Zone 3",
+      "fill": [
+        58,
+        68,
+        135,
+        1
+      ]
+    }
+  ]
+}

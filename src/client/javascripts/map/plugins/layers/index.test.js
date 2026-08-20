@@ -10,134 +10,135 @@ vi.mock('@defra/interactive-map', () => ({
   }
 }))
 
-vi.mock('../../config/datasets.js', () => ({
-  datasets: [
-    {
-      id: 'test-dataset',
-      label: 'Test Dataset',
-      source: {
-        type: 'wms',
-        url: 'https://example.com/wms',
-        opacity: 0.7,
-        attribution: 'Test Attribution'
-      }
-    },
-    {
-      id: 'dataset-with-layers',
-      label: 'Dataset With Layers',
-      source: {
-        type: 'wms',
-        url: 'https://example.com/wms2',
-        layers: ['layer1', 'layer2'],
-        attribution: 'Test Attribution'
-      }
-    },
-    {
-      id: 'test-cog',
-      label: 'Test COG',
-      source: {
-        type: 'cog',
-        url: '/land-model/raster/test.tif',
-        opacity: 0.8,
-        normalize: false,
-        interpolate: false,
-        style: { color: ['band', 1] }
-      }
-    },
-    {
-      id: 'test-fgb',
-      label: 'Test FlatGeobuf',
-      source: {
-        type: 'fgb',
-        url: '/land-model/vector/test.fgb',
-        opacity: 0.7,
-        styleUrl: '/land-model/vector/test.lyrx'
-      }
-    },
-    {
-      id: 'test-fgb-inline',
-      label: 'Test FlatGeobuf without a layer file',
-      source: {
-        type: 'fgb',
-        url: '/land-model/vector/inline.fgb',
-        opacity: 0.7,
-        minZoom: 7,
-        style: { 'fill-color': 'rgba(178, 102, 204, 0.42)' }
-      }
-    },
-    {
-      id: 'test-fgb-min-zoom',
-      label: 'Test FlatGeobuf with a configured minZoom and a layer file',
-      source: {
-        type: 'fgb',
-        url: '/land-model/vector/min-zoom.fgb',
-        opacity: 0.7,
-        styleUrl: '/land-model/vector/min-zoom.lyrx',
-        minZoom: 7
-      }
-    },
-    {
-      id: 'test-fgb-uncapped',
-      label: 'Test FlatGeobuf with no zoom cap at all',
-      source: {
-        type: 'fgb',
-        url: '/land-model/vector/uncapped.fgb',
-        opacity: 0.7,
-        style: { 'fill-color': 'rgba(178, 102, 204, 0.42)' }
-      }
-    },
-    {
-      id: 'test-fgb-with-overview',
-      label: 'Test FlatGeobuf with overview tiles',
-      source: {
-        type: 'fgb',
-        url: '/land-model/vector/with-overview.fgb',
-        opacity: 0.7,
-        styleUrl: '/land-model/vector/with-overview.lyrx',
-        overview: {
-          type: 'pmtiles',
-          url: '/land-model/tiles/with-overview.pmtiles',
-          maxZoom: 4
+vi.mock('../../config/datasets.js', () => {
+  const styleConfig = {
+    field: 'A_pred',
+    classes: [{ bandValue: 1, fieldValue: 'Bog', label: 'Bog', fill: [194, 158, 215, 1] }]
+  }
+  return {
+    datasets: [
+      {
+        id: 'test-dataset',
+        label: 'Test Dataset',
+        source: {
+          type: 'wms',
+          url: 'https://example.com/wms',
+          opacity: 0.7,
+          attribution: 'Test Attribution'
         }
-      }
-    },
-    {
-      id: 'test-fgb-with-overview-inline',
-      label: 'Test FlatGeobuf overview without a layer file',
-      source: {
-        type: 'fgb',
-        url: '/land-model/vector/with-overview-inline.fgb',
-        opacity: 0.7,
-        style: { 'fill-color': 'rgba(178, 102, 204, 0.42)' },
-        overview: {
-          type: 'pmtiles',
-          url: '/land-model/tiles/with-overview-inline.pmtiles',
-          maxZoom: 4
+      },
+      {
+        id: 'dataset-with-layers',
+        label: 'Dataset With Layers',
+        source: {
+          type: 'wms',
+          url: 'https://example.com/wms2',
+          layers: ['layer1', 'layer2'],
+          attribution: 'Test Attribution'
         }
-      }
-    },
-    {
-      id: 'test-fgb-bad-overview',
-      label: 'Test FlatGeobuf with an unsupported overview type',
-      source: {
-        type: 'fgb',
-        url: '/land-model/vector/bad-overview.fgb',
-        opacity: 0.7,
-        style: { 'fill-color': 'rgba(178, 102, 204, 0.42)' },
-        overview: {
+      },
+      {
+        id: 'test-cog',
+        label: 'Test COG',
+        source: {
           type: 'cog',
-          url: '/land-model/tiles/bad-overview.tif',
-          maxZoom: 4
+          url: '/land-model/raster/test.tif',
+          opacity: 0.8,
+          normalize: false,
+          interpolate: false,
+          styleConfig: {
+            classes: [
+              { maxBandValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] },
+              { label: 'Over 20cm', fill: [0, 0, 224, 1] }
+            ]
+          }
         }
+      },
+      {
+        id: 'test-fgb',
+        label: 'Test FlatGeobuf',
+        source: {
+          type: 'fgb',
+          url: '/land-model/vector/test.fgb',
+          opacity: 0.7,
+          styleConfig
+        }
+      },
+      {
+        id: 'test-fgb-with-min-zoom',
+        label: 'Test FlatGeobuf with a minimum zoom',
+        source: {
+          type: 'fgb',
+          url: '/land-model/vector/with-min-zoom.fgb',
+          opacity: 0.7,
+          minZoom: 7,
+          styleConfig
+        }
+      },
+      {
+        id: 'test-fgb-with-overview',
+        label: 'Test FlatGeobuf with overview tiles',
+        source: {
+          type: 'fgb',
+          url: '/land-model/vector/with-overview.fgb',
+          opacity: 0.7,
+          styleConfig,
+          overview: {
+            type: 'pmtiles',
+            url: '/land-model/tiles/with-overview.pmtiles',
+            maxZoom: 4
+          }
+        }
+      },
+      {
+        id: 'test-fgb-cog-overview',
+        label: 'Test FlatGeobuf with a cog overview',
+        source: {
+          type: 'fgb',
+          url: '/land-model/vector/cog-overview.fgb',
+          opacity: 0.7,
+          styleConfig,
+          minZoom: 5,
+          overview: {
+            type: 'cog',
+            url: '/land-model/raster/cog-overview.tif'
+          }
+        }
+      },
+      {
+        id: 'test-fgb-bad-overview',
+        label: 'Test FlatGeobuf with an unsupported overview type',
+        source: {
+          type: 'fgb',
+          url: '/land-model/vector/bad-overview.fgb',
+          opacity: 0.7,
+          styleConfig,
+          overview: {
+            type: 'wmts',
+            url: '/land-model/tiles/bad-overview',
+            maxZoom: 4
+          }
+        }
+      },
+      {
+        id: 'test-fgb-bad-config',
+        label: 'Test FlatGeobuf with an invalid style config',
+        source: {
+          type: 'fgb',
+          url: '/land-model/vector/bad-config.fgb',
+          opacity: 0.7,
+          minZoom: 7,
+          styleConfig: { classes: [] }
+        }
+      },
+      {
+        id: 'test-unknown',
+        label: 'Unsupported source',
+        source: { type: 'something-else', url: '/nowhere' }
       }
-    },
-    {
-      id: 'test-unknown',
-      label: 'Unsupported source',
-      source: { type: 'something-else', url: '/nowhere' }
-    }
-  ]
-}))
+    ]
+  }
+})
 
 vi.mock('./render.js', async (importOriginal) => {
   const actual = await importOriginal()
@@ -162,17 +163,31 @@ vi.mock('ol/source/ImageWMS.js', () => ({
 
 function stubLayer (opts) {
   const properties = opts?.properties || {}
+  const listeners = new Map()
   let visible = true
   this._opts = opts
   this.get = vi.fn((key) => properties[key])
   this.getVisible = vi.fn(() => visible)
   this.setVisible = vi.fn((next) => {
     visible = next
+    for (const listener of listeners.get('change:visible') ?? []) {
+      listener()
+    }
   })
   this.getSource = vi.fn(() => opts?.source)
   this.getOpacity = vi.fn(() => opts?.opacity ?? 1)
-  this.getMaxResolution = vi.fn(() => opts?.maxResolution ?? Infinity)
   this.getMinZoom = vi.fn(() => opts?.minZoom ?? -Infinity)
+  this.getRenderer = vi.fn(() => ({ ready: true }))
+  this.on = vi.fn((type, listener) => {
+    const handlers = listeners.get(type) ?? []
+    handlers.push(listener)
+    listeners.set(type, handlers)
+  })
+  this.addEventListener = this.on
+  this.un = vi.fn((type, listener) => {
+    const handlers = listeners.get(type) ?? []
+    listeners.set(type, handlers.filter(handler => handler !== listener))
+  })
 }
 
 vi.mock('ol/layer/WebGLTile.js', () => ({
@@ -186,6 +201,11 @@ vi.mock('ol/layer/WebGLVector.js', () => ({
 vi.mock('ol/source/GeoTIFF.js', () => ({
   default: vi.fn().mockImplementation(function (opts) {
     this._opts = opts
+    this.getView = vi.fn(async () => ({}))
+    this.getState = vi.fn(() => 'ready')
+    this.getError = vi.fn(() => null)
+    this.on = vi.fn()
+    this.un = vi.fn()
   })
 }))
 
@@ -197,14 +217,7 @@ vi.mock('ol/source/Vector.js', () => ({
 }))
 
 vi.mock('flatgeobuf/lib/mjs/ol.js', () => ({
-  createLoader: vi.fn(() => 'fgb-loader')
-}))
-
-vi.mock('./lyrx-style.js', () => ({
-  loadLyrxStyle: vi.fn(async () => ({
-    style: { 'fill-color': ['match', ['get', 'A_pred'], 'Bog', '#c29ed7', 'rgba(0, 0, 0, 0)'] },
-    maxResolution: 28.109
-  }))
+  deserialize: vi.fn()
 }))
 
 vi.mock('./pmtiles-layer.js', () => ({
@@ -219,7 +232,6 @@ vi.mock('./zoom-warning.js', () => ({
   registerZoomWarning: vi.fn(() => ({ set: vi.fn() }))
 }))
 
-const { loadLyrxStyle } = await import('./lyrx-style.js')
 const { registerZoomWarning } = await import('./zoom-warning.js')
 const { registerLayersPanel } = await import('./index.js')
 const { resetCapabilitiesCache } = await import('./wms-layer.js')
@@ -324,8 +336,8 @@ function createOlMapMock () {
     getTargetElement: vi.fn(() => document.getElementById('map-container')),
     getPixelFromCoordinate: vi.fn(([x, y]) => [x - 418700, 385300 - y]),
     getView: vi.fn(() => ({
+      getZoom: vi.fn(() => 8),
       calculateExtent: vi.fn(() => [418700, 385100, 418900, 385300]),
-      getZoomForResolution: vi.fn(() => 9.2)
     })),
     getSize: vi.fn(() => [800, 600]),
     _layers: layers
@@ -361,7 +373,6 @@ function createVisibleWmsLayer (overrides = {}) {
     setVisible: vi.fn((next) => {
       visible = next
     }),
-    getMaxResolution: vi.fn(() => Infinity),
     getMinZoom: vi.fn(() => -Infinity)
   }
 }
@@ -591,7 +602,6 @@ describe('#registerLayersPanel', () => {
       expect(checkbox.disabled).toBe(false)
     })
 
-    expect(loadLyrxStyle).not.toHaveBeenCalled()
     expect(olMap.addLayer).not.toHaveBeenCalled()
   })
 
@@ -609,7 +619,7 @@ describe('#registerLayersPanel', () => {
     expect(olMap._layers[0].get('id')).toBe('gep-test-cog')
   })
 
-  test('layer checkbox change adds a FlatGeobuf layer styled from its layer file', async () => {
+  test('layer checkbox change adds a FlatGeobuf layer without any service requests', async () => {
     vi.stubGlobal('fetch', vi.fn())
     registerLayersPanel(interactiveMap, olMap)
 
@@ -619,7 +629,7 @@ describe('#registerLayersPanel', () => {
       expect(olMap.addLayer).toHaveBeenCalledTimes(1)
     })
 
-    expect(loadLyrxStyle).toHaveBeenCalledWith('/land-model/vector/test.lyrx', { lowercaseFields: false })
+    expect(global.fetch).not.toHaveBeenCalled()
     expect(olMap._layers[0].get('id')).toBe('gep-test-fgb')
   })
 
@@ -636,6 +646,22 @@ describe('#registerLayersPanel', () => {
     expect(olMap._layers.map(layer => layer.get('id'))).toEqual([
       'gep-test-fgb-with-overview',
       'gep-test-fgb-with-overview-overview'
+    ])
+  })
+
+  test('a cog overview dataset adds its overview beneath the detail', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    registerLayersPanel(interactiveMap, olMap)
+
+    createLayerCheckbox('test-fgb-cog-overview').dispatchEvent(new Event('change', { bubbles: true }))
+
+    await vi.waitFor(() => {
+      expect(olMap.addLayer).toHaveBeenCalledTimes(2)
+    })
+
+    expect(olMap._layers.map(layer => layer.get('id'))).toEqual([
+      'gep-test-fgb-cog-overview-overview',
+      'gep-test-fgb-cog-overview'
     ])
   })
 
@@ -677,7 +703,7 @@ describe('#registerLayersPanel', () => {
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to load data layer test-fgb-bad-overview',
       expect.objectContaining({
-        message: 'Dataset test-fgb-bad-overview has unsupported overview type "cog", only pmtiles is supported'
+        message: 'Dataset test-fgb-bad-overview has unsupported overview type "wmts", only pmtiles and cog are supported'
       })
     )
     expect(olMap.addLayer).not.toHaveBeenCalled()
@@ -686,13 +712,12 @@ describe('#registerLayersPanel', () => {
     consoleError.mockRestore()
   })
 
-  test('a layer file that cannot be read is logged and clears the checkbox', async () => {
+  test('an invalid style config is logged and clears the checkbox', async () => {
     vi.stubGlobal('fetch', vi.fn())
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    loadLyrxStyle.mockRejectedValueOnce(new Error('lyrx unreachable'))
     registerLayersPanel(interactiveMap, olMap)
 
-    const checkbox = createLayerCheckbox('test-fgb')
+    const checkbox = createLayerCheckbox('test-fgb-bad-config')
     checkbox.dispatchEvent(new Event('change', { bubbles: true }))
 
     await vi.waitFor(() => {
@@ -700,8 +725,8 @@ describe('#registerLayersPanel', () => {
     })
 
     expect(consoleError).toHaveBeenCalledWith(
-      'Failed to load data layer test-fgb',
-      expect.objectContaining({ message: 'lyrx unreachable' })
+      'Failed to load data layer test-fgb-bad-config',
+      expect.objectContaining({ message: 'Dataset test-fgb-bad-config style config must define classes' })
     )
     expect(olMap.addLayer).not.toHaveBeenCalled()
     expect(checkbox.checked).toBe(false)
@@ -923,32 +948,15 @@ describe('#registerLayersPanel', () => {
       vi.stubGlobal('fetch', vi.fn())
       registerLayersPanel(interactiveMap, olMap)
 
-      createLayerCheckbox('test-fgb-inline').dispatchEvent(new Event('change', { bubbles: true }))
+      createLayerCheckbox('test-fgb-with-min-zoom').dispatchEvent(new Event('change', { bubbles: true }))
 
       await vi.waitFor(() => {
         expect(olMap.addLayer).toHaveBeenCalled()
       })
 
-      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb-inline', {
-        label: 'Test FlatGeobuf without a layer file',
+      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb-with-min-zoom', {
+        label: 'Test FlatGeobuf with a minimum zoom',
         minZoom: 7,
-        enabled: true
-      })
-    })
-
-    test('a dataset capped by its layer file is tracked with the derived floor', async () => {
-      vi.stubGlobal('fetch', vi.fn())
-      registerLayersPanel(interactiveMap, olMap)
-
-      createLayerCheckbox('test-fgb').dispatchEvent(new Event('change', { bubbles: true }))
-
-      await vi.waitFor(() => {
-        expect(olMap.addLayer).toHaveBeenCalled()
-      })
-
-      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb', {
-        label: 'Test FlatGeobuf',
-        minZoom: 9.2,
         enabled: true
       })
     })
@@ -971,17 +979,16 @@ describe('#registerLayersPanel', () => {
     test('a dataset that fails to load is tracked as disabled', async () => {
       vi.stubGlobal('fetch', vi.fn())
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-      loadLyrxStyle.mockRejectedValueOnce(new Error('lyrx unreachable'))
       registerLayersPanel(interactiveMap, olMap)
 
-      const checkbox = createLayerCheckbox('test-fgb-min-zoom')
+      const checkbox = createLayerCheckbox('test-fgb-bad-config')
       checkbox.dispatchEvent(new Event('change', { bubbles: true }))
 
       await vi.waitFor(() => {
         expect(consoleError).toHaveBeenCalled()
       })
 
-      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb-min-zoom', expect.objectContaining({
+      expect(zoomWarningSet()).toHaveBeenCalledWith('test-fgb-bad-config', expect.objectContaining({
         enabled: false
       }))
 

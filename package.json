@@ -58,7 +58,6 @@
     "cssnano-preset-default": "8.0.5",
     "date-fns": "4.4.0",
     "flatgeobuf": "4.4.0",
-    "geostyler-lyrx-parser": "2.1.0",
     "global-agent": "3.0.0",
     "govuk-frontend": "6.4.0",
     "hapi-pino": "13.0.0",

@@ -197,19 +197,14 @@ function findLayerById (map, id) {
   return map.getLayers().getArray().find(l => l.get('id') === id)
 }
 
-// The zoom below which a shown dataset draws nothing, read from the layers on
-// the map so lyrx minScale caps are covered. An overview draws at every zoom.
+// An overview removes the zoom floor; otherwise use the detail layer's first
+// rendered zoom.
 function datasetZoomFloor (map, layerId) {
   if (findLayerById(map, overviewIdFor(layerId))) {
     return undefined
   }
 
   const layer = findLayerById(map, layerId)
-  const maxResolution = layer.getMaxResolution()
-  if (maxResolution !== Infinity) {
-    return map.getView().getZoomForResolution(maxResolution)
-  }
-
   const minZoom = layer.getMinZoom()
   if (minZoom !== -Infinity) {
     // OL's minZoom is exclusive, the first drawn zoom is the one above it.
@@ -251,16 +246,16 @@ async function toggleLayer (dataset, visible, map) {
     return
   }
 
-  const layers = await createLayers(dataset, layerId)
+  const layers = await createDatasetLayers(dataset, layerId, map)
   layers.forEach(layer => map.addLayer(layer))
 }
 
-async function createLayers (dataset, layerId) {
+async function createDatasetLayers (dataset, layerId, map) {
   const { type } = dataset.source
   if (type === 'cog') {
     return [await createCogLayer(dataset, layerId)]
   } else if (type === 'fgb') {
-    return createFlatGeobufLayers(dataset, layerId)
+    return createFlatGeobufLayers(dataset, layerId, map)
   } else if (type === 'wms') {
     const layer = await createWmsLayer(dataset, layerId)
     return layer ? [layer] : []

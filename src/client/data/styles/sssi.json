@@ -1,0 +1,23 @@
+{
+  "name": "Sites of Special Scientific Interest",
+  "stroke": {
+    "color": [
+      112,
+      48,
+      135,
+      1
+    ],
+    "width": 1.25
+  },
+  "classes": [
+    {
+      "label": "Site of Special Scientific Interest",
+      "fill": [
+        178,
+        102,
+        204,
+        1
+      ]
+    }
+  ]
+}
