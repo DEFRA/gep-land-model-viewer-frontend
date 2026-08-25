@@ -8,6 +8,13 @@ module.exports = {
         loose: true,
         modules: true
       }
+    ],
+    [
+      '@babel/preset-react',
+      {
+        runtime: 'automatic',
+        importSource: 'preact'
+      }
     ]
   ]
 }

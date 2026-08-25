@@ -60,18 +60,22 @@ export default {
   },
   resolve: {
     alias: {
-      '/public/assets': path.join(govukFrontendPath, 'dist/govuk/assets')
+      '/public/assets': path.join(govukFrontendPath, 'dist/govuk/assets'),
+
+      // Use Preact for React imports from interactive-map and local plugins.
+      react: 'preact/compat',
+      'react-dom': 'preact/compat'
     }
   },
   module: {
     rules: [
       {
-        test: /\.(js|mjs|scss)$/,
+        test: /\.(js|jsx|mjs|scss)$/,
         loader: 'source-map-loader',
         enforce: 'pre'
       },
       {
-        test: /\.js$/,
+        test: /\.jsx?$/,
         loader: 'babel-loader',
         exclude: /node_modules/,
         options: {

@@ -10,6 +10,13 @@
     "skipLibCheck": true,
     "maxNodeModuleJsDepth": 0
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", ".public", "coverage"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    ".public",
+    "coverage",
+    "src/client"
+  ]
 }

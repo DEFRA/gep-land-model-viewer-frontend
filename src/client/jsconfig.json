@@ -5,10 +5,26 @@
     "moduleResolution": "bundler",
     "target": "esnext",
     "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "paths": {
+      "react": [
+        "../../node_modules/preact/compat/src/index.d.ts"
+      ],
+      "react-dom": [
+        "../../node_modules/preact/compat/src/index.d.ts"
+      ]
+    },
     "noImplicitAny": false,
     "strictNullChecks": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0
   },
-  "include": ["./**/*", "../vitest.d.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "./**/*",
+    "../vitest.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

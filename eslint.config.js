@@ -4,11 +4,10 @@ import globals from 'globals'
 export default [
   ...neostandard({
     env: ['node', 'vitest'],
-    ignores: [...neostandard.resolveIgnoresFromGitignore()],
-    noJsx: true
+    ignores: [...neostandard.resolveIgnoresFromGitignore()]
   }),
   {
-    files: ['src/client/**/*.js'],
+    files: ['src/client/**/*.{js,jsx}'],
     languageOptions: {
       globals: globals.browser
     }

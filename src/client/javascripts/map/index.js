@@ -56,8 +56,8 @@ const map = new InteractiveMap(MAP_ID, {
         panels: [{
           id: 'mapStyles',
           mobile: { slot: 'drawer', modal: true, dismissible: true },
-          tablet: { slot: 'mapStyles-button', width: '340px', modal: true, dismissible: true },
-          desktop: { slot: 'mapStyles-button', width: '340px', modal: true, dismissible: true }
+          tablet: { slot: 'map-styles-button', width: '340px', modal: true, dismissible: true },
+          desktop: { slot: 'map-styles-button', width: '340px', modal: true, dismissible: true }
         }]
       }
     }),

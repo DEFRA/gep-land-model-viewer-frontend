@@ -1,24 +1,28 @@
 import { describe, test, expect } from 'vitest'
-import { createInfoLinksPlugin } from './index.js'
+import createPlugin from './index.js'
 
-describe('#createInfoLinksPlugin', () => {
-  test('returns a plugin with expected id', () => {
-    const plugin = createInfoLinksPlugin()
+describe('info links plugin', () => {
+  test('registers under a fixed id that options cannot override', () => {
+    const plugin = createPlugin({ id: 'something-else', width: '500px' })
+
     expect(plugin.id).toBe('gepInfoLinks')
+    expect(plugin.width).toBe('500px')
   })
 
-  test('load returns a button in right-bottom slot', async () => {
-    const plugin = createInfoLinksPlugin()
-    const { buttons } = await plugin.load()
-    expect(buttons).toHaveLength(1)
-    expect(buttons[0].desktop.slot).toBe('right-bottom')
-    expect(buttons[0].label).toBe('Page information')
+  test('loads a manifest with a button, panel and icon', async () => {
+    const manifest = await createPlugin().load()
+
+    expect(manifest.buttons[0]).toMatchObject({ id: 'gepInfoLinks', panelId: 'gepInfoLinks', iconId: 'gepInfo' })
+    expect(manifest.panels[0].id).toBe('gepInfoLinks')
+    expect(manifest.icons[0].id).toBe('gepInfo')
   })
 
-  test('load returns a panel with info links HTML', async () => {
-    const plugin = createInfoLinksPlugin()
-    const { panels } = await plugin.load()
-    expect(panels).toHaveLength(1)
-    expect(panels[0].html).toContain('/accessibility-statement')
+  test('opens the panel next to its button, using the kebab-cased button slot', async () => {
+    const manifest = await createPlugin().load()
+    const [panel] = manifest.panels
+
+    expect(panel.tablet.slot).toBe('gep-info-links-button')
+    expect(panel.desktop.slot).toBe('gep-info-links-button')
+    expect(panel.mobile.slot).toBe('drawer')
   })
 })

@@ -1,6 +1,18 @@
 import { defineConfig, configDefaults } from 'vitest/config'
 
 export default defineConfig({
+  oxc: {
+    jsx: {
+      runtime: 'automatic',
+      importSource: 'preact'
+    }
+  },
+  resolve: {
+    alias: {
+      react: 'preact/compat',
+      'react-dom': 'preact/compat'
+    }
+  },
   test: {
     globals: true,
     environment: 'node',
@@ -9,7 +21,7 @@ export default defineConfig({
       provider: 'v8',
       reportsDirectory: './coverage',
       reporter: ['text', 'lcov'],
-      include: ['src/**/*.js'],
+      include: ['src/**/*.{js,jsx}'],
       exclude: [
         ...configDefaults.exclude,
         'src/client/stylesheets/**',

@@ -51,7 +51,7 @@ vi.mock('./plugins/layers/dataset-hits.js', () => ({
 }))
 
 vi.mock('./plugins/north-indicator/index.js', () => ({
-  createNorthIndicatorPlugin: vi.fn(() => ({ id: 'northIndicator' }))
+  createNorthIndicatorPlugin: vi.fn(() => ({ id: 'gepNorthIndicator' }))
 }))
 
 describe('map entry point', () => {
