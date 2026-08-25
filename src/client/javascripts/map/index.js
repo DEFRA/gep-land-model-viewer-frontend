@@ -28,6 +28,8 @@ const map = new InteractiveMap(MAP_ID, {
   minZoom: MIN_ZOOM,
   maxZoom: MAX_ZOOM,
   containerHeight: '100%',
+  enableZoomControls: true,
+  enableMoveControls: false,
   plugins: [
     searchPlugin({
       osNamesURL: '/os/names/find?query={query}',
