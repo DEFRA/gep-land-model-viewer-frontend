@@ -31,7 +31,7 @@
     "start": "NODE_ENV=production node --use-strict .",
     "setup:husky": "node -e \"try { (await import('husky')).default() } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') throw e }\" --input-type module",
     "typecheck:server": "npx -y -p typescript tsc --noEmit -p jsconfig.json",
-    "typecheck:client": "npx -y -p typescript tsc --noEmit -p src/client/jsconfig.json"
+    "typecheck:client": "npx -y -p typescript tsc --noEmit -p src/client/jsconfig.typecheck.json"
   },
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",

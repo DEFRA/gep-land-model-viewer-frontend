@@ -1,0 +1,196 @@
+@use "variables" as *;
+@use "govuk-base" as *;
+
+// ===== Layers panel and related layer controls =====
+
+.app-map .im-c-panel:has([data-app-layer-list]) .im-c-panel__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.app-map__layers-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px 0 0;
+  overflow: hidden;
+}
+
+.app-map__layers-content > .app-map__layers-header {
+  padding: 0 12px;
+}
+
+// Everything below the fixed panel title scrolls together.
+.app-map__layers-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 12px 12px;
+}
+
+.app-map__layers-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding-right: 32px;
+  @include govuk-font-size($size: 24);
+  font-weight: $govuk-font-weight-bold;
+}
+
+.app-map__layers-header-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-map__layer-search {
+  margin-bottom: 16px;
+}
+
+.app-map__layer-search-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.app-map__layer-search-row:focus-within {
+  outline: 3px solid govuk-colour("yellow");
+  outline-offset: 0;
+}
+
+.app-map__layer-search-input {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+  border-right: 0;
+}
+
+.app-map__layer-search-input:focus {
+  outline: none;
+  border-right: 2px solid govuk-colour("black");
+  box-shadow: none;
+}
+
+.app-map__layer-search-button {
+  flex: 0 0 44px;
+  margin-bottom: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  box-shadow: none;
+}
+
+// govuk-button shifts down 2px on :active to press into its box-shadow; ours has no shadow
+.app-map__layer-search-button:active {
+  top: 0;
+}
+
+.app-map__layer-search-button:focus,
+.app-map__layer-search-button:focus:not(:active):not(:hover) {
+  outline: 2px solid govuk-colour("black");
+  outline-offset: -2px;
+  box-shadow: none;
+  background-color: govuk-colour("green");
+  color: govuk-colour("white");
+}
+
+.app-map__layer-search-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-map [data-app-layer-list] {
+  margin-left: -10px;
+  padding: 0 0 12px 10px;
+}
+
+// Ensure the hidden attribute works despite GOV.UK styles.
+.app-map [data-app-layer-empty][hidden] {
+  display: none;
+}
+
+.app-map__key-panel {
+  padding: 12px;
+}
+
+.app-map__key-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-map__key-entry + .app-map__key-entry {
+  padding-top: 16px;
+  border-top: 1px solid govuk-colour("black", $variant: "tint-80");
+}
+
+.app-map__key-legends {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+
+.app-map__key-legend-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.app-map__key-legend {
+  max-width: 100%;
+  height: auto;
+}
+
+// ===== Layers panel: land summary =====
+
+.app-map__land-summary {
+  margin-bottom: govuk-spacing(4);
+  padding: govuk-spacing(3);
+  background-color: govuk-colour("black", $variant: "tint-95");
+}
+
+// ===== Zoom warning banner =====
+
+.app-map__zoom-warning {
+  align-self: center; // the library's banner slot is a flex column
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(2);
+  padding: govuk-spacing(2) govuk-spacing(3);
+  border-bottom: 4px solid govuk-colour("yellow");
+  background-color: govuk-colour("black");
+  color: govuk-colour("white");
+  pointer-events: none; // purely informational, map interactions pass through
+  @include govuk-font($size: 16);
+}
+
+.app-map__zoom-warning-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: govuk-colour("yellow");
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

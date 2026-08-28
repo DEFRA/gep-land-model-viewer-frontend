@@ -4,13 +4,10 @@ import createOpenLayersProvider from '@defra/interactive-map/providers/openlayer
 import mapStylesPlugin from '@defra/interactive-map/plugins/map-styles'
 import searchPlugin from '@defra/interactive-map/plugins/search'
 import { mapStyles } from './config/map-styles.js'
-import { registerFeatureController } from './plugins/feature/index.js'
-import { registerGridController } from './plugins/grid/index.js'
-import { registerInfoPanel } from './plugins/info-panel/index.js'
-import { registerLayersPanel } from './plugins/layers/index.js'
-import { createDatasetHitSource } from './plugins/layers/dataset-hits.js'
-import { createInfoLinksPlugin } from './plugins/info-links/index.js'
-import { createNorthIndicatorPlugin } from './plugins/north-indicator/index.js'
+import { datasets } from './config/datasets.js'
+import createLayersPlugin from './plugins/layers/index.js'
+import createInfoLinksPlugin from './plugins/info-links/index.js'
+import createNorthIndicatorPlugin from './plugins/north-indicator/index.js'
 
 const MAP_ID = 'land-map'
 const DEFAULT_CENTER = [465000, 475000] // center of sample land model area
@@ -38,11 +35,17 @@ const map = new InteractiveMap(MAP_ID, {
       regions: ['england'],
       width: '300px',
       manifest: {
-        controls: [{
+        buttons: [{
           id: 'search',
           mobile: { slot: 'top-left', showLabel: false, order: 2 },
           tablet: { slot: 'top-left', showLabel: true, order: 2 },
           desktop: { slot: 'top-left', showLabel: true, order: 2 }
+        }],
+        controls: [{
+          id: 'search',
+          mobile: { slot: 'top-left', order: 2 },
+          tablet: { slot: 'top-left', order: 2 },
+          desktop: { slot: 'top-left', order: 2 }
         }]
       }
     }),
@@ -63,21 +66,16 @@ const map = new InteractiveMap(MAP_ID, {
         }]
       }
     }),
+    createLayersPlugin({ datasets }),
     createNorthIndicatorPlugin(),
     createInfoLinksPlugin()
   ]
 })
 
-map.on(EVENTS.MAP_READY, (/** @type {{ map: import('ol/Map').default, mapStyleId: string }} */ { map: olMap, mapStyleId }) => {
-  // Disable intermediary zoom levels for better rendering quality
+map.on(EVENTS.MAP_READY, (/** @type {{ map: import('ol/Map').default }} */ { map: olMap }) => {
+  // Snap to whole zoom levels so tiles draw at their native resolution.
   olMap.getView().setConstrainResolution(true)
 
   // The provider registers its interactions with double-click zoom off.
   olMap.addInteraction(new DoubleClickZoom())
-
-  const infoPanel = registerInfoPanel(map, olMap)
-  infoPanel.activate(createDatasetHitSource(olMap))
-  const grid = registerGridController(map, olMap, infoPanel)
-  const features = registerFeatureController(map, olMap, mapStyleId, infoPanel)
-  registerLayersPanel(map, olMap, mapStyleId, infoPanel, { grid, features })
 })

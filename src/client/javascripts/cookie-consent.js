@@ -108,11 +108,12 @@ function handleBannerConsent (
 
 export function initCookieBanner () {
   const banner = document.querySelector('.govuk-cookie-banner')
-  if (!banner) {
+  if (!(banner instanceof HTMLElement)) {
     return
   }
 
   const containerId = banner.dataset.gtmContainerId
+  /** @type {NodeListOf<HTMLElement>} */
   const messages = banner.querySelectorAll('.govuk-cookie-banner__message')
   const mainMessage = messages[0]
   const acceptedMessage = messages[1]
@@ -150,7 +151,7 @@ export function initCookiesPage () {
   }
 
   form.addEventListener('submit', function () {
-    const selected = form.querySelector('input[name="analytics"]:checked')
+    const selected = /** @type {HTMLInputElement | null} */ (form.querySelector('input[name="analytics"]:checked'))
     if (!selected) {
       return
     }

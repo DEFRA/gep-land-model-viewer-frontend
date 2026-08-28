@@ -1,7 +1,7 @@
 import { parse, newParsingContext, ColorType } from 'ol/expr/expression.js'
 import { datasets } from './datasets.js'
 import { operationalDatasets } from './operational-datasets.js'
-import { validateStyleConfig, vectorStyleFor, cogColorFor } from '../plugins/layers/style-config.js'
+import { validateStyleConfig, vectorStyleFor, cogColorFor } from '../plugins/layers/datasets/style-config.js'
 
 const wmsDatasets = datasets.filter(dataset => dataset.source.type === 'wms')
 
