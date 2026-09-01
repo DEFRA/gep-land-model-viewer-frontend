@@ -30,17 +30,19 @@ vi.mock('ol/layer/WebGLTile.js', () => ({
 }))
 
 vi.mock('../style-config.js', () => ({
-  validateStyleConfig: vi.fn(),
   cogColorFor: vi.fn(() => ['case', ['==', ['band', 1], 1], [194, 158, 215, 1], [0, 0, 0, 0]])
 }))
 
 const { default: GeoTIFF } = await import('ol/source/GeoTIFF.js')
 const { default: WebGLTileLayer } = await import('ol/layer/WebGLTile.js')
-const { validateStyleConfig, cogColorFor } = await import('../style-config.js')
+const { cogColorFor } = await import('../style-config.js')
 const { createCogLayer, createCogOverviewLayer } = await import('./cog.js')
 
-const STYLE_CONFIG = {
-  classes: [{ maxBandValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] }]
+const SOURCE_VALUE_RANGE_STYLE = {
+  type: 'range',
+  minValue: 0,
+  classes: [{ maxValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] }],
+  default: { label: 'Over 20cm', fill: [0, 0, 224, 1] }
 }
 
 beforeEach(() => {
@@ -48,7 +50,7 @@ beforeEach(() => {
 })
 
 describe('#createCogLayer', () => {
-  test('creates a WebGL tile layer styled from the validated config', async () => {
+  test('creates a WebGL tile layer styled from a source-value range config', async () => {
     const dataset = {
       id: 'test-cog',
       source: {
@@ -57,43 +59,31 @@ describe('#createCogLayer', () => {
         opacity: 0.8,
         normalize: false,
         interpolate: false,
-        styleConfig: STYLE_CONFIG
+        styleConfig: SOURCE_VALUE_RANGE_STYLE
       }
     }
 
     await createCogLayer(dataset, 'gep-test-cog')
 
-    expect(validateStyleConfig).toHaveBeenCalledWith(STYLE_CONFIG, 'test-cog')
     expect(GeoTIFF).toHaveBeenCalledWith({
       sources: [{ url: '/land-model/raster/test.tif' }],
       normalize: false,
       interpolate: false
     })
 
-    expect(cogColorFor).toHaveBeenCalledWith(STYLE_CONFIG)
+    expect(cogColorFor).toHaveBeenCalledWith(SOURCE_VALUE_RANGE_STYLE)
     const [layerOptions] = WebGLTileLayer.mock.calls[0]
     expect(layerOptions.properties).toEqual({ id: 'gep-test-cog' })
     expect(layerOptions.opacity).toBe(0.8)
     expect(layerOptions.style.color).toEqual(cogColorFor.mock.results[0].value)
   })
-
-  test('rejects an invalid style config before any layer is built', async () => {
-    validateStyleConfig.mockImplementationOnce(() => {
-      throw new Error('Dataset test-cog style config must define classes')
-    })
-    const dataset = { id: 'test-cog', source: { type: 'cog', url: '/land-model/raster/test.tif' } }
-
-    await expect(createCogLayer(dataset, 'gep-test-cog')).rejects.toThrow(
-      'Dataset test-cog style config must define classes'
-    )
-    expect(WebGLTileLayer).not.toHaveBeenCalled()
-  })
 })
 
 describe('#createCogOverviewLayer', () => {
   const styleConfig = {
+    type: 'match',
     field: 'category',
-    classes: [{ bandValue: 1, fieldValue: 'Bog', label: 'Bog', fill: [194, 158, 215, 1] }]
+    classes: [{ bandValue: 1, fieldValues: ['Bog'], label: 'Bog', fill: [194, 158, 215, 1] }]
   }
 
   test('creates an unbounded raster underlay styled from the config', async () => {

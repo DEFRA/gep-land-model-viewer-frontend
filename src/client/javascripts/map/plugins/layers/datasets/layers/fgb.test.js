@@ -63,7 +63,6 @@ vi.mock('./cog.js', () => ({
 }))
 
 vi.mock('../style-config.js', () => ({
-  validateStyleConfig: vi.fn(),
   vectorStyleFor: vi.fn(() => ({ 'fill-color': ['match', ['get', 'category'], 'Bog', [194, 158, 215, 1], [0, 0, 0, 0]] }))
 }))
 
@@ -72,12 +71,13 @@ const { default: VectorSource } = await import('ol/source/Vector.js')
 const { createFgbLoadController } = await import('./fgb-loader.js')
 const { createPmtilesLayer } = await import('./pmtiles.js')
 const { createCogOverviewLayer } = await import('./cog.js')
-const { validateStyleConfig, vectorStyleFor } = await import('../style-config.js')
+const { vectorStyleFor } = await import('../style-config.js')
 const { createFlatGeobufLayers } = await import('./fgb.js')
 
-const STYLE_CONFIG = {
+const MATCH_STYLE_CONFIG = {
+  type: 'match',
   field: 'category',
-  classes: [{ bandValue: 1, fieldValue: 'Bog', label: 'Bog', fill: [194, 158, 215, 1] }]
+  classes: [{ bandValue: 1, fieldValues: ['Bog'], label: 'Bog', fill: [194, 158, 215, 1] }]
 }
 
 function fgbDataset (source = {}) {
@@ -88,7 +88,7 @@ function fgbDataset (source = {}) {
       type: 'fgb',
       url: '/land-model/vector/test.fgb',
       opacity: 0.7,
-      styleConfig: STYLE_CONFIG,
+      styleConfig: MATCH_STYLE_CONFIG,
       ...source
     }
   }
@@ -128,13 +128,12 @@ describe('#createFlatGeobufLayers', () => {
     vi.clearAllMocks()
   })
 
-  test('validates the style config, styles the layer and wires its load controller', async () => {
+  test('styles the layer and wires its load controller', async () => {
     const { map } = mapHarness()
     const layers = await createFlatGeobufLayers(fgbDataset(), 'gep-test-fgb', map)
 
     expect(layers).toHaveLength(1)
-    expect(validateStyleConfig).toHaveBeenCalledWith(STYLE_CONFIG, 'test-fgb', { requireBandValues: false })
-    expect(vectorStyleFor).toHaveBeenCalledWith(STYLE_CONFIG)
+    expect(vectorStyleFor).toHaveBeenCalledWith(MATCH_STYLE_CONFIG)
 
     const source = VectorSource.mock.instances[0]
     expect(source._opts.strategy).toBe(bbox)
@@ -178,17 +177,6 @@ describe('#createFlatGeobufLayers', () => {
 
     detail.setVisible(true)
     expect(controller.retryFailedExtents).toHaveBeenCalledWith(extent)
-  })
-
-  test('an invalid style config rejects before any layer is built', async () => {
-    validateStyleConfig.mockImplementationOnce(() => {
-      throw new Error('Dataset test-fgb style config must define classes')
-    })
-
-    await expect(createFlatGeobufLayers(fgbDataset(), 'gep-test-fgb', mapHarness().map)).rejects.toThrow(
-      'Dataset test-fgb style config must define classes'
-    )
-    expect(WebGLVectorLayer).not.toHaveBeenCalled()
   })
 
   test('a configured minZoom caps the detail layer', async () => {
@@ -258,12 +246,11 @@ describe('#createFlatGeobufLayers', () => {
     expect(detailOptions.minZoom).toBe(4)
     expect(detailOptions.opacity).toBe(1)
     expect(detailOptions.className).toBe('ol-layer gep-test-fgb-composite')
-    expect(validateStyleConfig).toHaveBeenCalledWith(STYLE_CONFIG, 'test-fgb', { requireBandValues: true })
     expect(createCogOverviewLayer).toHaveBeenCalledWith(
       dataset.source.overview,
       'gep-test-fgb-overview',
       {
-        styleConfig: STYLE_CONFIG,
+        styleConfig: MATCH_STYLE_CONFIG,
         className: 'ol-layer gep-test-fgb-composite'
       }
     )

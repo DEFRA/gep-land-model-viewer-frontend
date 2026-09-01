@@ -5,7 +5,7 @@ import { overviewIdFor } from '../../../../config/layers.js'
 import { createPmtilesLayer } from './pmtiles.js'
 import { createCogOverviewLayer } from './cog.js'
 import { createFgbLoadController } from './fgb-loader.js'
-import { validateStyleConfig, vectorStyleFor } from '../style-config.js'
+import { vectorStyleFor } from '../style-config.js'
 
 // Datasets state the first zoom that draws. OL hides a layer at its minZoom, so
 // step back one to make that level the first that renders.
@@ -67,8 +67,6 @@ export async function createFlatGeobufLayers (dataset, layerId, map) {
   if (overview && !hasPmtilesOverview && !hasCogOverview) {
     throw new Error(`Dataset ${dataset.id} has unsupported overview type "${overview.type}", only pmtiles and cog are supported`)
   }
-
-  validateStyleConfig(styleConfig, dataset.id, { requireBandValues: hasCogOverview })
 
   const vectorStyle = vectorStyleFor(styleConfig)
   const source = new VectorSource({

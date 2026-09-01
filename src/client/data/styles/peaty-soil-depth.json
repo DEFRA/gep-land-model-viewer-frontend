@@ -1,8 +1,9 @@
 {
-  "name": "Peaty soil depth",
+  "type": "range",
+  "minValue": 0,
   "classes": [
     {
-      "maxBandValue": 20,
+      "maxValue": 20,
       "label": "Up to 20cm",
       "fill": [
         204,
@@ -12,7 +13,7 @@
       ]
     },
     {
-      "maxBandValue": 30,
+      "maxValue": 30,
       "label": "20 to 30cm",
       "fill": [
         179,
@@ -22,7 +23,7 @@
       ]
     },
     {
-      "maxBandValue": 40,
+      "maxValue": 40,
       "label": "30 to 40cm",
       "fill": [
         154,
@@ -32,7 +33,7 @@
       ]
     },
     {
-      "maxBandValue": 50,
+      "maxValue": 50,
       "label": "40 to 50cm",
       "fill": [
         130,
@@ -42,7 +43,7 @@
       ]
     },
     {
-      "maxBandValue": 100,
+      "maxValue": 100,
       "label": "50 to 100cm",
       "fill": [
         107,
@@ -52,7 +53,7 @@
       ]
     },
     {
-      "maxBandValue": 150,
+      "maxValue": 150,
       "label": "100 to 150cm",
       "fill": [
         85,
@@ -62,7 +63,7 @@
       ]
     },
     {
-      "maxBandValue": 200,
+      "maxValue": 200,
       "label": "150 to 200cm",
       "fill": [
         62,
@@ -72,7 +73,7 @@
       ]
     },
     {
-      "maxBandValue": 250,
+      "maxValue": 250,
       "label": "200 to 250cm",
       "fill": [
         41,
@@ -82,7 +83,7 @@
       ]
     },
     {
-      "maxBandValue": 500,
+      "maxValue": 500,
       "label": "250 to 500cm",
       "fill": [
         20,
@@ -90,15 +91,15 @@
         227,
         1
       ]
-    },
-    {
-      "label": "Over 500cm",
-      "fill": [
-        0,
-        0,
-        224,
-        1
-      ]
     }
-  ]
+  ],
+  "default": {
+    "label": "Over 500cm",
+    "fill": [
+      0,
+      0,
+      224,
+      1
+    ]
+  }
 }

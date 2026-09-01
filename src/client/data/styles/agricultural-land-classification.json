@@ -1,75 +1,96 @@
 {
-  "name": "Agricultural Land Classification",
+  "type": "match",
   "field": "ALC_GRADE",
   "classes": [
     {
-      "fieldValue": "Grade 1",
+      "bandValue": 1,
+      "fieldValues": [
+        "Grade 1"
+      ],
       "label": "Grade 1",
       "fill": [
         55,
         226,
         254,
-        1
+        1.0
       ]
     },
     {
-      "fieldValue": "Grade 2",
+      "bandValue": 2,
+      "fieldValues": [
+        "Grade 2"
+      ],
       "label": "Grade 2",
       "fill": [
         194,
         251,
         254,
-        1
+        1.0
       ]
     },
     {
-      "fieldValue": "Grade 3",
+      "bandValue": 3,
+      "fieldValues": [
+        "Grade 3"
+      ],
       "label": "Grade 3",
       "fill": [
         178,
         254,
         153,
-        1
+        1.0
       ]
     },
     {
-      "fieldValue": "Grade 4",
+      "bandValue": 4,
+      "fieldValues": [
+        "Grade 4"
+      ],
       "label": "Grade 4",
       "fill": [
         254,
         248,
         164,
-        1
+        1.0
       ]
     },
     {
-      "fieldValue": "Grade 5",
+      "bandValue": 5,
+      "fieldValues": [
+        "Grade 5"
+      ],
       "label": "Grade 5",
       "fill": [
         178,
         136,
         100,
-        1
+        1.0
       ]
     },
     {
-      "fieldValue": "Non Agricultural",
+      "bandValue": 6,
+      "fieldValues": [
+        "Non Agricultural"
+      ],
       "label": "Non Agricultural",
       "fill": [
         254,
         196,
         85,
-        1
+        1.0
       ]
     },
     {
-      "fieldValue": "Urban",
+      "bandValue": 7,
+      "fieldValues": [
+        "Urban"
+      ],
       "label": "Urban",
       "fill": [
         255,
         99,
         71,
-        1
+        1.0
       ]
     }
   ]

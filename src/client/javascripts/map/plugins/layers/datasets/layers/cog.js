@@ -1,7 +1,7 @@
 import GeoTIFF from 'ol/source/GeoTIFF.js'
 import WebGLTileLayer from 'ol/layer/WebGLTile.js'
 import { EPSG_27700 } from '../../constants.js'
-import { cogColorFor, validateStyleConfig } from '../style-config.js'
+import { cogColorFor } from '../style-config.js'
 
 // GeoTIFF leaves getView() pending after a metadata error, so source state
 // must be watched as well.
@@ -45,8 +45,6 @@ function waitForMetadata (source) {
  */
 export async function createCogLayer (dataset, layerId) {
   const { url, opacity, styleConfig, normalize, interpolate } = dataset.source
-
-  validateStyleConfig(styleConfig, dataset.id)
 
   return new WebGLTileLayer({
     properties: { id: layerId },

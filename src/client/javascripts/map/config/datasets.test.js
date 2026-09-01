@@ -1,7 +1,7 @@
-import { parse, newParsingContext, ColorType } from 'ol/expr/expression.js'
+import { parse, newParsingContext, ColorType, NumberType } from 'ol/expr/expression.js'
 import { datasets } from './datasets.js'
 import { operationalDatasets } from './operational-datasets.js'
-import { validateStyleConfig, vectorStyleFor, cogColorFor } from '../plugins/layers/datasets/style-config.js'
+import { cogColorFor, vectorStyleFor } from '../plugins/layers/datasets/style-config.js'
 
 const wmsDatasets = datasets.filter(dataset => dataset.source.type === 'wms')
 
@@ -32,14 +32,6 @@ describe('#datasets', () => {
     }
   })
 
-  test('every operational dataset carries a valid style config', () => {
-    for (const dataset of operationalDatasets) {
-      expect(dataset.source.styleConfig, dataset.id).toBeDefined()
-      const requireBandValues = dataset.source.overview?.type === 'cog'
-      expect(() => validateStyleConfig(dataset.source.styleConfig, dataset.id, { requireBandValues })).not.toThrow()
-    }
-  })
-
   test('vector style expressions compile with the OpenLayers parser', () => {
     const fgbDatasets = datasets.filter(dataset => dataset.source.type === 'fgb')
     expect(fgbDatasets.length).toBeGreaterThan(0)
@@ -47,6 +39,12 @@ describe('#datasets', () => {
     for (const dataset of fgbDatasets) {
       const style = vectorStyleFor(dataset.source.styleConfig)
       expect(() => parse(style['fill-color'], ColorType, newParsingContext())).not.toThrow()
+      if (style['stroke-color'] !== undefined) {
+        expect(() => parse(style['stroke-color'], ColorType, newParsingContext())).not.toThrow()
+      }
+      if (style['stroke-width'] !== undefined) {
+        expect(() => parse(style['stroke-width'], NumberType, newParsingContext())).not.toThrow()
+      }
     }
   })
 

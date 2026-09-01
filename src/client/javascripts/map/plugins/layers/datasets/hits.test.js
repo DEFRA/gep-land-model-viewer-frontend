@@ -5,7 +5,18 @@ import { render } from '@testing-library/preact'
 
 vi.mock('../../../config/datasets.js', () => ({
   datasets: [
-    { id: 'woodland', label: 'Ancient Woodland', source: { type: 'fgb', url: '/vector/woodland.fgb' } },
+    {
+      id: 'woodland',
+      label: 'Ancient Woodland',
+      source: {
+        type: 'fgb',
+        url: '/vector/woodland.fgb',
+        styleConfig: {
+          type: 'uniform',
+          classes: [{ bandValue: 1, label: 'Ancient Woodland', fill: [59, 104, 0, 1] }]
+        }
+      }
+    },
     {
       id: 'peat',
       label: 'Peaty Soils',
@@ -13,10 +24,12 @@ vi.mock('../../../config/datasets.js', () => ({
         type: 'cog',
         url: '/raster/peat.tif',
         styleConfig: {
+          type: 'range',
+          minValue: 0,
           classes: [
-            { maxBandValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] },
-            { label: 'Over 20cm', fill: [0, 0, 224, 1] }
-          ]
+            { maxValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] }
+          ],
+          default: { label: 'Over 20cm', fill: [0, 0, 224, 1] }
         }
       }
     },
@@ -29,9 +42,10 @@ vi.mock('../../../config/datasets.js', () => ({
         url: '/vector/habitats.fgb',
         minZoom: 5,
         styleConfig: {
+          type: 'match',
           field: 'A_pred',
-          classes: [{ bandValue: 2, fieldValue: 'Water', label: 'Water', fill: [190, 232, 255, 1] }],
-          default: { fill: [0, 0, 0, 0] }
+          classes: [{ bandValue: 2, fieldValues: ['Water'], label: 'Water', fill: [190, 232, 255, 1] }],
+          default: { label: 'Other', fill: [0, 0, 0, 0] }
         },
         overview: { type: 'cog', url: '/raster/habitats.tif' }
       }
@@ -70,10 +84,11 @@ function stubLayer (id, { visible = true } = {}) {
   }
 }
 
-const STYLE_CONFIG = {
+const MATCH_STYLE_CONFIG = {
+  type: 'match',
   field: 'A_pred',
-  classes: [{ bandValue: 2, fieldValue: 'Water', label: 'Water', fill: [190, 232, 255, 1] }],
-  default: { fill: [0, 0, 0, 0] }
+  classes: [{ bandValue: 2, fieldValues: ['Water'], label: 'Water', fill: [190, 232, 255, 1] }],
+  default: { label: 'Other', fill: [0, 0, 0, 0] }
 }
 
 function stubCogOverviewLayer ({ visible = true, bands = new Float32Array([2]) } = {}) {
@@ -94,6 +109,7 @@ function stubDetailLayer ({ visible = true, minZoom = 4 } = {}) {
 
 function stubFeature (properties, geometryName = 'geometry') {
   return {
+    get: key => properties[key],
     getGeometryName: geometryName ? () => geometryName : undefined,
     getGeometry: () => GEOMETRY,
     getProperties: () => properties
@@ -133,7 +149,13 @@ function highlightedFeatures (map) {
 describe('#createDatasetHits', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
-    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = STYLE_CONFIG
+    isCoarsePointer.mockReset()
+    isCoarsePointer.mockReturnValue(false)
+    getVisibleWmsLayers.mockReset()
+    getVisibleWmsLayers.mockReturnValue([])
+    queryFgbNearPoint.mockReset()
+    queryFgbNearPoint.mockResolvedValue(null)
+    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = MATCH_STYLE_CONFIG
   })
 
   afterEach(() => {
@@ -227,7 +249,7 @@ describe('#createDatasetHits', () => {
     expect(queryFgbNearPoint).not.toHaveBeenCalled()
   })
 
-  test('a COG layer with data under the pixel yields its class label', async () => {
+  test('a standalone source-value COG classifies its pixel and reports the class label', async () => {
     const layer = {
       ...stubLayer('gep-peat'),
       getVisible: vi.fn(() => true),
@@ -253,7 +275,7 @@ describe('#createDatasetHits', () => {
     await expect(getHits(map)).resolves.toEqual([])
   })
 
-  test('a COG overview pixel yields a hit that upgrades to the FlatGeobuf feature', async () => {
+  test('a COG overview hit loads the FlatGeobuf feature and its attributes', async () => {
     queryFgbNearPoint.mockResolvedValue({
       geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 0]]] },
       properties: { A_pred: 'Water', area: 3 }
@@ -275,8 +297,7 @@ describe('#createDatasetHits', () => {
     expect(highlightedFeatures(map)).toHaveLength(1)
   })
 
-  test('a COG overview click with no FlatGeobuf match falls back to the class fieldValue', async () => {
-    queryFgbNearPoint.mockResolvedValue(null)
+  test('a class with one fieldValue reports that original attribute when the FlatGeobuf lookup misses', async () => {
     const map = createOlMap({ layers: [stubCogOverviewLayer(), stubDetailLayer()], zoom: 2 })
 
     const hits = await getHits(map)
@@ -284,24 +305,15 @@ describe('#createDatasetHits', () => {
     await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water' }])
   })
 
-  test('a COG-only class fallback has a readable attribute name', async () => {
-    const styleConfig = {
-      classes: [{ bandValue: 2, label: 'Water', fill: [190, 232, 255, 1] }]
+  test('a grouped match class reports its label when the FlatGeobuf lookup misses', async () => {
+    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = {
+      ...MATCH_STYLE_CONFIG,
+      classes: [{ bandValue: 2, fieldValues: ['Water', 'Canal'], label: 'Open water', fill: [190, 232, 255, 1] }]
     }
-    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = styleConfig
-    const overview = stubCogOverviewLayer()
-    const hits = await getHits(createOlMap({ layers: [overview, stubDetailLayer()], zoom: 2 }))
+    const layers = [stubCogOverviewLayer(), stubDetailLayer()]
+    const hits = await getHits(createOlMap({ layers, zoom: 2 }))
 
-    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ Classification: 'Water' }])
-  })
-
-  test('the COG underlay is a fallback when detail has no vector hit', async () => {
-    const map = createOlMap({ layers: [stubCogOverviewLayer(), stubDetailLayer()], zoom: 6 })
-
-    const hits = await getHits(map)
-
-    expect(hits).toHaveLength(1)
-    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water' }])
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ Classification: 'Open water' }])
   })
 
   test('an exact detail hit takes precedence over the visible COG overview', async () => {
@@ -322,7 +334,7 @@ describe('#createDatasetHits', () => {
     expect(queryFgbNearPoint).not.toHaveBeenCalled()
   })
 
-  test('a COG fallback hit remains valid while the dataset is visible', async () => {
+  test('a COG overview hit remains valid while the dataset is visible', async () => {
     const detail = stubDetailLayer()
     const hits = await getHits(createOlMap({ layers: [stubCogOverviewLayer(), detail], zoom: 6 }))
 
@@ -332,26 +344,26 @@ describe('#createDatasetHits', () => {
     expect(hits[0].stillValid()).toBe(false)
   })
 
-  test('a non-integer COG overview pixel matches no class and yields no hit', async () => {
-    const layers = [stubCogOverviewLayer({ bands: new Float32Array([1.9999998]) }), stubDetailLayer()]
+  test('visible false prevents a vector feature from yielding a hit', async () => {
+    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = {
+      ...MATCH_STYLE_CONFIG,
+      classes: [{ ...MATCH_STYLE_CONFIG.classes[0], visible: false }]
+    }
+    const detail = stubDetailLayer()
+    const feature = stubFeature({ geometry: {}, A_pred: 'Water' })
+    const map = createOlMap({
+      vectorHits: [{ feature, layer: detail }]
+    })
 
-    await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
+    await expect(getHits(map)).resolves.toEqual([])
   })
 
-  test('a COG overview pixel with no class yields no hit', async () => {
-    const layers = [stubCogOverviewLayer({ bands: new Float32Array([99]) }), stubDetailLayer()]
-
-    await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
-  })
-
-  test('a COG overview pixel with no data yields no hit', async () => {
-    const layers = [stubCogOverviewLayer({ bands: null }), stubDetailLayer()]
-
-    await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
-  })
-
-  test('a masked COG overview pixel yields no hit', async () => {
-    const layers = [stubCogOverviewLayer({ bands: new Float32Array([2, 0]) }), stubDetailLayer()]
+  test('visible false prevents a COG overview class from yielding a hit', async () => {
+    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = {
+      ...MATCH_STYLE_CONFIG,
+      classes: [{ ...MATCH_STYLE_CONFIG.classes[0], visible: false }]
+    }
+    const layers = [stubCogOverviewLayer(), stubDetailLayer()]
 
     await expect(getHits(createOlMap({ layers, zoom: 2 }))).resolves.toEqual([])
   })

@@ -1,35 +1,44 @@
 {
-  "name": "Ancient Woodland",
+  "type": "match",
   "field": "THEMNAME",
   "classes": [
     {
-      "fieldValue": "Ancient & Semi-Natural Woodland",
+      "bandValue": 1,
+      "fieldValues": [
+        "Ancient & Semi-Natural Woodland"
+      ],
       "label": "Ancient & Semi-Natural Woodland",
       "fill": [
         59,
         104,
         0,
-        1
+        1.0
       ]
     },
     {
-      "fieldValue": "Ancient Replanted Woodland",
+      "bandValue": 2,
+      "fieldValues": [
+        "Ancient Replanted Woodland"
+      ],
       "label": "Ancient Replanted Woodland",
       "fill": [
         158,
         172,
         98,
-        1
+        1.0
       ]
     },
     {
-      "fieldValue": "Ancient Wood Pasture",
+      "bandValue": 3,
+      "fieldValues": [
+        "Ancient Wood Pasture"
+      ],
       "label": "Ancient Wood Pasture",
       "fill": [
         0,
         132,
         168,
-        1
+        1.0
       ]
     }
   ]

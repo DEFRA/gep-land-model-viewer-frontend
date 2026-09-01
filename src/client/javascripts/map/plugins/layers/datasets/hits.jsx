@@ -14,7 +14,7 @@ import { getSourceUrl, getVisibleWmsLayers } from './layers/wms.js'
 import { isCoarsePointer } from '../../../pointer.js'
 import { queryFgbNearPoint } from './layers/fgb-lookup.js'
 import { DatasetAttributes } from './DatasetAttributes.jsx'
-import { classForBands } from './style-config.js'
+import { visibleClassForBands, visibleClassForFieldValue } from './style-config.js'
 
 const FINE_POINTER_HIT_TOLERANCE = 3
 const COARSE_POINTER_HIT_TOLERANCE = 12
@@ -118,7 +118,7 @@ function vectorHitsAt (map, datasets, highlight, pixel, coords) {
 
   const collect = (feature, layer) => {
     const dataset = datasetForLayer(layer, datasets)
-    if (!dataset) {
+    if (!dataset || !featureHasVisibleStyle(feature, dataset.source.styleConfig)) {
       return
     }
     const group = grouped.get(dataset.id)
@@ -143,6 +143,11 @@ function vectorHitsAt (map, datasets, highlight, pixel, coords) {
     hits: [...grouped.values()].map(({ dataset, matches }) => makeVectorHit(map, highlight, dataset, matches, coords)),
     datasetIds: new Set(grouped.keys())
   }
+}
+
+function featureHasVisibleStyle (feature, styleConfig) {
+  const value = feature.get(styleConfig.field)
+  return visibleClassForFieldValue(styleConfig, value) !== null
 }
 
 function makeVectorHit (map, highlight, dataset, matches, coords) {
@@ -203,7 +208,7 @@ function cogOverviewHitsAt (map, datasets, highlight, pixel, coords, vectorHitDa
     }
 
     const styleConfig = dataset.source.styleConfig
-    const classDefinition = classForBands(styleConfig, layer.getData(pixel))
+    const classDefinition = visibleClassForBands(styleConfig, layer.getData(pixel))
     if (!classDefinition) {
       return []
     }
@@ -243,8 +248,8 @@ function makeCogOverviewHit (map, highlight, dataset, detailLayer, styleConfig, 
 }
 
 function attributesForClass (styleConfig, classDefinition) {
-  if (styleConfig.field && classDefinition.fieldValue !== undefined) {
-    return { [styleConfig.field]: classDefinition.fieldValue }
+  if (styleConfig.field && classDefinition.fieldValues?.length === 1) {
+    return { [styleConfig.field]: classDefinition.fieldValues[0] }
   }
 
   return { Classification: classDefinition.label }
@@ -265,7 +270,7 @@ function rasterHitsAt (map, datasets, highlight, pixel, coords) {
     }
 
     const styleConfig = dataset.source.styleConfig
-    const classDefinition = classForBands(styleConfig, layer.getData(pixel))
+    const classDefinition = visibleClassForBands(styleConfig, layer.getData(pixel))
     if (!classDefinition) {
       return []
     }

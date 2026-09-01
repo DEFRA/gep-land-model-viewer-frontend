@@ -1,327 +1,302 @@
 import { describe, test, expect } from 'vitest'
-import { validateStyleConfig, cogColorFor, vectorStyleFor, classForBandValue, classForBands } from './style-config.js'
+import {
+  classForCogValue,
+  cogColorFor,
+  visibleClassForBands,
+  visibleClassForFieldValue,
+  vectorStyleFor
+} from './style-config.js'
 
 const TRANSPARENT = [0, 0, 0, 0]
+const BOG = [194, 158, 215, 1]
+const WATER = [190, 232, 255, 1]
+const OUTSIDE_RANGE = [0, 0, 224, 1]
 
-function styleConfigFixture (overrides = {}) {
+function matchStyle (overrides = {}) {
   return {
-    name: 'Test habitats',
+    type: 'match',
     field: 'category',
     classes: [
-      { bandValue: 1, fieldValue: 'Bog', label: 'Bog', fill: [194, 158, 215, 1] },
-      { bandValue: 2, fieldValue: 'Standing Water', label: 'Water', fill: [190, 232, 255, 1] }
+      { bandValue: 1, fieldValues: ['Bog'], label: 'Bog', fill: BOG },
+      { bandValue: 2, fieldValues: ['Standing Water', 'Canal'], label: 'Water', fill: WATER }
     ],
-    default: { fill: TRANSPARENT },
+    default: { label: 'Other', fill: TRANSPARENT },
     ...overrides
   }
 }
 
-function rangeConfigFixture (overrides = {}) {
+function sourceValueRangeStyle (overrides = {}) {
   return {
-    name: 'Test depths',
+    type: 'range',
+    field: 'depth',
+    minValue: 0,
     classes: [
-      { maxBandValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] },
-      { maxBandValue: 500, label: '20 to 500cm', fill: [20, 20, 227, 1] },
-      { label: 'Over 500cm', fill: [0, 0, 224, 1] }
+      { maxValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] },
+      { maxValue: 500, label: '20 to 500cm', fill: [20, 20, 227, 1] }
     ],
+    default: { label: 'Outside configured range', fill: OUTSIDE_RANGE },
     ...overrides
   }
 }
 
-describe('#validateStyleConfig', () => {
-  test('accepts a categorical config', () => {
-    expect(() => validateStyleConfig(styleConfigFixture(), 'test')).not.toThrow()
+function classCodedRangeStyle () {
+  return sourceValueRangeStyle({
+    classes: [
+      { bandValue: 1, maxValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] },
+      { bandValue: 2, maxValue: 500, label: '20 to 500cm', fill: [20, 20, 227, 1] }
+    ],
+    default: { bandValue: 3, label: 'Outside configured range', fill: OUTSIDE_RANGE }
   })
+}
 
-  test('requires every bandValue when used by a categorical COG overview', () => {
-    const config = styleConfigFixture({
-      classes: [
-        { bandValue: 1, fieldValue: 'Bog', label: 'Bog', fill: TRANSPARENT },
-        { fieldValue: 'Water', label: 'Water', fill: TRANSPARENT }
-      ]
-    })
+function uniformStyle (classOverrides = {}) {
+  return {
+    type: 'uniform',
+    classes: [{
+      bandValue: 1,
+      label: 'Site',
+      fill: [178, 102, 204, 1],
+      ...classOverrides
+    }]
+  }
+}
 
-    expect(() => validateStyleConfig(config, 'test')).not.toThrow()
-    expect(() => validateStyleConfig(config, 'test', { requireBandValues: true }))
-      .toThrow('Dataset test has a cog overview but not every style class carries a bandValue')
-  })
-
-  test('accepts a range config with an open-ended last class', () => {
-    expect(() => validateStyleConfig(rangeConfigFixture(), 'test')).not.toThrow()
-  })
-
-  test('accepts a single unkeyed class with no field', () => {
-    const config = {
-      stroke: { color: [112, 48, 135, 1], width: 1.25 },
-      classes: [{ label: 'Site', fill: [178, 102, 204, 1] }]
-    }
-
-    expect(() => validateStyleConfig(config, 'test')).not.toThrow()
-  })
-
-  test('rejects a config without classes', () => {
-    expect(() => validateStyleConfig(styleConfigFixture({ classes: [] }), 'test')).toThrow('Dataset test style config must define classes')
-    expect(() => validateStyleConfig(undefined, 'test')).toThrow('Dataset test style config must define classes')
-  })
-
-  test('rejects a class missing a label or fill', () => {
-    const noLabel = styleConfigFixture({ classes: [{ bandValue: 1, fill: TRANSPARENT }] })
-    const shortFill = styleConfigFixture({ classes: [{ bandValue: 1, label: 'Bog', fill: [1, 2, 3] }] })
-
-    expect(() => validateStyleConfig(noLabel, 'test')).toThrow('label and an [r, g, b, a] fill')
-    expect(() => validateStyleConfig(shortFill, 'test')).toThrow('label and an [r, g, b, a] fill')
-  })
-
-  test('rejects a class mixing categorical and range values', () => {
-    const config = styleConfigFixture({
-      classes: [{ bandValue: 1, maxBandValue: 20, label: 'Bog', fill: TRANSPARENT }]
-    })
-
-    expect(() => validateStyleConfig(config, 'test')).toThrow('mixes categorical and range values')
-  })
-
-  test('rejects mixed keyed and unkeyed categorical classes', () => {
-    const config = styleConfigFixture({
-      classes: [
-        { bandValue: 1, label: 'Bog', fill: TRANSPARENT },
-        { label: 'Water', fill: TRANSPARENT }
-      ]
-    })
-
-    expect(() => validateStyleConfig(config, 'test')).toThrow('mixes keyed and unkeyed classes')
-  })
-
-  test('rejects a categorical key owned by different classes', () => {
-    const config = styleConfigFixture({
-      classes: [
-        { bandValue: 1, fieldValue: '2', label: 'Bog', fill: TRANSPARENT },
-        { bandValue: 2, fieldValue: 'Water', label: 'Water', fill: TRANSPARENT }
-      ]
-    })
-
-    expect(() => validateStyleConfig(config, 'test')).toThrow('repeats categorical key "2" across classes')
-  })
-
-  test('rejects multiple unkeyed classes', () => {
-    const config = {
-      classes: [
-        { label: 'One', fill: TRANSPARENT },
-        { label: 'Two', fill: TRANSPARENT }
-      ]
-    }
-
-    expect(() => validateStyleConfig(config, 'test')).toThrow('no bandValue, fieldValue or maxBandValue keys')
-  })
-
-  test('rejects a range class before the last without a maxBandValue', () => {
-    const config = rangeConfigFixture({
-      classes: [
-        { maxBandValue: 20, label: 'Up to 20cm', fill: TRANSPARENT },
-        { label: 'Odd one', fill: TRANSPARENT },
-        { maxBandValue: 500, label: '20 to 500cm', fill: TRANSPARENT }
-      ]
-    })
-
-    expect(() => validateStyleConfig(config, 'test')).toThrow('except an open-ended last class')
-  })
-
-  test('rejects range breaks that do not ascend', () => {
-    const config = rangeConfigFixture({
-      classes: [
-        { maxBandValue: 500, label: 'Up to 500cm', fill: TRANSPARENT },
-        { maxBandValue: 20, label: 'Odd', fill: TRANSPARENT }
-      ]
-    })
-
-    expect(() => validateStyleConfig(config, 'test')).toThrow('range breaks must ascend')
-  })
-
-  test('rejects a bandValue on an open-ended range class', () => {
-    const config = rangeConfigFixture({
-      classes: [
-        { maxBandValue: 20, label: 'Up to 20cm', fill: TRANSPARENT },
-        { bandValue: 2, label: 'Over 20cm', fill: TRANSPARENT }
-      ]
-    })
-
-    expect(() => validateStyleConfig(config, 'test')).toThrow('range classes cannot have bandValues or fieldValues')
-  })
-
-  test('rejects non-numeric class values', () => {
-    const badBandValue = styleConfigFixture({
-      classes: [{ bandValue: '1', fieldValue: 'Bog', label: 'Bog', fill: TRANSPARENT }]
-    })
-    const badBreak = rangeConfigFixture({
-      classes: [{ maxBandValue: '20', label: 'Up to 20cm', fill: TRANSPARENT }]
-    })
-
-    expect(() => validateStyleConfig(badBandValue, 'test')).toThrow('bandValues must be numbers')
-    expect(() => validateStyleConfig(badBreak, 'test')).toThrow('maxBandValues must be numbers')
-  })
-
-  test('rejects fieldValues without a field name', () => {
-    const config = styleConfigFixture({ field: undefined })
-
-    expect(() => validateStyleConfig(config, 'test')).toThrow('fieldValues but no field is named')
-  })
-
-  test('rejects malformed stroke and default shapes', () => {
-    expect(() => validateStyleConfig(styleConfigFixture({ stroke: { color: [1, 2, 3, 1] } }), 'test')).toThrow('stroke must have')
-    expect(() => validateStyleConfig(styleConfigFixture({ default: {} }), 'test')).toThrow('default must have')
-  })
-})
-
-describe('#cogColorFor', () => {
-  test('builds a band value lookup ending in the default fill', () => {
-    expect(cogColorFor(styleConfigFixture())).toEqual([
+describe('class-coded COG rules', () => {
+  test('a match COG compares its pixel with each class bandValue', () => {
+    expect(cogColorFor(matchStyle())).toEqual([
       'case',
-      ['==', ['band', 1], 1], [194, 158, 215, 1],
-      ['==', ['band', 1], 2], [190, 232, 255, 1],
+      ['==', ['band', 1], 1], BOG,
+      ['==', ['band', 1], 2], WATER,
       TRANSPARENT
     ])
   })
 
-  test('defaults a missing default fill to transparent', () => {
-    const config = styleConfigFixture({ default: undefined })
-
-    expect(cogColorFor(config)).toEqual([
+  test('a class-coded range COG ignores its numeric bounds and compares bandValue', () => {
+    expect(cogColorFor(classCodedRangeStyle())).toEqual([
       'case',
-      ['==', ['band', 1], 1], [194, 158, 215, 1],
-      ['==', ['band', 1], 2], [190, 232, 255, 1],
+      ['==', ['band', 1], 1], [204, 204, 255, 1],
+      ['==', ['band', 1], 2], [20, 20, 227, 1],
+      ['==', ['band', 1], 3], OUTSIDE_RANGE,
       TRANSPARENT
     ])
   })
 
-  test('builds an ascending break chain for range classes', () => {
-    expect(cogColorFor(rangeConfigFixture())).toEqual([
+  test('visible false makes a COG class transparent', () => {
+    expect(cogColorFor(uniformStyle({ visible: false }))).toEqual([
       'case',
-      ['<=', ['band', 1], 20], [204, 204, 255, 1],
-      ['<=', ['band', 1], 500], [20, 20, 227, 1],
-      [0, 0, 224, 1]
-    ])
-  })
-
-  test('a bounded last range class falls back to the default fill', () => {
-    const config = rangeConfigFixture({
-      classes: [
-        { maxBandValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] },
-        { maxBandValue: 500, label: '20 to 500cm', fill: [20, 20, 227, 1] }
-      ],
-      default: { fill: [1, 1, 1, 1] }
-    })
-
-    expect(cogColorFor(config)).toEqual([
-      'case',
-      ['<=', ['band', 1], 20], [204, 204, 255, 1],
-      ['<=', ['band', 1], 500], [20, 20, 227, 1],
-      [1, 1, 1, 1]
+      ['==', ['band', 1], 1], TRANSPARENT,
+      TRANSPARENT
     ])
   })
 })
 
-describe('#vectorStyleFor', () => {
-  test('registers both the fieldValue and the band value as string keys', () => {
-    expect(vectorStyleFor(styleConfigFixture())).toEqual({
+describe('source-value range COG rules', () => {
+  test('pixels are compared with minValue and each inclusive maxValue', () => {
+    expect(cogColorFor(sourceValueRangeStyle())).toEqual([
+      'case',
+      ['<', ['band', 1], 0], OUTSIDE_RANGE,
+      ['<=', ['band', 1], 20], [204, 204, 255, 1],
+      ['<=', ['band', 1], 500], [20, 20, 227, 1],
+      OUTSIDE_RANGE
+    ])
+  })
+
+  test.each([
+    { name: 'the first maxValue is inclusive', value: 20, expectedLabel: 'Up to 20cm' },
+    { name: 'the next value selects the next range', value: 21, expectedLabel: '20 to 500cm' },
+    { name: 'a value below minValue selects the default', value: -1, expectedLabel: 'Outside configured range' },
+    { name: 'a value above the final maxValue selects the default', value: 501, expectedLabel: 'Outside configured range' }
+  ])('$name', ({ value, expectedLabel }) => {
+    expect(classForCogValue(sourceValueRangeStyle(), value)?.label).toBe(expectedLabel)
+  })
+})
+
+describe('vector style rules', () => {
+  test('a match style expands grouped fieldValues and ignores COG bandValue', () => {
+    expect(vectorStyleFor(matchStyle())).toEqual({
       'fill-color': [
         'match', ['get', 'category'],
-        'Bog', [194, 158, 215, 1],
-        '1', [194, 158, 215, 1],
-        'Standing Water', [190, 232, 255, 1],
-        '2', [190, 232, 255, 1],
+        'Bog', BOG,
+        'Standing Water', WATER,
+        'Canal', WATER,
         TRANSPARENT
       ]
     })
   })
 
-  test('dedupes a fieldValue that matches its own class bandValue', () => {
-    const config = styleConfigFixture({
-      classes: [
-        { bandValue: 1, fieldValue: '1', label: 'Bog', fill: [194, 158, 215, 1] },
-        { bandValue: 2, fieldValue: 'Water', label: 'Water', fill: [190, 232, 255, 1] }
-      ]
-    })
-
-    expect(vectorStyleFor(config)).toEqual({
+  test('a range style compares the source field even when its COG is class-coded', () => {
+    expect(vectorStyleFor(classCodedRangeStyle())).toEqual({
       'fill-color': [
-        'match', ['get', 'category'],
-        '1', [194, 158, 215, 1],
-        'Water', [190, 232, 255, 1],
-        '2', [190, 232, 255, 1],
-        TRANSPARENT
+        'case',
+        ['<', ['get', 'depth'], 0], OUTSIDE_RANGE,
+        ['<=', ['get', 'depth'], 20], [204, 204, 255, 1],
+        ['<=', ['get', 'depth'], 500], [20, 20, 227, 1],
+        OUTSIDE_RANGE
       ]
     })
   })
 
-  test('classes without fieldValues register their band values only', () => {
-    const config = styleConfigFixture({
-      classes: [{ bandValue: 1, label: 'Bog', fill: [194, 158, 215, 1] }]
-    })
-
-    expect(vectorStyleFor(config)).toEqual({
-      'fill-color': [
-        'match', ['get', 'category'],
-        '1', [194, 158, 215, 1],
-        TRANSPARENT
-      ]
-    })
+  test('a fieldless raster range cannot style vector features', () => {
+    expect(() => vectorStyleFor(sourceValueRangeStyle({ field: undefined }))).toThrow('needs a field')
   })
 
-  test('a single unkeyed class with no field fills everything and carries the stroke', () => {
-    const config = {
-      stroke: { color: [112, 48, 135, 1], width: 1.25 },
-      classes: [{ label: 'Site', fill: [178, 102, 204, 1] }]
-    }
-
-    expect(vectorStyleFor(config)).toEqual({
+  test('a uniform style applies its fill and stroke directly', () => {
+    expect(vectorStyleFor(uniformStyle({
+      stroke: { color: [112, 48, 135, 1], width: 1.25 }
+    }))).toEqual({
+      'fill-color': [178, 102, 204, 1],
       'stroke-color': [112, 48, 135, 1],
-      'stroke-width': 1.25,
-      'fill-color': [178, 102, 204, 1]
+      'stroke-width': 1.25
     })
+  })
+
+  test('match classes and the default can each define their own stroke', () => {
+    const styleConfig = matchStyle({
+      classes: [
+        {
+          bandValue: 1,
+          fieldValues: ['Bog'],
+          label: 'Bog',
+          fill: BOG,
+          stroke: { color: [0, 0, 0, 1], width: 1 }
+        },
+        {
+          bandValue: 2,
+          fieldValues: ['Water'],
+          label: 'Water',
+          fill: WATER,
+          stroke: { color: [255, 0, 0, 1], width: 3 }
+        }
+      ],
+      default: {
+        label: 'Other',
+        fill: [1, 2, 3, 1],
+        stroke: { color: [4, 5, 6, 1], width: 2 }
+      }
+    })
+
+    const style = vectorStyleFor(styleConfig)
+
+    expect(style['stroke-color']).toEqual([
+      'match', ['get', 'category'],
+      'Bog', [0, 0, 0, 1],
+      'Water', [255, 0, 0, 1],
+      [4, 5, 6, 1]
+    ])
+    expect(style['stroke-width']).toEqual([
+      'match', ['get', 'category'],
+      'Bog', 1,
+      'Water', 3,
+      2
+    ])
+  })
+
+  test('visible false hides both the fill and stroke of a matched class', () => {
+    const styleConfig = matchStyle({
+      classes: [
+        {
+          bandValue: 1,
+          fieldValues: ['Bog'],
+          label: 'Bog',
+          fill: BOG,
+          stroke: { color: [0, 0, 0, 1], width: 1 }
+        },
+        {
+          bandValue: 2,
+          fieldValues: ['Water'],
+          label: 'Water',
+          fill: WATER,
+          stroke: { color: [255, 0, 0, 1], width: 3 },
+          visible: false
+        }
+      ]
+    })
+
+    const style = vectorStyleFor(styleConfig)
+
+    expect(style['fill-color']).toEqual([
+      'match', ['get', 'category'],
+      'Bog', BOG,
+      'Water', TRANSPARENT,
+      TRANSPARENT
+    ])
+    expect(style['stroke-color']).toEqual([
+      'match', ['get', 'category'],
+      'Bog', [0, 0, 0, 1],
+      'Water', TRANSPARENT,
+      TRANSPARENT
+    ])
+    expect(style['stroke-width']).toEqual([
+      'match', ['get', 'category'],
+      'Bog', 1,
+      'Water', 0,
+      0
+    ])
   })
 })
 
-describe('#classForBandValue', () => {
-  test('returns the class definition for a categorical band value', () => {
-    expect(classForBandValue(styleConfigFixture(), 2)).toEqual(
-      { bandValue: 2, fieldValue: 'Standing Water', label: 'Water', fill: [190, 232, 255, 1] }
-    )
+describe('hit classification rules', () => {
+  test('every grouped fieldValue identifies the same match class', () => {
+    expect(visibleClassForFieldValue(matchStyle(), 'Standing Water')?.label).toBe('Water')
+    expect(visibleClassForFieldValue(matchStyle(), 'Canal')?.label).toBe('Water')
   })
 
-  test('returns null for a categorical value with no class', () => {
-    expect(classForBandValue(styleConfigFixture(), 99)).toBeNull()
+  test('range field values use the same inclusive bounds as source-value COG pixels', () => {
+    expect(visibleClassForFieldValue(sourceValueRangeStyle(), 20)?.label).toBe('Up to 20cm')
+    expect(visibleClassForFieldValue(sourceValueRangeStyle(), 21)?.label).toBe('20 to 500cm')
   })
 
-  test('matches range breaks inclusively and falls to the open-ended last class', () => {
-    const config = rangeConfigFixture()
-
-    expect(classForBandValue(config, 20).label).toBe('Up to 20cm')
-    expect(classForBandValue(config, 21).label).toBe('20 to 500cm')
-    expect(classForBandValue(config, 501).label).toBe('Over 500cm')
-  })
-
-  test('returns null past a bounded last range class', () => {
-    const config = rangeConfigFixture({
-      classes: [{ maxBandValue: 20, label: 'Up to 20cm', fill: TRANSPARENT }]
+  test('visible false prevents a vector class from being identified', () => {
+    const styleConfig = matchStyle({
+      classes: [{ bandValue: 1, fieldValues: ['Bog'], label: 'Bog', fill: BOG, visible: false }]
     })
 
-    expect(classForBandValue(config, 21)).toBeNull()
-  })
-})
-
-describe('#classForBands', () => {
-  test('uses the data value before the OpenLayers alpha', () => {
-    const config = styleConfigFixture()
-
-    expect(classForBands(config, new Float32Array([2, 255]))).toEqual(
-      { bandValue: 2, fieldValue: 'Standing Water', label: 'Water', fill: [190, 232, 255, 1] }
-    )
+    expect(visibleClassForFieldValue(styleConfig, 'Bog')).toBeNull()
   })
 
-  test('returns null when the pixel is missing or masked', () => {
-    const config = styleConfigFixture()
+  test('a fully transparent default is not identified', () => {
+    expect(visibleClassForFieldValue(matchStyle(), 'Unknown')).toBeNull()
+  })
 
-    expect(classForBands(config, null)).toBeNull()
-    expect(classForBands(config, new Float32Array([1, 0]))).toBeNull()
-    expect(classForBands(config, new Float32Array([1]))?.label).toBe('Bog')
+  test('a transparent vector fill remains identifiable when its stroke is visible', () => {
+    const styleConfig = uniformStyle({
+      fill: TRANSPARENT,
+      stroke: { color: [1, 2, 3, 1], width: 1 }
+    })
+
+    expect(visibleClassForFieldValue(styleConfig, undefined)?.label).toBe('Site')
+  })
+
+  test('a COG reads its value from the first band when its mask is visible', () => {
+    expect(visibleClassForBands(matchStyle(), new Float32Array([2, 255]))?.label).toBe('Water')
+  })
+
+  test.each([
+    { name: 'missing pixel data cannot be identified', bands: null },
+    { name: 'a zero mask cannot be identified', bands: new Float32Array([2, 0]) }
+  ])('$name', ({ bands }) => {
+    expect(visibleClassForBands(matchStyle(), bands)).toBeNull()
+  })
+
+  test('class-coded COG values, including the default, must match a bandValue exactly', () => {
+    const styleConfig = matchStyle({
+      default: { bandValue: 3, label: 'Other', fill: OUTSIDE_RANGE }
+    })
+
+    expect(classForCogValue(styleConfig, 2)?.label).toBe('Water')
+    expect(classForCogValue(styleConfig, 3)?.label).toBe('Other')
+    expect(classForCogValue(styleConfig, 1.9999998)).toBeNull()
+    expect(classForCogValue(styleConfig, 99)).toBeNull()
+  })
+
+  test('a COG class with no visible fill cannot be identified', () => {
+    const hidden = uniformStyle({ visible: false })
+    const transparentWithStroke = uniformStyle({
+      fill: TRANSPARENT,
+      stroke: { color: [1, 2, 3, 1], width: 1 }
+    })
+
+    expect(visibleClassForBands(hidden, new Float32Array([1]))).toBeNull()
+    expect(visibleClassForBands(transparentWithStroke, new Float32Array([1]))).toBeNull()
   })
 })
