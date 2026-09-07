@@ -1,11 +1,7 @@
 // @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach } from 'vitest'
-import { render, waitFor } from '@testing-library/preact'
-
-vi.mock('../../datasets/layer-manager.js', () => ({ toggleDataset: vi.fn() }))
-
-const { toggleDataset } = await import('../../datasets/layer-manager.js')
-const { LayersPanel } = await import('./LayersPanel.jsx')
+import { render } from '@testing-library/preact'
+import { LayersPanel } from './LayersPanel.jsx'
 
 const DATASETS = [
   { id: 'woodland', label: 'Ancient Woodland' },
@@ -16,21 +12,16 @@ const DATASETS = [
 let view
 let announce
 let dispatch
-let inspection
-const map = { id: 'map' }
 
 function renderPanel (state = {}) {
   const pluginState = {
-    datasets: state.datasets ?? {},
-    summaries: state.summaries ?? {},
+    layers: state.layers ?? [],
     query: state.query ?? '',
-    dispatch,
-    useRef: () => ({ current: inspection })
+    dispatch
   }
 
   view = render(
     <LayersPanel
-      mapProvider={{ map }}
       pluginConfig={{ datasets: DATASETS }}
       pluginState={pluginState}
       services={{ announce }}
@@ -45,8 +36,6 @@ const labels = () => [...view.container.querySelectorAll('.govuk-checkboxes__lab
 beforeEach(() => {
   announce = vi.fn()
   dispatch = vi.fn()
-  inspection = { reconcile: vi.fn() }
-  vi.mocked(toggleDataset).mockResolvedValue({ visible: true, minZoom: 9 })
 })
 
 describe('LayersPanel', () => {
@@ -85,7 +74,7 @@ describe('LayersPanel', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_QUERY', payload: '' })
   })
 
-  test('checking a dataset updates the optimistic state then commits the map result', async () => {
+  test('requests a checked dataset', () => {
     renderPanel()
     const input = view.container.querySelector('#layer-woodland')
 
@@ -93,19 +82,28 @@ describe('LayersPanel', () => {
     input.dispatchEvent(new window.Event('change', { bubbles: true }))
 
     expect(dispatch).toHaveBeenCalledWith({
-      type: 'SET_DATASET_LOADING',
-      payload: { id: 'woodland', visible: true }
+      type: 'DATASET_LOADING',
+      payload: { id: 'woodland' }
     })
-    expect(toggleDataset).toHaveBeenCalledWith(map, DATASETS[0], true)
-    await waitFor(() => expect(dispatch).toHaveBeenCalledWith({
-      type: 'SET_DATASET_STATE',
-      payload: { id: 'woodland', visible: true, minZoom: 9 }
-    }))
-    expect(inspection.reconcile).toHaveBeenCalledTimes(1)
+  })
+
+  test('removes an unchecked dataset', () => {
+    renderPanel({ layers: [{ id: 'woodland', ready: true }] })
+    const input = view.container.querySelector('#layer-woodland')
+
+    input.checked = false
+    input.dispatchEvent(new window.Event('change', { bubbles: true }))
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'REMOVE_LAYER',
+      payload: { id: 'woodland' }
+    })
   })
 
   test('a loading dataset keeps its requested state and is marked busy', () => {
-    renderPanel({ datasets: { woodland: { visible: true, loading: true } } })
+    renderPanel({
+      layers: [{ id: 'woodland', ready: false }]
+    })
 
     const input = view.container.querySelector('#layer-woodland')
     expect(input.checked).toBe(true)
@@ -113,14 +111,8 @@ describe('LayersPanel', () => {
     expect(input.closest('.govuk-checkboxes__item').getAttribute('aria-busy')).toBe('true')
   })
 
-  test('a dataset that failed to load is left unchecked', () => {
-    renderPanel({ datasets: { woodland: { visible: false, loading: false } } })
-
-    expect(view.container.querySelector('#layer-woodland').checked).toBe(false)
-  })
-
-  test('land summaries delegate visibility and remain mutually exclusive', () => {
-    renderPanel({ summaries: { grid: true } })
+  test('land summaries delegate enabled state and remain mutually exclusive', () => {
+    renderPanel({ layers: [{ id: 'grid', ready: true }] })
 
     expect(view.container.querySelector('#summary-grid').disabled).toBe(false)
     expect(view.container.querySelector('#summary-features').disabled).toBe(true)
@@ -130,7 +122,31 @@ describe('LayersPanel', () => {
     input.dispatchEvent(new window.Event('change', { bubbles: true }))
     expect(dispatch).toHaveBeenCalledWith({
       type: 'SET_SUMMARY',
-      payload: { id: 'grid', visible: false }
+      payload: { id: 'grid', enabled: false }
     })
+  })
+
+  test('keeps hidden datasets checked and visually mutes their label', () => {
+    renderPanel({
+      layers: [{ id: 'woodland', ready: true, hidden: true }]
+    })
+
+    const input = view.container.querySelector('#layer-woodland')
+    expect(input.checked).toBe(true)
+    expect(input.getAttribute('aria-label')).toBe('Ancient Woodland, hidden')
+    expect(input.nextElementSibling.querySelector('.app-map__layers-label--hidden').textContent).toBe('Ancient Woodland')
+  })
+
+  test('visually mutes the active land summary when hidden', () => {
+    renderPanel({
+      layers: [{ id: 'grid', ready: true, hidden: true }]
+    })
+
+    const input = view.container.querySelector('#summary-grid')
+    const label = view.container.querySelector('label[for="summary-grid"]')
+
+    expect(input.checked).toBe(true)
+    expect(input.getAttribute('aria-label')).toBe('Grid squares, hidden')
+    expect(label.querySelector('.app-map__layers-label--hidden').textContent).toBe('Grid squares')
   })
 })

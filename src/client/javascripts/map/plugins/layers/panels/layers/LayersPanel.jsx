@@ -1,39 +1,36 @@
 import { useEffect } from 'react'
-import { LAYERS_ICON } from '../../icons.js'
-import { InlineIcon } from '../../../../components/InlineIcon.jsx'
+import { Layers as LayersIcon } from 'lucide-preact'
 import { LandSummary } from './LandSummary.jsx'
 import { LayerSearch } from './LayerSearch.jsx'
-import { toggleDataset } from '../../datasets/layer-manager.js'
 
 const NO_MATCH_MESSAGE = 'No layers match your search.'
 
-/**
- * @param {{ dataset: { id: string, label: string }, state?: import('../../reducer.js').DatasetState, onChange: (event: import('preact').TargetedEvent<HTMLInputElement>) => void }} props
- */
-function DatasetCheckbox ({ dataset, state = {}, onChange }) {
+function DatasetCheckbox ({ dataset, layer, onChange }) {
+  const loading = Boolean(layer && !layer.ready)
+
   return (
-    <div className='govuk-checkboxes__item' aria-busy={state.loading ? 'true' : undefined}>
+    <div className='govuk-checkboxes__item' aria-busy={loading ? 'true' : undefined}>
       <input
         className='govuk-checkboxes__input'
         id={`layer-${dataset.id}`}
         type='checkbox'
         value={dataset.id}
-        checked={Boolean(state.visible)}
-        disabled={Boolean(state.loading)}
+        checked={Boolean(layer)}
+        disabled={loading}
+        aria-label={layer?.hidden ? `${dataset.label}, hidden` : undefined}
         onChange={onChange}
       />
       <label className='govuk-label govuk-checkboxes__label' htmlFor={`layer-${dataset.id}`}>
-        {dataset.label}
+        <span className={layer?.hidden ? 'app-map__layers-label--hidden' : undefined}>{dataset.label}</span>
       </label>
     </div>
   )
 }
 
-export function LayersPanel ({ mapProvider, pluginConfig, pluginState, services }) {
+export function LayersPanel ({ pluginConfig, pluginState, services }) {
   const { datasets } = pluginConfig
   const { dispatch } = pluginState
-  const { datasets: datasetStates, summaries, query } = /** @type {import('../../reducer.js').LayersState} */ (pluginState)
-  const inspectionRef = pluginState.useRef('inspection')
+  const { layers, query } = /** @type {import('../../reducer.js').LayersState} */ (pluginState)
   const { announce } = services
   const sorted = [...datasets].sort((a, b) => a.label.localeCompare(b.label))
 
@@ -46,37 +43,30 @@ export function LayersPanel ({ mapProvider, pluginConfig, pluginState, services 
     }
   }, [term, matching.length, announce])
 
-  const handleDatasetChange = async (dataset, visible) => {
-    const { id } = dataset
+  const handleDatasetChange = (dataset, enabled) => {
+    if (!enabled) {
+      dispatch({ type: 'REMOVE_LAYER', payload: { id: dataset.id } })
+      return
+    }
 
-    dispatch({
-      type: 'SET_DATASET_LOADING',
-      payload: { id, visible }
-    })
-
-    const result = await toggleDataset(mapProvider.map, dataset, visible)
-    dispatch({
-      type: 'SET_DATASET_STATE',
-      payload: { id, ...result }
-    })
-    inspectionRef.current?.reconcile()
+    dispatch({ type: 'DATASET_LOADING', payload: { id: dataset.id } })
   }
 
-  const handleSummaryChange = (id, visible) => {
+  const handleSummaryChange = (id, enabled) => {
     dispatch({
       type: 'SET_SUMMARY',
-      payload: { id, visible }
+      payload: { id, enabled }
     })
   }
 
   return (
     <div className='app-map__layers-content'>
       <h2 className='app-map__layers-header'>
-        <InlineIcon className='app-map__layers-header-icon' content={LAYERS_ICON} />
+        <LayersIcon className='app-map__layers-header-icon' />
         Layers
       </h2>
       <div className='app-map__layers-scroll'>
-        <LandSummary summaries={summaries} onChange={handleSummaryChange} />
+        <LandSummary layers={layers} onChange={handleSummaryChange} />
 
         <h3 className='govuk-heading-s govuk-!-margin-bottom-2'>Datasets</h3>
         <p className='govuk-body govuk-!-margin-bottom-4'>Add datasets to the map.</p>
@@ -97,7 +87,7 @@ export function LayersPanel ({ mapProvider, pluginConfig, pluginState, services 
               <DatasetCheckbox
                 key={dataset.id}
                 dataset={dataset}
-                state={datasetStates[dataset.id]}
+                layer={layers.find(layer => layer.id === dataset.id)}
                 onChange={event => handleDatasetChange(dataset, event.currentTarget.checked)}
               />
             ))}

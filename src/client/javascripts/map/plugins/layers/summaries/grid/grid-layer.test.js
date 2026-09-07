@@ -41,6 +41,7 @@ vi.mock('ol/layer/WebGLVector.js', () => ({
     this._opts = opts
     this.source = opts?.source
     this.setVisible = vi.fn()
+    this.setZIndex = vi.fn()
   })
 }))
 
@@ -126,6 +127,15 @@ describe('#createGridLayer', () => {
     expect(selectedLayer.setVisible).toHaveBeenCalledWith(false)
   })
 
+  test('sets the grid z-index without moving the selection layer', () => {
+    const api = createGridLayer(interactiveMap, olMap)
+
+    api.setZIndex(3)
+
+    expect(olMap._layers[0].setZIndex).toHaveBeenCalledWith(3)
+    expect(olMap._layers[1].setZIndex).not.toHaveBeenCalled()
+  })
+
   test('does not draw grid when zoom too low', () => {
     olMap = createOlMapMock(8)
     const api = createGridLayer(interactiveMap, olMap)
@@ -161,8 +171,9 @@ describe('#createGridLayer', () => {
     gridSource.addFeatures.mockClear()
 
     api.setEnabled(false)
+    api.setEnabled(false)
 
-    expect(gridSource.clear).toHaveBeenCalled()
+    expect(gridSource.clear).toHaveBeenCalledTimes(1)
     expect(gridSource.addFeatures).not.toHaveBeenCalled()
   })
 

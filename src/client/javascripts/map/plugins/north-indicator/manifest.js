@@ -18,7 +18,7 @@ export const manifest = {
     onClick: (_e, { mapProvider }) => {
       mapProvider.map.getView().animate({ rotation: 0, duration: RESET_NORTH_DURATION })
     },
-    mobile: buttonSlot,
+    mobile: { ...buttonSlot, order: 2 },
     tablet: buttonSlot,
     desktop: buttonSlot
   }],

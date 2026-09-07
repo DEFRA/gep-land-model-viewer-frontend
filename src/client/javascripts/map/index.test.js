@@ -41,6 +41,11 @@ describe('map entry point', () => {
   // The entry point runs on first import, so its call is asserted in one test:
   // clearAllMocks between tests would drop it and the module is cached.
   test('creates the map with the OpenLayers provider and every plugin', async () => {
+    document.body.innerHTML = `
+      <main data-style-nonce="test-style-nonce">
+        <div id="land-map"></div>
+      </main>
+    `
     const InteractiveMap = (await import('@defra/interactive-map')).default
     const { datasets } = await import('./config/datasets.js')
     const createOpenLayersProvider = (await import('@defra/interactive-map/providers/openlayers')).default
@@ -73,6 +78,7 @@ describe('map entry point', () => {
     ])
     const layersPlugin = options.plugins.find(plugin => plugin.id === 'gepLayers')
     expect(layersPlugin.datasets).toBe(datasets)
+    expect(layersPlugin.styleNonce).toBe('test-style-nonce')
     expect(layersPlugin.infoPanel).toBeUndefined()
   })
 

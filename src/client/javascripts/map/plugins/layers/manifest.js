@@ -1,11 +1,14 @@
+import LayersIcon from '@lucide/icons/icons/layers'
+import ListIcon from '@lucide/icons/icons/list'
+import { lucideIconContent } from '../../lucide-icon-content.js'
 import { initialState, actions, INSPECTION_STATUS } from './reducer.js'
 import { LayersInit } from './LayersInit.jsx'
 import { LayersPanel } from './panels/layers/LayersPanel.jsx'
 import { KeyPanel } from './panels/key/KeyPanel.jsx'
+import { ContentsPanel } from './panels/contents/ContentsPanel.jsx'
 import { InfoPanel } from './panels/info/InfoPanel.jsx'
 import { ZoomWarning } from './controls/ZoomWarning.jsx'
-import { LAYERS_ICON, KEY_ICON } from './icons.js'
-import { INFO_PANEL_ID } from './constants.js'
+import { CONTENTS_PANEL_ID, INFO_PANEL_ID } from './constants.js'
 
 function infoPanelTitle ({ status, hits, hit }) {
   if (hit) {
@@ -41,6 +44,13 @@ const sidePanel = {
   showLabel: false
 }
 
+const drawerPanel = {
+  slot: 'drawer',
+  open: false,
+  modal: true,
+  dismissible: true
+}
+
 const bannerSlot = {
   slot: 'banner'
 }
@@ -57,7 +67,15 @@ const infoPanel = {
   slot: 'right-top',
   open: false,
   modal: false,
-  width: '460px',
+  width: 'var(--app-map-info-panel-width)',
+  dismissible: true
+}
+
+const contentsPanel = {
+  slot: 'gep-contents-button',
+  open: false,
+  modal: false,
+  width: 'var(--app-map-contents-panel-width)',
   dismissible: true
 }
 
@@ -75,7 +93,7 @@ export const manifest = {
     panelId: 'gepLayers',
     iconId: 'gepLayersIcon',
     enableWhen: ({ mapState }) => mapState.isMapReady,
-    // Hide the button while its persistent side panel is open.
+    // Hide the button while its panel is open.
     hiddenWhen: ({ appState }) => Boolean(appState.openPanels?.gepLayers),
     mobile: { ...topLeftButton, showLabel: false, order: 1 },
     tablet: { ...topLeftButton, order: 1 },
@@ -89,43 +107,42 @@ export const manifest = {
     mobile: { ...topLeftButton, showLabel: false, order: 3 },
     tablet: { ...topLeftButton, order: 3 },
     desktop: { ...topLeftButton, order: 3 }
+  }, {
+    id: CONTENTS_PANEL_ID,
+    label: 'Contents',
+    panelId: CONTENTS_PANEL_ID,
+    enableWhen: ({ mapState }) => mapState.isMapReady,
+    mobile: { slot: 'right-top', showLabel: true, order: 1 },
+    tablet: { slot: 'right-top', showLabel: true, order: 1 },
+    desktop: { slot: 'right-top', showLabel: true, order: 1 }
   }],
 
   panels: [{
     id: 'gepLayers',
     label: 'Layers',
-    mobile: {
-      slot: 'drawer',
-      open: false,
-      modal: true,
-      dismissible: true,
-      showLabel: false
-    },
-    tablet: sidePanel,
+    mobile: { ...drawerPanel, showLabel: false },
+    tablet: { ...drawerPanel, showLabel: false },
     desktop: sidePanel,
     render: LayersPanel
   }, {
     id: 'gepKey',
     label: 'Key',
-    mobile: {
-      slot: 'drawer',
-      open: false,
-      modal: true,
-      dismissible: true
-    },
+    mobile: drawerPanel,
     tablet: keyPanel,
     desktop: keyPanel,
     render: KeyPanel
   }, {
+    id: CONTENTS_PANEL_ID,
+    label: 'Contents',
+    mobile: drawerPanel,
+    tablet: contentsPanel,
+    desktop: contentsPanel,
+    render: ContentsPanel
+  }, {
     id: INFO_PANEL_ID,
     label: ({ pluginState }) => infoPanelTitle(pluginState.inspection),
-    mobile: {
-      slot: 'drawer',
-      open: false,
-      modal: true,
-      dismissible: true
-    },
-    tablet: infoPanel,
+    mobile: drawerPanel,
+    tablet: drawerPanel,
     desktop: infoPanel,
     render: InfoPanel
   }],
@@ -141,9 +158,9 @@ export const manifest = {
 
   icons: [{
     id: 'gepLayersIcon',
-    svgContent: LAYERS_ICON
+    svgContent: lucideIconContent(LayersIcon)
   }, {
     id: 'gepKeyIcon',
-    svgContent: KEY_ICON
+    svgContent: lucideIconContent(ListIcon)
   }]
 }

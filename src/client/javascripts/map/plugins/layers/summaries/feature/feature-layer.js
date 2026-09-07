@@ -7,7 +7,7 @@ import Stroke from 'ol/style/Stroke.js'
 import { getBasemapLayer } from '../../../../basemap.js'
 import { FEATURE_VISIBLE_MIN_ZOOM } from './constants.js'
 import { DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../../../config/colours.js'
-import { OVERLAY_Z_INDEX } from '../../../../config/layers.js'
+import { FEATURE_SUMMARY } from '../config.js'
 
 const FEATURE_SOURCE_LAYER = 'lnd_fts_land'
 const MVT_LAYER_PROPERTY = 'layer'
@@ -16,7 +16,7 @@ const HIT_DETECTION_FILL_COLOUR = 'rgba(0, 0, 0, 0.01)' // Near-transparent so p
 
 const OUTLINE_STYLE = new Style({
   fill: new Fill({ color: HIT_DETECTION_FILL_COLOUR }),
-  stroke: new Stroke({ color: withAlpha(DEFRA_GREEN_DARK, 0.6), width: 1.5 })
+  stroke: new Stroke({ color: FEATURE_SUMMARY.symbol.colour, width: FEATURE_SUMMARY.symbol.width })
 })
 
 const SELECTED_STYLE = new Style({
@@ -34,6 +34,7 @@ function createDedicatedSource (tilesetUrl) {
 export function createFeatureLayer (map, tilesetUrl) {
   let dedicatedSource = null
   let selectedOsid = null
+  let enabled = false
 
   function styleFn (feature) {
     if (feature.get(MVT_LAYER_PROPERTY) !== FEATURE_SOURCE_LAYER) {
@@ -45,14 +46,13 @@ export function createFeatureLayer (map, tilesetUrl) {
     return OUTLINE_STYLE
   }
 
-  const overlayLayer = new VectorTileLayer({
+  const featureLayer = new VectorTileLayer({
     style: styleFn,
     renderMode: 'vector',
     visible: false,
     // OL's minZoom is exclusive, so step back one from the first zoom that draws.
     minZoom: FEATURE_VISIBLE_MIN_ZOOM - 1,
-    zIndex: OVERLAY_Z_INDEX,
-    properties: { id: 'gep-feature-overlay' }
+    properties: { id: 'gep-feature-summary' }
   })
 
   /**
@@ -67,33 +67,42 @@ export function createFeatureLayer (map, tilesetUrl) {
       dedicatedSource ??= createDedicatedSource(tilesetUrl)
       next = dedicatedSource
     }
-    overlayLayer.setSource(next)
+    featureLayer.setSource(next)
   }
 
-  map.addLayer(overlayLayer)
+  map.addLayer(featureLayer)
 
   return {
     refreshSource,
 
     dispose () {
-      map.removeLayer(overlayLayer)
+      map.removeLayer(featureLayer)
     },
 
     selectFeature (osid) {
       selectedOsid = osid
-      overlayLayer.changed()
+      featureLayer.changed()
     },
 
     clearSelection () {
       selectedOsid = null
-      overlayLayer.changed()
+      featureLayer.changed()
     },
 
     setEnabled (next) {
-      overlayLayer.setVisible(next)
+      if (enabled === next) {
+        return
+      }
+
+      enabled = next
+      featureLayer.setVisible(next)
       if (!next) {
         selectedOsid = null
       }
+    },
+
+    setZIndex (zIndex) {
+      featureLayer.setZIndex(zIndex)
     },
 
     findFeatureAtPixel (pixel) {
@@ -109,7 +118,7 @@ export function createFeatureLayer (map, tilesetUrl) {
           return true
         }
         return false
-      }, { layerFilter: (l) => l === overlayLayer })
+      }, { layerFilter: (layer) => layer === featureLayer })
       return found
     }
   }

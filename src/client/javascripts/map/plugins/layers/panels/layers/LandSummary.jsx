@@ -1,7 +1,33 @@
-import { SUMMARY_TOGGLES } from '../../summaries/options.js'
+import { SUMMARIES } from '../../summaries/config.js'
 
-export function LandSummary ({ summaries, onChange }) {
-  const activeId = SUMMARY_TOGGLES.find(toggle => summaries[toggle.id])?.id
+function SummaryCheckbox ({ summary, layer, activeId, onChange }) {
+  const hidden = Boolean(layer?.hidden)
+
+  return (
+    <div className='govuk-checkboxes__item'>
+      <input
+        className='govuk-checkboxes__input'
+        id={`summary-${summary.id}`}
+        type='checkbox'
+        value={summary.id}
+        checked={Boolean(layer)}
+        disabled={Boolean(activeId) && activeId !== summary.id}
+        aria-label={hidden ? `${summary.label}, hidden` : undefined}
+        onChange={event => onChange(summary.id, event.currentTarget.checked)}
+      />
+      <label className='govuk-label govuk-checkboxes__label' htmlFor={`summary-${summary.id}`}>
+        <span className={hidden ? 'app-map__layers-label--hidden' : undefined}>{summary.label}</span>
+      </label>
+    </div>
+  )
+}
+
+export function LandSummary ({ layers, onChange }) {
+  const summaries = SUMMARIES.map(summary => ({
+    summary,
+    layer: layers.find(layer => layer.id === summary.id)
+  }))
+  const activeId = summaries.find(({ layer }) => layer)?.summary.id
 
   return (
     <div className='app-map__land-summary'>
@@ -10,21 +36,14 @@ export function LandSummary ({ summaries, onChange }) {
       <fieldset className='govuk-fieldset govuk-!-margin-top-2'>
         <legend className='govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-2'>Summarise land by:</legend>
         <div className='govuk-checkboxes govuk-checkboxes--small'>
-          {SUMMARY_TOGGLES.map(toggle => (
-            <div className='govuk-checkboxes__item' key={toggle.id}>
-              <input
-                className='govuk-checkboxes__input'
-                id={`summary-${toggle.id}`}
-                type='checkbox'
-                value={toggle.id}
-                checked={Boolean(summaries[toggle.id])}
-                disabled={Boolean(activeId) && activeId !== toggle.id}
-                onChange={event => onChange(toggle.id, event.currentTarget.checked)}
-              />
-              <label className='govuk-label govuk-checkboxes__label' htmlFor={`summary-${toggle.id}`}>
-                {toggle.label}
-              </label>
-            </div>
+          {summaries.map(({ summary, layer }) => (
+            <SummaryCheckbox
+              key={summary.id}
+              summary={summary}
+              layer={layer}
+              activeId={activeId}
+              onChange={onChange}
+            />
           ))}
         </div>
       </fieldset>

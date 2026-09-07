@@ -1,7 +1,5 @@
 import { getKeyEntries } from './key-entries.js'
-import { hasVisibleStroke } from '../../datasets/style-config.js'
-
-const MINIMUM_SWATCH_STROKE_WIDTH = 2
+import { StyleSwatch } from '../shared/StyleSwatch.jsx'
 
 function WmsLegend ({ baseUrl, name }) {
   const label = name.replaceAll('_', ' ')
@@ -15,53 +13,38 @@ function WmsLegend ({ baseUrl, name }) {
   )
 }
 
-/** @param {number[]} colour */
-function colourFor (colour) {
-  const [red, green, blue, alpha] = colour
-
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
-}
-
-function StyleLegend (definition) {
-  const { fill = [0, 0, 0, 0], label, stroke } = definition
-  const swatchStyle = {
-    backgroundColor: colourFor(fill),
-    ...(hasVisibleStroke(definition)
-      ? {
-          borderColor: colourFor(stroke.color),
-          borderWidth: `${Math.max(stroke.width, MINIMUM_SWATCH_STROKE_WIDTH)}px`
-        }
-      : {})
-  }
-
+/** @param {{ definition: import('../shared/swatch-helpers.js').StyleDefinition }} props */
+function StyleLegend ({ definition }) {
   return (
     <li className='app-map__key-style-row'>
-      <span className='app-map__key-style-swatch' style={swatchStyle} aria-hidden='true' />
-      <span className='govuk-body-s govuk-!-margin-bottom-0'>{label}</span>
+      <StyleSwatch definition={definition} className='app-map__key-style-swatch' />
+      <span className='govuk-body-s govuk-!-margin-bottom-0'>{definition.label}</span>
     </li>
   )
 }
 
-export function KeyPanel ({ mapProvider, pluginConfig }) {
-  const keyEntries = getKeyEntries(mapProvider.map, pluginConfig.datasets)
+export function KeyPanel ({ pluginConfig, pluginState }) {
+  const keyEntries = getKeyEntries(pluginConfig.datasets, pluginState)
 
   return (
     <div className='app-map__key-panel'>
       {keyEntries.length
         ? (
           <div className='app-map__key-grid'>
-            {keyEntries.map(({ label, layerNames, baseUrl, styles }) => (
-              <div className='app-map__key-entry' key={baseUrl ? `${baseUrl}:${layerNames.join(',')}` : `style:${label}`}>
-                <h3 className='govuk-heading-xs govuk-!-margin-bottom-1'>{label}</h3>
-                {styles
+            {keyEntries.map(entry => (
+              <div className='app-map__key-entry' key={entry.id}>
+                <h3 className='im-e-heading-s govuk-!-margin-bottom-1'>{entry.label}</h3>
+                {entry.type === 'style'
                   ? (
                     <ul className='app-map__key-styles'>
-                      {styles.map((style, index) => <StyleLegend {...style} key={`${style.label}:${index}`} />)}
+                      {entry.styles.map((style, index) => (
+                        <StyleLegend definition={style} key={`${style.label}:${index}`} />
+                      ))}
                     </ul>
                     )
                   : (
                     <div className='app-map__key-legends'>
-                      {layerNames.map(name => <WmsLegend baseUrl={baseUrl} name={name} key={name} />)}
+                      {entry.layerNames.map(name => <WmsLegend baseUrl={entry.baseUrl} name={name} key={name} />)}
                     </div>
                     )}
               </div>

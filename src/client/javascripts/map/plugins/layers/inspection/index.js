@@ -1,15 +1,5 @@
 import { EVENTS } from '@defra/interactive-map'
-import { isCoarsePointer } from '../../../pointer.js'
 import { INFO_PANEL_ID } from '../constants.js'
-
-/**
- * singleclick waits 250ms to rule out a double-click. Coarse input skips the
- * delay and identifies on plain click.
- * @returns {'click' | 'singleclick'}
- */
-function inspectionClickEvent () {
-  return isCoarsePointer() ? 'click' : 'singleclick'
-}
 
 /**
  * @typedef {object} Hit One selectable result under a click.
@@ -81,11 +71,10 @@ class Inspection {
     this.pending = null
     /** @type {Array<SourceHit | null>} */
     this.sourceHits = []
-    this.clickEvent = inspectionClickEvent()
     this.handleMapClick = this.handleMapClick.bind(this)
     this.onPanelClosed = this.onPanelClosed.bind(this)
 
-    map.on(this.clickEvent, this.handleMapClick)
+    map.on('singleclick', this.handleMapClick)
     eventBus.on(EVENTS.APP_PANEL_CLOSED, this.onPanelClosed)
   }
 
@@ -121,7 +110,7 @@ class Inspection {
     clearSelections(this.sources)
     sourceHit.select?.()
     this.dispatch({
-      type: 'SHOW_HIT',
+      type: 'SELECT_HIT',
       payload: { hit, hits: selectionHits }
     })
 
@@ -258,7 +247,7 @@ class Inspection {
     this.cancelPending()
     this.sourceHits = []
     clearSelections(this.sources)
-    this.map.un(this.clickEvent, this.handleMapClick)
+    this.map.un('singleclick', this.handleMapClick)
     this.eventBus.off(EVENTS.APP_PANEL_CLOSED, this.onPanelClosed)
   }
 }

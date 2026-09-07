@@ -4,20 +4,21 @@ import { createGridSummary } from './summaries/grid/index.jsx'
 import { createFeatureSummary } from './summaries/feature/index.jsx'
 import { createDatasetHits } from './datasets/hits.jsx'
 import { createInspection } from './inspection/index.js'
-import { INFO_PANEL_ID } from './constants.js'
 import { getAttribution } from './datasets/attribution.js'
-import { SUMMARY_TOGGLES } from './summaries/options.js'
+import { createLayerController } from './layer-controller.js'
+import { inspectableLayerIds } from './reducer.js'
 
 const ATTRIBUTIONS_SELECTOR = '.im-c-attributions'
-const INFO_PANEL_OPEN_CLASS = 'app-map--info-panel-open'
 
 export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, appState, services }) {
   const { datasets } = pluginConfig
-  const summariesRef = useRef(null)
+  const layerControllerRef = useRef(null)
   const inspectionStateRef = useRef(pluginState.inspection)
   inspectionStateRef.current = pluginState.inspection
 
   const inspectionRef = pluginState.useRef('inspection')
+  const inspectableLayerIdsKey = JSON.stringify(inspectableLayerIds(datasets, pluginState))
+  const attribution = getAttribution(datasets, pluginState, mapState.mapStyle?.attribution)
 
   useEffect(() => {
     if (!mapState.isMapReady) {
@@ -27,6 +28,7 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     const { map } = mapProvider
     const grid = createGridSummary(services.eventBus, map)
     const features = createFeatureSummary(map)
+    const summaries = { grid, features }
     const datasetHits = createDatasetHits(map, datasets)
     const inspection = createInspection({
       map,
@@ -37,8 +39,21 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
       appDispatch: appState.dispatch,
       announce: services.announce
     })
+    const layerController = createLayerController({
+      map,
+      datasets,
+      summaries,
+      onDatasetLoaded: (id, metadata) => pluginState.dispatch({
+        type: 'DATASET_LOADED',
+        payload: { id, ...metadata }
+      }),
+      onDatasetFailed: id => pluginState.dispatch({
+        type: 'REMOVE_LAYER',
+        payload: { id }
+      })
+    })
 
-    summariesRef.current = { grid, features }
+    layerControllerRef.current = layerController
     inspectionRef.current = inspection
 
     const syncFeatureSource = ({ mapStyleId }) => features.setMapStyle(mapStyleId)
@@ -48,25 +63,34 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
 
     return () => {
       services.eventBus.off(EVENTS.MAP_STYLE_CHANGE, syncFeatureSource)
+      layerController.dispose()
       inspection.dispose()
       datasetHits.dispose()
       grid.dispose()
       features.dispose()
-      summariesRef.current = null
+      layerControllerRef.current = null
       inspectionRef.current = null
     }
   }, [mapState.isMapReady])
 
   useEffect(() => {
-    if (!mapState.isMapReady || !summariesRef.current) {
+    if (!mapState.isMapReady) {
       return
     }
 
-    for (const { id } of SUMMARY_TOGGLES) {
-      summariesRef.current[id].setVisible(Boolean(pluginState.summaries[id]))
+    layerControllerRef.current?.sync(pluginState.layers)
+  }, [
+    mapState.isMapReady,
+    pluginState.layers
+  ])
+
+  useEffect(() => {
+    if (!mapState.isMapReady) {
+      return
     }
+
     inspectionRef.current?.reconcile()
-  }, [mapState.isMapReady, pluginState.summaries])
+  }, [mapState.isMapReady, inspectableLayerIdsKey])
 
   // interactive-map has no API for adding dataset attributions.
   useEffect(() => {
@@ -76,28 +100,9 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
 
     const element = document.querySelector(ATTRIBUTIONS_SELECTOR)
     if (element) {
-      element.textContent = getAttribution(mapProvider.map, datasets, mapState.mapStyle.attribution)
+      element.textContent = attribution
     }
-  }, [mapState.isMapReady, mapState.mapStyle, pluginState.datasets])
-
-  useEffect(() => {
-    if (!mapState.isMapReady) {
-      return undefined
-    }
-
-    const container = mapProvider.map.getTargetElement()?.closest('.app-map')
-    if (!container) {
-      return undefined
-    }
-
-    if (appState.openPanels?.[INFO_PANEL_ID]) {
-      container.classList.add(INFO_PANEL_OPEN_CLASS)
-    } else {
-      container.classList.remove(INFO_PANEL_OPEN_CLASS)
-    }
-
-    return () => container.classList.remove(INFO_PANEL_OPEN_CLASS)
-  }, [mapState.isMapReady, appState.openPanels])
+  }, [mapState.isMapReady, attribution])
 
   return null
 }

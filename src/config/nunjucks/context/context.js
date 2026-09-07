@@ -48,6 +48,7 @@ export function context (request) {
     serviceUrl: '/',
     breadcrumbs: [],
     cspNonce: request.plugins?.blankie?.nonces?.script ?? null,
+    styleNonce: request.plugins?.blankie?.nonces?.style ?? null,
     gtmContainerId: config.get('googleTagManager.containerId'),
     cookieConsentSet,
     cookieAction,

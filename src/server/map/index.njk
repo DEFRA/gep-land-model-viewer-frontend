@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block container %}
-  <main class="app-map-main" id="main-content">
+  <main class="app-map-main" id="main-content"{% if styleNonce %} data-style-nonce="{{ styleNonce }}"{% endif %}>
     <div id="land-map" class="app-map app-map--full">
       <noscript>
         <div class="govuk-warning-text">

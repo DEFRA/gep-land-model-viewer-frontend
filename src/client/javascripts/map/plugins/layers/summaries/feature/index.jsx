@@ -20,6 +20,10 @@ export function createFeatureSummary (map) {
       featureLayer.setEnabled(next)
     },
 
+    setZIndex (zIndex) {
+      featureLayer.setZIndex(zIndex)
+    },
+
     getHits (coords) {
       if (!isAvailable()) {
         return []

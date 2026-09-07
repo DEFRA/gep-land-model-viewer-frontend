@@ -1,10 +1,9 @@
-import { datasetForLayer } from '../../../config/layers.js'
+import { isLayerVisible } from '../reducer.js'
 
-/** Builds the attribution for the basemap and visible datasets. */
-export function getAttribution (map, datasets, baseAttribution) {
-  const visibleAttributions = map.getLayers().getArray()
-    .filter(layer => layer.getVisible() && layer.get('id'))
-    .map(layer => datasetForLayer(layer, datasets)?.source.attribution)
+export function getAttribution (datasets, pluginState, baseAttribution) {
+  const visibleAttributions = datasets
+    .filter(dataset => isLayerVisible(pluginState, dataset.id))
+    .map(dataset => dataset.source.attribution)
     .filter(Boolean)
 
   return [...new Set([baseAttribution, ...visibleAttributions].filter(Boolean))].join(' | ')
