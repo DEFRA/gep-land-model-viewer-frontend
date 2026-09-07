@@ -36,7 +36,7 @@
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
   "dependencies": {
-    "@aws-sdk/client-cognito-identity": "3.1111.0",
+    "@aws-sdk/client-cognito-identity": "3.1121.0",
     "@defra/cdp-auditing": "0.6.1",
     "@defra/cdp-metrics": "0.6.0",
     "@defra/hapi-secure-context": "0.4.0",
@@ -76,7 +76,7 @@
     "preact": "10.29.8",
     "proj4": "2.21.0",
     "semver": "7.8.5",
-    "undici": "8.10.0"
+    "undici": "8.10.1"
   },
   "devDependencies": {
     "@babel/preset-env": "8.0.2",
