@@ -31,6 +31,15 @@ html:has(.app-map-page) {
   min-height: 0;
 }
 
+.app-map {
+  --app-map-info-panel-width: 460px;
+  --app-map-contents-panel-width: 400px;
+}
+
+.app-map .im-o-app--tablet {
+  --app-map-contents-panel-width: var(--min-panel-width);
+}
+
 // ===== Shared interactive-map control overrides =====
 
 // Library only styles aria-pressed in actions slot; extend to all toggle buttons.
@@ -43,4 +52,49 @@ html:has(.app-map-page) {
 // Keep the banner below the top-left controls when --banner-top is zero.
 .app-map .im-o-app__banner {
   top: max(var(--banner-top, 0px), calc(var(--primary-gap) + var(--button-size) + var(--divider-gap)));
+}
+
+// Give Contents its own column beside every other right-top control.
+.app-map
+  :is(.im-o-app--tablet, .im-o-app--desktop)
+  .im-o-app__right-top {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  align-content: start;
+  align-items: start;
+  justify-items: end;
+}
+
+.app-map
+  :is(.im-o-app--tablet, .im-o-app--desktop)
+  .im-o-app__right-top
+  > .im-c-button-wrapper--gep-contents {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.app-map
+  :is(.im-o-app--tablet, .im-o-app--desktop)
+  .im-o-app__right-top
+  > :not(.im-c-button-wrapper--gep-contents) {
+  grid-column: 2;
+}
+
+// The adjacent panel shares its button wrapper and takes the trigger's place.
+.app-map
+  :is(.im-o-app--tablet, .im-o-app--desktop)
+  .im-c-button-wrapper--gep-contents
+  > .im-c-map-button--gep-contents[aria-expanded="true"] {
+  visibility: hidden;
+}
+
+.app-map
+  :is(.im-o-app--tablet, .im-o-app--desktop)
+  .im-c-button-wrapper--gep-contents
+  > .im-c-panel--gep-contents-button {
+  position: absolute;
+  z-index: 10; // Above the library's banner slot (9).
+  top: 0;
+  right: 0;
+  max-height: var(--right-top-max-height);
 }

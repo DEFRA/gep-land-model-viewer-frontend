@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
-import { InlineIcon } from '../../../components/InlineIcon.jsx'
-import { ZOOM_IN_ICON } from '../icons.js'
-import { SUMMARY_TOGGLES } from '../summaries/options.js'
+import { ZoomIn } from 'lucide-preact'
+import { SUMMARIES } from '../summaries/config.js'
 
 function zoomWarningMessage (entries, zoom) {
   const belowZoom = entries.filter(entry => zoom < entry.minZoom)
@@ -16,15 +15,26 @@ function zoomWarningMessage (entries, zoom) {
   return 'Zoom in to see the selected data layers'
 }
 
-function warningEntries (datasets, { datasets: datasetStates, summaries }) {
-  return [
-    ...SUMMARY_TOGGLES
-      .filter(toggle => summaries[toggle.id])
-      .map(({ label, minZoom }) => ({ label, minZoom })),
-    ...datasets
-      .filter(dataset => datasetStates[dataset.id]?.visible && datasetStates[dataset.id]?.minZoom !== undefined)
-      .map(dataset => ({ label: dataset.label, minZoom: datasetStates[dataset.id].minZoom }))
-  ]
+function warningEntries (datasets, pluginState) {
+  const entries = []
+
+  for (const layer of pluginState.layers) {
+    if (layer.hidden || !layer.ready) {
+      continue
+    }
+
+    const summary = SUMMARIES.find(candidate => candidate.id === layer.id)
+    if (summary) {
+      entries.push({ label: summary.label, minZoom: summary.minZoom })
+    } else {
+      const dataset = datasets.find(candidate => candidate.id === layer.id)
+      if (dataset && layer.minZoom !== undefined) {
+        entries.push({ label: dataset.label, minZoom: layer.minZoom })
+      }
+    }
+  }
+
+  return entries
 }
 
 export function ZoomWarning ({ mapState, pluginConfig, pluginState, services }) {
@@ -45,7 +55,7 @@ export function ZoomWarning ({ mapState, pluginConfig, pluginState, services }) 
 
   return (
     <div className='app-map__zoom-warning'>
-      <InlineIcon className='app-map__zoom-warning-icon' content={ZOOM_IN_ICON} />
+      <ZoomIn className='app-map__zoom-warning-icon' />
       <span>{zoomMessage}</span>
     </div>
   )

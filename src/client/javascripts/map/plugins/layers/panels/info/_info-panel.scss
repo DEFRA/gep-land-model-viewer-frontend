@@ -2,48 +2,42 @@
 
 // ===== Inspection panel shell (shared by dataset, grid and feature views) =====
 
-.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) {
-  --app-map-info-panel-width: 460px;
-}
+.app-map:has(.im-c-panel:not([hidden]) .app-map__info-panel)
+  .im-o-app--desktop {
+  .im-o-app__right {
+    top: 0;
+    right: calc(var(--app-map-info-panel-width) + var(--divider-gap));
+    bottom: 0;
+  }
 
-.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__right {
-  top: 0;
-  right: calc(var(--app-map-info-panel-width) + var(--divider-gap));
-  bottom: 0;
-}
+  .im-o-app__right-top {
+    box-sizing: border-box;
+    height: 100%;
+    padding-top: var(--primary-gap);
+  }
 
-.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__right-top {
-  height: 100%;
-}
+  .im-o-app__right-bottom {
+    position: absolute;
+    bottom: var(--right-offset-bottom);
+    right: 0;
+  }
 
-.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__right-bottom {
-  position: absolute;
-  bottom: var(--right-offset-bottom);
-  right: 0;
-}
+  .im-o-app__attributions {
+    right: calc(var(--app-map-info-panel-width) - var(--primary-gap));
+  }
 
-.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__attributions {
-  right: calc(var(--app-map-info-panel-width) - var(--primary-gap));
-}
+  .im-o-app__banner {
+    right: calc(var(--banner-right) + var(--app-map-info-panel-width) + var(--divider-gap));
+  }
 
-.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__banner {
-  right: calc(var(--banner-right) + var(--app-map-info-panel-width) + var(--divider-gap));
-}
-
-.app-map.app-map--info-panel-open :is(.im-o-app--tablet, .im-o-app--desktop) .im-o-app__modal {
-  box-sizing: border-box;
-  padding-right: calc(var(--app-map-info-panel-width) + var(--divider-gap));
-}
-
-.app-map.app-map--info-panel-open
-  :is(.im-o-app--tablet, .im-o-app--desktop)
-  .im-o-app__right-top
-  > .im-c-button-wrapper:first-child {
-  margin-top: var(--primary-gap);
+  .im-o-app__modal {
+    box-sizing: border-box;
+    padding-right: calc(var(--app-map-info-panel-width) + var(--divider-gap));
+  }
 }
 
 .app-map
-  :is(.im-o-app--tablet, .im-o-app--desktop)
+  .im-o-app--desktop
   .im-o-app__right-top
   .im-c-panel:has(.app-map__info-panel) {
   position: absolute;
@@ -264,11 +258,6 @@
   width: 20px;
   height: 20px;
   flex-shrink: 0;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .app-map .app-map__info-back {

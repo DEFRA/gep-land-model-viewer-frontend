@@ -8,6 +8,7 @@ vi.mock('ol/layer/VectorTile.js', () => ({
     this.setStyle = vi.fn((fn) => { this._style = fn })
     this.setVisible = vi.fn((v) => { this._visible = v })
     this.setSource = vi.fn((s) => { this._source = s })
+    this.setZIndex = vi.fn()
   })
 }))
 
@@ -68,8 +69,8 @@ describe('#createFeatureLayer', () => {
     layer.refreshSource(true)
 
     expect(olMap.addLayer).toHaveBeenCalledTimes(1)
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    expect(overlayLayer.setSource).toHaveBeenCalledWith(olMap._source)
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    expect(featureLayer.setSource).toHaveBeenCalledWith(olMap._source)
     expect(OGCVectorTile).not.toHaveBeenCalled()
   })
 
@@ -77,8 +78,8 @@ describe('#createFeatureLayer', () => {
     const layer = createFeatureLayer(olMap, TILESET_URL)
     layer.refreshSource(false)
 
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    expect(overlayLayer.setSource).toHaveBeenLastCalledWith(expect.any(OGCVectorTile))
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    expect(featureLayer.setSource).toHaveBeenLastCalledWith(expect.any(OGCVectorTile))
     expect(OGCVectorTile).toHaveBeenCalledWith(expect.objectContaining({
       url: TILESET_URL,
       projection: 'EPSG:27700'
@@ -103,15 +104,15 @@ describe('#createFeatureLayer', () => {
     }))
     layer.refreshSource(true)
 
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    expect(overlayLayer.setSource).toHaveBeenLastCalledWith(newSource)
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    expect(featureLayer.setSource).toHaveBeenLastCalledWith(newSource)
   })
 
-  test('overlay layer starts hidden', () => {
+  test('feature layer starts hidden', () => {
     createFeatureLayer(olMap, TILESET_URL)
 
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    expect(overlayLayer._visible).toBe(false)
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    expect(featureLayer._visible).toBe(false)
   })
 
   test('selectFeature triggers a redraw', () => {
@@ -119,8 +120,8 @@ describe('#createFeatureLayer', () => {
 
     layer.selectFeature('abc-123')
 
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    expect(overlayLayer.changed).toHaveBeenCalled()
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    expect(featureLayer.changed).toHaveBeenCalled()
   })
 
   test('clearSelection triggers a redraw', () => {
@@ -128,25 +129,26 @@ describe('#createFeatureLayer', () => {
 
     layer.clearSelection()
 
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    expect(overlayLayer.changed).toHaveBeenCalled()
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    expect(featureLayer.changed).toHaveBeenCalled()
   })
 
-  test('setEnabled toggles layer visibility', () => {
+  test('setEnabled toggles layer visibility only when it changes', () => {
     const layer = createFeatureLayer(olMap, TILESET_URL)
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-
-    layer.setEnabled(false)
-    expect(overlayLayer.setVisible).toHaveBeenCalledWith(false)
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
 
     layer.setEnabled(true)
-    expect(overlayLayer.setVisible).toHaveBeenCalledWith(true)
+    layer.setEnabled(true)
+    layer.setEnabled(false)
+    layer.setEnabled(false)
+
+    expect(featureLayer.setVisible.mock.calls).toEqual([[true], [false]])
   })
 
   test('style function returns undefined for non-land features', () => {
     createFeatureLayer(olMap, TILESET_URL)
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    const styleFn = overlayLayer._style
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    const styleFn = featureLayer._style
 
     expect(styleFn(makeFeature({ layer: 'trn_fts_road' }))).toBeUndefined()
   })
@@ -155,8 +157,8 @@ describe('#createFeatureLayer', () => {
     const layer = createFeatureLayer(olMap, TILESET_URL)
     layer.selectFeature('abc-123')
 
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    const styleFn = overlayLayer._style
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    const styleFn = featureLayer._style
 
     const selectedStyle = styleFn(makeFeature({ layer: 'lnd_fts_land', osid: 'abc-123' }))
     const outlineStyle = styleFn(makeFeature({ layer: 'lnd_fts_land', osid: 'other-456' }))
@@ -165,7 +167,7 @@ describe('#createFeatureLayer', () => {
     expect(selectedStyle).not.toBe(outlineStyle)
   })
 
-  test('findFeatureAtPixel passes layerFilter restricting to overlay layer', () => {
+  test('findFeatureAtPixel restricts hit detection to the feature layer', () => {
     const layer = createFeatureLayer(olMap, TILESET_URL)
 
     olMap.forEachFeatureAtPixel.mockImplementation(() => {})
@@ -175,8 +177,8 @@ describe('#createFeatureLayer', () => {
     expect(opts).toBeDefined()
     expect(typeof opts.layerFilter).toBe('function')
 
-    const overlayLayer = olMap.addLayer.mock.calls[0][0]
-    expect(opts.layerFilter(overlayLayer)).toBe(true)
+    const featureLayer = olMap.addLayer.mock.calls[0][0]
+    expect(opts.layerFilter(featureLayer)).toBe(true)
     expect(opts.layerFilter({ other: true })).toBe(false)
   })
 

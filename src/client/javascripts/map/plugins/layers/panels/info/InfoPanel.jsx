@@ -1,7 +1,6 @@
+import { ChevronLeft, ChevronRight } from 'lucide-preact'
 import { InfoPanelContext } from './context.js'
-import { InlineIcon } from '../../../../components/InlineIcon.jsx'
 import { LinkButton } from '../../../../components/LinkButton.jsx'
-import { CHEVRON_LEFT_ICON, CHEVRON_RIGHT_ICON } from '../../icons.js'
 import { INSPECTION_STATUS } from '../../reducer.js'
 
 const SAMPLE_CENTER = [465000, 475000]
@@ -20,7 +19,7 @@ function HitList ({ hits, onSelectHit }) {
           <li className='app-map__info-hit-row' key={hit.id}>
             <button type='button' className='app-map__info-hit' onClick={() => onSelectHit(hit)}>
               <span>{hit.label}</span>
-              <InlineIcon className='app-map__info-chevron' content={CHEVRON_RIGHT_ICON} />
+              <ChevronRight className='app-map__info-chevron' />
             </button>
           </li>
         ))}
@@ -34,7 +33,7 @@ function HitDetail ({ hit, status, backCount, onBack, renderHit }) {
     <>
       {backCount > 0 && (
         <LinkButton className='app-map__info-back' onClick={onBack}>
-          <InlineIcon className='app-map__info-chevron' content={CHEVRON_LEFT_ICON} />
+          <ChevronLeft className='app-map__info-chevron' />
           Back to {backCount} selected
         </LinkButton>
       )}

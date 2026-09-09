@@ -3,6 +3,7 @@ import { manifest } from './manifest.js'
 /**
  * @typedef {Record<string, unknown> & {
  *   datasets?: Array<object>
+ *   styleNonce?: string
  * }} LayersPluginOptions
  */
 

@@ -21,6 +21,10 @@ export function createGridSummary (eventBus, map) {
       gridLayer.setEnabled(next)
     },
 
+    setZIndex (zIndex) {
+      gridLayer.setZIndex(zIndex)
+    },
+
     getHits (coords) {
       if (!isAvailable()) {
         return []

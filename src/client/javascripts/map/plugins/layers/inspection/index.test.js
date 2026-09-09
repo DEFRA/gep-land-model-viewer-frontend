@@ -4,9 +4,6 @@ vi.mock('@defra/interactive-map', () => ({
   EVENTS: { APP_PANEL_CLOSED: 'app:panelclosed' }
 }))
 
-vi.mock('../../../pointer.js', () => ({ isCoarsePointer: vi.fn(() => false) }))
-
-const { isCoarsePointer } = await import('../../../pointer.js')
 const { createInspection } = await import('./index.js')
 const { initialState, actions } = await import('../reducer.js')
 
@@ -87,13 +84,13 @@ function makeHarness (sources = []) {
 let harness
 
 beforeEach(() => {
-  vi.mocked(isCoarsePointer).mockReturnValue(false)
   harness = makeHarness()
 })
 
 afterEach(() => {
   harness.inspection.dispose()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 function useSources (...sources) {
@@ -116,12 +113,20 @@ describe('#createInspection', () => {
     expect(harness.eventBus.off).toHaveBeenCalledWith('app:panelclosed', expect.any(Function))
   })
 
-  test('uses click for a coarse pointer', () => {
-    harness.inspection.dispose()
-    vi.mocked(isCoarsePointer).mockReturnValue(true)
-    harness = makeHarness()
+  test('waits for singleclick before opening Info on touch screens', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }))
+    useSources(sourceWith([hit('Agricultural Land Classification (FGB)')]))
 
-    expect(harness.map.on).toHaveBeenCalledWith('click', expect.any(Function))
+    await harness.map.handlers.click?.({ coordinate: [1, 2] })
+
+    expect(harness.appDispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'OPEN_PANEL' }))
+
+    await inspectAt()
+
+    expect(harness.appDispatch).toHaveBeenCalledWith({
+      type: 'OPEN_PANEL',
+      payload: { panelId: 'gepInfoPanel', focusOnOpen: false }
+    })
   })
 
   test('reports an empty result without opening the panel', async () => {
@@ -331,7 +336,7 @@ describe('#createInspection', () => {
     harness.eventBus.handlers['app:panelclosed']({ panelId: 'gepInfoPanel' })
 
     expect(harness.state.inspection).toMatchObject({ status: 'idle', hits: [], hit: null })
-    expect(harness.state.datasets).toBe(initialState.datasets)
+    expect(harness.state.layers).toBe(initialState.layers)
     expect(source.clearSelection).toHaveBeenCalled()
   })
 })

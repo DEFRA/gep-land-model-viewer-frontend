@@ -9,7 +9,7 @@ let view
 let services
 
 function renderWarning (props = {}) {
-  const pluginState = { datasets: {}, summaries: {}, ...props.pluginState }
+  const pluginState = { layers: [], ...props.pluginState }
   view = render(
     <ZoomWarning
       mapState={{ zoom: props.zoom ?? 8 }}
@@ -27,14 +27,18 @@ beforeEach(() => {
 
 describe('ZoomWarning', () => {
   test('warns when an enabled summary is not drawn at this zoom, and announces it', () => {
-    renderWarning({ pluginState: { summaries: { grid: true } } })
+    renderWarning({ pluginState: { layers: [{ id: 'grid', ready: true }] } })
 
     expect(view.container.querySelector('.app-map__zoom-warning').textContent).toBe('Zoom in to see Grid squares')
     expect(services.announce).toHaveBeenCalledWith('Zoom in to see Grid squares')
   })
 
   test('warns about a dataset that has a zoom floor', () => {
-    renderWarning({ pluginState: { datasets: { woodland: { visible: true, minZoom: 10 } } } })
+    renderWarning({
+      pluginState: {
+        layers: [{ id: 'woodland', ready: true, minZoom: 10 }]
+      }
+    })
 
     expect(view.container.querySelector('.app-map__zoom-warning').textContent).toBe('Zoom in to see Ancient Woodland')
   })
@@ -42,8 +46,10 @@ describe('ZoomWarning', () => {
   test('groups several out-of-range layers into one warning', () => {
     renderWarning({
       pluginState: {
-        summaries: { grid: true },
-        datasets: { woodland: { visible: true, minZoom: 10 } }
+        layers: [
+          { id: 'grid', ready: true },
+          { id: 'woodland', ready: true, minZoom: 10 }
+        ]
       }
     })
 
@@ -51,21 +57,43 @@ describe('ZoomWarning', () => {
     expect(services.announce).toHaveBeenCalledWith('Zoom in to see the selected data layers')
   })
 
-  test('does not warn about a hidden dataset retaining its previous zoom floor', () => {
-    renderWarning({ pluginState: { datasets: { woodland: { visible: false, loading: true, minZoom: 10 } } } })
+  test('does not warn about a loading dataset retaining its previous zoom floor', () => {
+    renderWarning({
+      pluginState: {
+        layers: [{ id: 'woodland', ready: false, minZoom: 10 }]
+      }
+    })
 
     expect(view.container.querySelector('.app-map__zoom-warning')).toBeNull()
   })
 
+  test('does not warn about Contents-hidden datasets or summaries', () => {
+    renderWarning({
+      pluginState: {
+        layers: [
+          { id: 'grid', ready: true, hidden: true },
+          { id: 'woodland', ready: true, minZoom: 10, hidden: true }
+        ]
+      }
+    })
+
+    expect(view.container.querySelector('.app-map__zoom-warning')).toBeNull()
+    expect(services.announce).not.toHaveBeenCalled()
+  })
+
   test('takes up no room when an enabled layer is drawn at its minimum zoom', () => {
-    renderWarning({ zoom: 11, pluginState: { summaries: { grid: true } } })
+    renderWarning({ zoom: 11, pluginState: { layers: [{ id: 'grid', ready: true }] } })
 
     expect(view.container.querySelector('.app-map__zoom-warning')).toBeNull()
     expect(services.announce).not.toHaveBeenCalled()
   })
 
   test('does not warn about an enabled dataset with no zoom floor', () => {
-    renderWarning({ pluginState: { datasets: { woodland: { visible: true, minZoom: undefined } } } })
+    renderWarning({
+      pluginState: {
+        layers: [{ id: 'woodland', ready: true, minZoom: undefined }]
+      }
+    })
 
     expect(view.container.querySelector('.app-map__zoom-warning')).toBeNull()
     expect(services.announce).not.toHaveBeenCalled()

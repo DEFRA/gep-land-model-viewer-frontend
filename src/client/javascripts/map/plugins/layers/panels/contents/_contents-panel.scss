@@ -1,0 +1,174 @@
+@use "govuk-base" as *;
+
+.app-map .im-c-panel:has(.app-map__contents-panel) .im-c-panel__body {
+  padding: 0;
+}
+
+.app-map__contents-panel > .govuk-body {
+  padding: 0 govuk-spacing(3) govuk-spacing(3);
+}
+
+.app-map__contents-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-map__contents-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--button-size) 20px minmax(0, 1fr) var(--button-size) var(--button-size);
+  align-items: center;
+  gap: govuk-spacing(1);
+  min-width: 0;
+  padding: govuk-spacing(1) govuk-spacing(2);
+  border-top: 1px solid govuk-colour("black", $variant: "tint-80");
+
+  &:last-child {
+    border-bottom: 1px solid govuk-colour("black", $variant: "tint-80");
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    z-index: 3;
+    inset: var(--focus-box-shadow-width);
+    border: var(--focus-border-width) solid var(--focus-border-color);
+    outline: var(--focus-outline-width) solid transparent;
+    outline-offset: 1px;
+    box-shadow: 0 0 0 var(--focus-box-shadow-width) var(--focus-outline-color);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:has(.app-map__contents-reorder:focus-visible)::after,
+  &.app-map__contents-row--dragging::after {
+    outline-style: solid;
+    opacity: 1;
+  }
+
+  // Forced colours replace the shadow-based ring with the user's system highlight.
+  @media (-ms-high-contrast: active), screen and (forced-colors: active) {
+    &:has(.app-map__contents-reorder:focus-visible)::after,
+    &.app-map__contents-row--dragging::after {
+      opacity: 0;
+    }
+
+    &:has(.app-map__contents-reorder:focus-visible),
+    &.app-map__contents-row--dragging {
+      outline: var(--focus-highlight-width) solid Highlight;
+      outline-offset: calc(-1 * var(--focus-outline-width));
+    }
+  }
+}
+
+.app-map__contents-reorder {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+
+  &:focus {
+    outline: 0;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.app-map__contents-label {
+  z-index: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground-color);
+  @include govuk-font-size($size: 19);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.app-map__contents-row--hidden {
+  .app-map__contents-label {
+    color: var(--secondary-text-color);
+  }
+
+  .app-map__contents-swatch {
+    opacity: 0.5;
+  }
+}
+
+.app-map .app-map__contents-icon-button {
+  position: relative;
+  z-index: 1;
+  width: var(--button-size);
+  height: var(--button-size);
+  padding: 0;
+
+  &::before {
+    content: none;
+  }
+
+  &:disabled {
+    background: transparent;
+    opacity: var(--disabled-button-opacity, 0.4);
+    cursor: default;
+  }
+}
+
+.app-map__contents-row--dragging {
+  z-index: 2;
+  opacity: 0.85;
+  box-shadow: 0 4px 12px rgb(0, 0, 0, 0.2);
+
+  .app-map__contents-reorder {
+    cursor: grabbing;
+  }
+}
+
+.app-map__contents-swatch {
+  z-index: 1;
+  display: block;
+  background-color: govuk-colour("white");
+  pointer-events: none;
+}
+
+.app-map__contents-swatch--colour-grid {
+  display: flex;
+  flex-wrap: wrap;
+  overflow: hidden;
+}
+
+.app-map__contents-swatch-cell {
+  flex: 1 0 calc(100% / var(--app-map-contents-swatch-columns));
+  height: calc(100% / var(--app-map-contents-swatch-rows));
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-map__contents-swatch--wms {
+  background: repeating-linear-gradient(
+    135deg,
+    govuk-colour("black", $variant: "tint-80") 0,
+    govuk-colour("black", $variant: "tint-80") 4px,
+    govuk-colour("white") 4px,
+    govuk-colour("white") 8px
+  );
+}
+
+.app-map__contents-menu {
+  position: static;
+}
+
+.app-map__contents-menu-positioner {
+  z-index: 9999;
+}
+
+.app-map__contents-menu .im-c-popup-menu__item-label {
+  white-space: nowrap;
+}

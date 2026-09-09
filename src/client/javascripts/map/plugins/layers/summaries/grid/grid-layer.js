@@ -6,8 +6,9 @@ import VectorSource from 'ol/source/Vector.js'
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
 import { CELL_SIZE_METRES, snapDown, snapUp } from './cell-at-point.js'
 import { GRID_VISIBLE_MIN_ZOOM } from './constants.js'
-import { GOVUK_DARK_GREY, DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../../../config/colours.js'
-import { OVERLAY_Z_INDEX } from '../../../../config/layers.js'
+import { DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../../../config/colours.js'
+import { SELECTION_Z_INDEX } from '../../../../config/layers.js'
+import { GRID_SUMMARY } from '../config.js'
 
 const MAX_LINES_PER_AXIS = 1000
 const GRID_PAD_SCREEN_PIXELS = 512
@@ -15,8 +16,8 @@ const GRID_MIN_PAD_CELLS = 80
 const GRID_REDRAW_MARGIN_FACTOR = 0.75
 
 const GRID_LINE_STYLE = {
-  'stroke-color': GOVUK_DARK_GREY,
-  'stroke-width': 1
+  'stroke-color': GRID_SUMMARY.symbol.colour,
+  'stroke-width': GRID_SUMMARY.symbol.width
 }
 
 const HIGHLIGHT_STYLE = {
@@ -61,12 +62,20 @@ export function createGridLayer (eventBus, map) {
     },
 
     setEnabled (next) {
+      if (enabled === next) {
+        return
+      }
+
       enabled = next
       selectedLayer.setVisible(next)
       if (!next) {
         grid.clear()
       }
       scheduleRefresh()
+    },
+
+    setZIndex (zIndex) {
+      gridLayer.setZIndex(zIndex)
     },
 
     dispose () {
@@ -84,14 +93,14 @@ function addGridLayers (map) {
 
   const gridLayer = new WebGLVectorLayer({
     source: gridSource,
-    style: GRID_LINE_STYLE,
-    zIndex: OVERLAY_Z_INDEX
+    style: GRID_LINE_STYLE
   })
 
   const selectedLayer = new WebGLVectorLayer({
     source: selectedSource,
     style: HIGHLIGHT_STYLE,
-    zIndex: OVERLAY_Z_INDEX
+    visible: false,
+    zIndex: SELECTION_Z_INDEX
   })
 
   map.addLayer(gridLayer)

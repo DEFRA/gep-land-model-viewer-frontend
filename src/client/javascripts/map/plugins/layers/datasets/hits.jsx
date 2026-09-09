@@ -7,7 +7,7 @@ import Style from 'ol/style/Style.js'
 import Fill from 'ol/style/Fill.js'
 import RegularShape from 'ol/style/RegularShape.js'
 import Stroke from 'ol/style/Stroke.js'
-import { datasetForLayer, layerIdFor, overviewIdFor, OVERLAY_Z_INDEX } from '../../../config/layers.js'
+import { datasetForLayer, layerIdFor, overviewIdFor, SELECTION_Z_INDEX } from '../../../config/layers.js'
 import { DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../../config/colours.js'
 import { EPSG_27700, UNKNOWN_LAYER_LABEL } from '../constants.js'
 import { getSourceUrl, getVisibleWmsLayers } from './layers/wms.js'
@@ -41,7 +41,7 @@ function createHighlight (map) {
   const layer = new VectorLayer({
     source,
     style: HIGHLIGHT_STYLE,
-    zIndex: OVERLAY_Z_INDEX + 1,
+    zIndex: SELECTION_Z_INDEX,
     properties: { id: 'gep-dataset-highlight' }
   })
   map.addLayer(layer)

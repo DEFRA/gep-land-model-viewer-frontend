@@ -1,40 +1,54 @@
-import { datasetForLayer } from '../../../../config/layers.js'
-import { UNKNOWN_LAYER_LABEL } from '../../constants.js'
-import { getSourceUrl, getVisibleWmsLayers } from '../../datasets/layers/wms.js'
-import { hasVisibleFill, hasVisibleStroke } from '../../datasets/style-config.js'
+import { visibleStyleDefinitions } from '../shared/swatch-helpers.js'
 
-function stylesForKey (styleConfig) {
-  return [...styleConfig.classes, styleConfig.default]
-    .filter(definition => hasVisibleFill(definition) || hasVisibleStroke(definition))
+/**
+ * @typedef {{ id: string, label: string } & (
+ * { type: 'wms', baseUrl: string, layerNames: string[] } |
+ * { type: 'style', styles: import('../shared/swatch-helpers.js').StyleDefinition[] }
+ * )} KeyEntry
+ */
+
+/** @returns {KeyEntry | null} */
+function wmsEntry (dataset, layer) {
+  const layerNames = layer.wmsLayerNames
+  if (dataset.source.type !== 'wms' || !layerNames?.length || !dataset.source.url) {
+    return null
+  }
+
+  return {
+    type: 'wms',
+    id: dataset.id,
+    label: dataset.label,
+    baseUrl: dataset.source.url,
+    layerNames
+  }
 }
 
-function getVisibleStyleEntries (map, datasets) {
-  const visibleDatasets = map.getLayers().getArray()
-    .filter(layer => layer.getVisible())
-    .map(layer => datasetForLayer(layer, datasets))
-    .filter(dataset => dataset?.source?.styleConfig)
+/**
+ * @param {object[]} datasets
+ * @param {import('../../reducer.js').LayersState} pluginState
+ */
+export function getKeyEntries (datasets, pluginState) {
+  /** @type {KeyEntry[]} */
+  const entries = []
 
-  // Detail and overview layers map to the same dataset.
-  return [...new Set(visibleDatasets)]
-    .map(dataset => ({
-      label: dataset.label,
-      styles: stylesForKey(dataset.source.styleConfig)
-    }))
-    .filter(entry => entry.styles.length)
-}
-
-export function getKeyEntries (map, datasets) {
-  const wmsEntries = getVisibleWmsLayers(map).map(layer => {
-    const dataset = datasetForLayer(layer, datasets)
-    const label = dataset?.label ?? UNKNOWN_LAYER_LABEL
-    const source = layer.getSource()
-    const layerNames = source.getParams().LAYERS
-    const baseUrl = getSourceUrl(source)
-    if (!layerNames || !baseUrl) {
-      return null
+  for (const layer of pluginState.layers) {
+    const dataset = datasets.find(candidate => candidate.id === layer.id)
+    if (!dataset || layer.hidden || !layer.ready) {
+      continue
     }
-    return { label, baseUrl, layerNames: layerNames.split(',') }
-  }).filter(Boolean)
 
-  return [...getVisibleStyleEntries(map, datasets), ...wmsEntries]
+    if (dataset.source.styleConfig) {
+      const styles = visibleStyleDefinitions(dataset.source.styleConfig)
+      if (styles.length) {
+        entries.push({ type: 'style', id: layer.id, label: dataset.label, styles })
+      }
+    } else {
+      const entry = wmsEntry(dataset, layer)
+      if (entry) {
+        entries.push(entry)
+      }
+    }
+  }
+
+  return entries
 }

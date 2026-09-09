@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { InlineIcon } from '../../../../components/InlineIcon.jsx'
-import { SEARCH_ICON } from '../../icons.js'
+import { Search } from 'lucide-preact'
 
 export function LayerSearch ({ query, onSearch }) {
   const inputRef = useRef(null)
@@ -41,7 +40,7 @@ export function LayerSearch ({ query, onSearch }) {
           aria-label='Search layers'
           data-module='govuk-button'
         >
-          <InlineIcon className='app-map__layer-search-icon' content={SEARCH_ICON} />
+          <Search className='app-map__layer-search-icon' />
         </button>
       </form>
     </div>

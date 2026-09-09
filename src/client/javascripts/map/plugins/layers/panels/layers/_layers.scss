@@ -45,11 +45,6 @@
   width: 24px;
   height: 24px;
   flex-shrink: 0;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .app-map__layer-search {
@@ -108,16 +103,15 @@
   width: 20px;
   height: 20px;
   display: block;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .app-map [data-app-layer-list] {
   margin-left: -10px;
   padding: 0 0 12px 10px;
+}
+
+.app-map__layers-label--hidden {
+  color: var(--secondary-text-color);
 }
 
 // Ensure the hidden attribute works despite GOV.UK styles.

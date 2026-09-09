@@ -26,6 +26,7 @@ function createMockFeatureLayer () {
     selectFeature: vi.fn(),
     clearSelection: vi.fn(),
     setEnabled: vi.fn(),
+    setZIndex: vi.fn(),
     findFeatureAtPixel: vi.fn(),
     dispose: vi.fn()
   }

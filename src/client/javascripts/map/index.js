@@ -14,6 +14,8 @@ const DEFAULT_CENTER = [465000, 475000] // center of sample land model area
 const DEFAULT_ZOOM = 7
 const MIN_ZOOM = 0
 const MAX_ZOOM = 13
+const mapElement = document.getElementById(MAP_ID)
+const styleNonce = mapElement?.closest('main')?.dataset.styleNonce
 
 const map = new InteractiveMap(MAP_ID, {
   behaviour: 'inline',
@@ -66,7 +68,7 @@ const map = new InteractiveMap(MAP_ID, {
         }]
       }
     }),
-    createLayersPlugin({ datasets }),
+    createLayersPlugin({ datasets, styleNonce }),
     createNorthIndicatorPlugin(),
     createInfoLinksPlugin()
   ]

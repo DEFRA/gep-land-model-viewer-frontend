@@ -1,4 +1,4 @@
-export const OVERLAY_Z_INDEX = 100
+export const SELECTION_Z_INDEX = 100
 
 const LAYER_ID_PREFIX = 'gep-'
 const OVERVIEW_ID_SUFFIX = '-overview'

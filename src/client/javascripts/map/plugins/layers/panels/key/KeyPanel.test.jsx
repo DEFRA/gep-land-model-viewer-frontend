@@ -8,10 +8,14 @@ const { getKeyEntries } = await import('./key-entries.js')
 const { KeyPanel } = await import('./KeyPanel.jsx')
 
 const ENTRIES = [{
+  type: 'wms',
+  id: 'flood',
   label: 'Flood Zones',
   baseUrl: 'https://environment.data.gov.uk/wms',
   layerNames: ['flood_zone_2', 'flood_zone_3']
 }, {
+  type: 'style',
+  id: 'sssi',
   label: 'Sites of Special Scientific Interest',
   styles: [{
     label: 'Site of Special Scientific Interest',
@@ -27,14 +31,19 @@ const ENTRIES = [{
     stroke: { color: [40, 50, 60, 1], width: 0 }
   }]
 }]
-const MAP = { id: 'map' }
 const DATASETS = [{ id: 'flood', label: 'Flood Zones' }]
+const EMPTY_PLUGIN_STATE = { layers: [] }
 
 let view
 
 function renderPanel (entries) {
   vi.mocked(getKeyEntries).mockReturnValue(entries)
-  view = render(<KeyPanel mapProvider={{ map: MAP }} pluginConfig={{ datasets: DATASETS }} />)
+  view = render(
+    <KeyPanel
+      pluginConfig={{ datasets: DATASETS }}
+      pluginState={EMPTY_PLUGIN_STATE}
+    />
+  )
 }
 
 describe('KeyPanel', () => {
@@ -43,6 +52,7 @@ describe('KeyPanel', () => {
 
     expect(view.container.textContent).toBe('Enable data layers to view the key.')
     expect(view.container.querySelector('.app-map__key-grid')).toBeNull()
+    expect(getKeyEntries).toHaveBeenCalledWith(DATASETS, EMPTY_PLUGIN_STATE)
   })
 
   test('shows one legend image per WMS layer, titled by dataset', () => {
@@ -89,12 +99,5 @@ describe('KeyPanel', () => {
     ])
     expect(swatches.map(swatch => swatch.style.borderWidth)).toEqual(['2px', '3px', ''])
     expect(swatches.every(swatch => swatch.getAttribute('aria-hidden') === 'true')).toBe(true)
-  })
-
-  test('derives the current key without owning copied state', () => {
-    renderPanel(ENTRIES)
-
-    expect(getKeyEntries).toHaveBeenCalledWith(MAP, DATASETS)
-    expect(view.container.textContent).toContain('Flood Zones')
   })
 })

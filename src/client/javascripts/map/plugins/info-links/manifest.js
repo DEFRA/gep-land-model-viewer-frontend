@@ -1,3 +1,5 @@
+import InfoIcon from '@lucide/icons/icons/info'
+import { lucideIconContent } from '../../lucide-icon-content.js'
 import { InfoLinks } from './InfoLinks.jsx'
 
 const PANEL_LABEL = 'Page information'
@@ -44,8 +46,7 @@ export const manifest = {
   }],
 
   icons: [{
-    // Lucide "info"
     id: 'gepInfo',
-    svgContent: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'
+    svgContent: lucideIconContent(InfoIcon)
   }]
 }

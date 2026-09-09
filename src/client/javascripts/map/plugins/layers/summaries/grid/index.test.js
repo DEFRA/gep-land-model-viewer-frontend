@@ -15,6 +15,7 @@ const { createGridSummary } = await import('./index.jsx')
 function createMockGridLayer () {
   return {
     setEnabled: vi.fn(),
+    setZIndex: vi.fn(),
     highlightCell: vi.fn(),
     clearHighlight: vi.fn(),
     dispose: vi.fn()
