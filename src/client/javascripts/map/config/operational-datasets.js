@@ -16,7 +16,7 @@ export const operationalDatasets = [
     source: {
       type: 'cog',
       url: `${BASE_URL}/england_peat_map/peaty_soil_depth_v1_download_cog.tif`,
-      opacity: 0.8,
+      opacity: 0.5,
       normalize: false,
       interpolate: false,
       // Colours and breaks from Natural England's England Peat Map:
@@ -30,7 +30,7 @@ export const operationalDatasets = [
     source: {
       type: 'fgb',
       url: `${BASE_URL}/living_england_habitat_map/livingeng.fgb`,
-      opacity: 0.7,
+      opacity: 0.5,
       styleConfig: livingEnglandStyle,
       minZoom: 7,
       overview: {
@@ -45,7 +45,7 @@ export const operationalDatasets = [
     source: {
       type: 'fgb',
       url: `${BASE_URL}/ancient_woodland/ancient_woodland_england.fgb`,
-      opacity: 0.7,
+      opacity: 0.5,
       styleConfig: ancientWoodlandStyle,
       overview: {
         type: 'pmtiles',
@@ -60,7 +60,7 @@ export const operationalDatasets = [
     source: {
       type: 'fgb',
       url: `${BASE_URL}/ancient_woodland/ancient_woodland_england_low.fgb`,
-      opacity: 0.7,
+      opacity: 0.5,
       styleConfig: ancientWoodlandStyle
     }
   },
@@ -70,7 +70,7 @@ export const operationalDatasets = [
     source: {
       type: 'fgb',
       url: `${BASE_URL}/protected_areas_sites_of_specific_interest/sssi.fgb`,
-      opacity: 0.7,
+      opacity: 0.5,
       styleConfig: sssiStyle,
       overview: {
         type: 'pmtiles',
@@ -85,7 +85,7 @@ export const operationalDatasets = [
     source: {
       type: 'fgb',
       url: `${BASE_URL}/agricultural_land_classification/prov_agg_land_class.fgb`,
-      opacity: 0.7,
+      opacity: 0.5,
       styleConfig: agriculturalLandClassificationStyle,
       overview: {
         type: 'pmtiles',
@@ -100,7 +100,7 @@ export const operationalDatasets = [
     source: {
       type: 'fgb',
       url: `${BASE_URL}/crop_map_of_england/crome.fgb`,
-      opacity: 0.7,
+      opacity: 0.5,
       styleConfig: cropMapOfEnglandStyle,
       minZoom: 7,
       overview: {
@@ -115,7 +115,7 @@ export const operationalDatasets = [
     source: {
       type: 'fgb',
       url: `${BASE_URL}/flood_map_for_planning_flood_zones/flood_map_for_planning.fgb`,
-      opacity: 0.7,
+      opacity: 0.5,
       styleConfig: floodZonesStyle,
       overview: {
         type: 'pmtiles',
@@ -130,7 +130,7 @@ export const operationalDatasets = [
     source: {
       type: 'fgb',
       url: `${BASE_URL}/risk_of_flooding_surface_water/rofsw.fgb`,
-      opacity: 0.7,
+      opacity: 0.5,
       styleConfig: rofswStyle,
       minZoom: 7
     }

@@ -12,7 +12,7 @@ const eaDatasets = catalog
     source: {
       type: 'wms',
       url: item.wmsUrl,
-      opacity: 0.7,
+      opacity: 0.5,
       attribution: EA_ATTRIBUTION
     }
   }))
