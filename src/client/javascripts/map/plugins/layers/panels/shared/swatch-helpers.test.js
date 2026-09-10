@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { swatchColours } from './swatch-helpers.js'
+import { swatchColours, visibleStyleDefinitions } from './swatch-helpers.js'
 
 const STYLE_CONFIG = {
   classes: [{
@@ -23,7 +23,7 @@ const STYLE_CONFIG = {
 
 describe('swatch helpers', () => {
   test('returns distinct representative colours for visible styles', () => {
-    expect(swatchColours(STYLE_CONFIG)).toEqual([
+    expect(swatchColours(visibleStyleDefinitions(STYLE_CONFIG))).toEqual([
       [10, 20, 30, 0.5],
       [90, 100, 110, 0.75]
     ])

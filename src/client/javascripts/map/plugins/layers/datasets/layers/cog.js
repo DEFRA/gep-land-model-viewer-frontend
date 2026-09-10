@@ -1,7 +1,21 @@
 import GeoTIFF from 'ol/source/GeoTIFF.js'
 import WebGLTileLayer from 'ol/layer/WebGLTile.js'
 import { EPSG_27700 } from '../../constants.js'
-import { cogColorFor } from '../style-config.js'
+import { buildCogColourExpression } from '../style-config.js'
+
+function cogStyleFor (styleConfig) {
+  return { color: buildCogColourExpression(styleConfig) }
+}
+
+function createCogDatasetLayer (options, styleConfig) {
+  const layer = new WebGLTileLayer({ ...options, style: cogStyleFor(styleConfig) })
+
+  return {
+    layers: [layer],
+    applyStyle: styleConfig => layer.setStyle(cogStyleFor(styleConfig)),
+    setOpacity: opacity => layer.setOpacity(opacity)
+  }
+}
 
 // GeoTIFF leaves getView() pending after a metadata error, so source state
 // must be watched as well.
@@ -41,17 +55,16 @@ function waitForMetadata (source) {
  *
  * @param {object} dataset Dataset definition with a cog source
  * @param {string} layerId Map layer id
- * @returns {Promise<WebGLTileLayer>}
+ * @returns Dataset layer with raster styling and opacity controls
  */
 export async function createCogLayer (dataset, layerId) {
   const { url, opacity, styleConfig, normalize, interpolate } = dataset.source
 
-  return new WebGLTileLayer({
+  return createCogDatasetLayer({
     properties: { id: layerId },
     source: new GeoTIFF({ sources: [{ url }], normalize, interpolate }),
-    style: { color: cogColorFor(styleConfig) },
     opacity
-  })
+  }, styleConfig)
 }
 
 /**
@@ -62,7 +75,7 @@ export async function createCogLayer (dataset, layerId) {
  * @param {object} options
  * @param {object} options.styleConfig Style config
  * @param {string} options.className Shared WebGL canvas class
- * @returns {Promise<WebGLTileLayer>}
+ * @returns Dataset layer for the raster overview
  */
 export async function createCogOverviewLayer (overview, layerId, { styleConfig, className }) {
   const source = new GeoTIFF({
@@ -78,13 +91,12 @@ export async function createCogOverviewLayer (overview, layerId, { styleConfig, 
 
   await waitForMetadata(source)
 
-  return new WebGLTileLayer({
+  return createCogDatasetLayer({
     properties: { id: layerId },
     source,
-    style: { color: cogColorFor(styleConfig) },
     opacity: 1,
     className,
     // Load every ancestor tile so OL can stretch one over gaps during movement.
     preload: Infinity
-  })
+  }, styleConfig)
 }

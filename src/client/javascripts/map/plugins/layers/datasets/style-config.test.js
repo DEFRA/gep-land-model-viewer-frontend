@@ -1,10 +1,13 @@
 import { describe, test, expect } from 'vitest'
+import { parseLiteralStyle } from 'ol/render/webgl/style.js'
+import sssiStyle from '../../../../../data/styles/sssi.json'
 import {
   classForCogValue,
-  cogColorFor,
+  buildCogColourExpression,
   visibleClassForBands,
   visibleClassForFieldValue,
-  vectorStyleFor
+  buildVectorStyle,
+  buildVectorStyleWithVariables
 } from './style-config.js'
 
 const TRANSPARENT = [0, 0, 0, 0]
@@ -63,7 +66,7 @@ function uniformStyle (classOverrides = {}) {
 
 describe('class-coded COG rules', () => {
   test('a match COG compares its pixel with each class bandValue', () => {
-    expect(cogColorFor(matchStyle())).toEqual([
+    expect(buildCogColourExpression(matchStyle())).toEqual([
       'case',
       ['==', ['band', 1], 1], BOG,
       ['==', ['band', 1], 2], WATER,
@@ -72,7 +75,7 @@ describe('class-coded COG rules', () => {
   })
 
   test('a class-coded range COG ignores its numeric bounds and compares bandValue', () => {
-    expect(cogColorFor(classCodedRangeStyle())).toEqual([
+    expect(buildCogColourExpression(classCodedRangeStyle())).toEqual([
       'case',
       ['==', ['band', 1], 1], [204, 204, 255, 1],
       ['==', ['band', 1], 2], [20, 20, 227, 1],
@@ -82,7 +85,7 @@ describe('class-coded COG rules', () => {
   })
 
   test('visible false makes a COG class transparent', () => {
-    expect(cogColorFor(uniformStyle({ visible: false }))).toEqual([
+    expect(buildCogColourExpression(uniformStyle({ visible: false }))).toEqual([
       'case',
       ['==', ['band', 1], 1], TRANSPARENT,
       TRANSPARENT
@@ -92,7 +95,7 @@ describe('class-coded COG rules', () => {
 
 describe('source-value range COG rules', () => {
   test('pixels are compared with minValue and each inclusive maxValue', () => {
-    expect(cogColorFor(sourceValueRangeStyle())).toEqual([
+    expect(buildCogColourExpression(sourceValueRangeStyle())).toEqual([
       'case',
       ['<', ['band', 1], 0], OUTSIDE_RANGE,
       ['<=', ['band', 1], 20], [204, 204, 255, 1],
@@ -113,7 +116,7 @@ describe('source-value range COG rules', () => {
 
 describe('vector style rules', () => {
   test('a match style expands grouped fieldValues and ignores COG bandValue', () => {
-    expect(vectorStyleFor(matchStyle())).toEqual({
+    expect(buildVectorStyle(matchStyle())).toEqual({
       'fill-color': [
         'match', ['get', 'category'],
         'Bog', BOG,
@@ -125,7 +128,7 @@ describe('vector style rules', () => {
   })
 
   test('a range style compares the source field even when its COG is class-coded', () => {
-    expect(vectorStyleFor(classCodedRangeStyle())).toEqual({
+    expect(buildVectorStyle(classCodedRangeStyle())).toEqual({
       'fill-color': [
         'case',
         ['<', ['get', 'depth'], 0], OUTSIDE_RANGE,
@@ -137,11 +140,11 @@ describe('vector style rules', () => {
   })
 
   test('a fieldless raster range cannot style vector features', () => {
-    expect(() => vectorStyleFor(sourceValueRangeStyle({ field: undefined }))).toThrow('needs a field')
+    expect(() => buildVectorStyle(sourceValueRangeStyle({ field: undefined }))).toThrow('needs a field')
   })
 
   test('a uniform style applies its fill and stroke directly', () => {
-    expect(vectorStyleFor(uniformStyle({
+    expect(buildVectorStyle(uniformStyle({
       stroke: { color: [112, 48, 135, 1], width: 1.25 }
     }))).toEqual({
       'fill-color': [178, 102, 204, 1],
@@ -175,7 +178,7 @@ describe('vector style rules', () => {
       }
     })
 
-    const style = vectorStyleFor(styleConfig)
+    const style = buildVectorStyle(styleConfig)
 
     expect(style['stroke-color']).toEqual([
       'match', ['get', 'category'],
@@ -212,7 +215,7 @@ describe('vector style rules', () => {
       ]
     })
 
-    const style = vectorStyleFor(styleConfig)
+    const style = buildVectorStyle(styleConfig)
 
     expect(style['fill-color']).toEqual([
       'match', ['get', 'category'],
@@ -232,6 +235,60 @@ describe('vector style rules', () => {
       'Water', 0,
       0
     ])
+  })
+})
+
+describe('WebGL vector colour variables', () => {
+  const filled = { fieldValues: ['Land'], fill: [10, 20, 30, 0.8], stroke: { color: [40, 50, 60, 0.6], width: 2 } }
+  const outline = { fieldValues: ['Edge'], fill: [0, 0, 0, 0], stroke: { color: [40, 50, 60, 0.6], width: 3 } }
+  const defaults = {
+    type: 'match',
+    field: 'category',
+    classes: [
+      filled,
+      { ...filled, fieldValues: ['Hidden'], visible: false },
+      outline,
+      { ...filled, fieldValues: ['Same colour'] }
+    ],
+    default: { fill: [100, 110, 120, 0.5] }
+  }
+
+  test('keeps separate variables for original class indices and drawable defaults', () => {
+    const before = structuredClone(defaults)
+    const { style, variables } = buildVectorStyleWithVariables(defaults)
+
+    expect(variables).toEqual({
+      class_0_fill: 'rgba(10, 20, 30, 0.8)',
+      class_0_stroke: 'rgba(40, 50, 60, 0.6)',
+      class_2_stroke: 'rgba(40, 50, 60, 0.6)',
+      class_3_fill: 'rgba(10, 20, 30, 0.8)',
+      class_3_stroke: 'rgba(40, 50, 60, 0.6)',
+      default_fill: 'rgba(100, 110, 120, 0.5)'
+    })
+    expect(style['fill-color']).toEqual([
+      'match', ['get', 'category'],
+      'Land', ['var', 'class_0_fill'],
+      'Hidden', [0, 0, 0, 0],
+      'Edge', [0, 0, 0, 0],
+      'Same colour', ['var', 'class_3_fill'],
+      ['var', 'default_fill']
+    ])
+    expect(defaults).toEqual(before)
+  })
+
+  test('generates a style accepted by the OpenLayers WebGL compiler', () => {
+    const { style, variables } = buildVectorStyleWithVariables(defaults)
+    expect(() => parseLiteralStyle(style, variables)).not.toThrow()
+  })
+
+  test('SSSI keeps its outline width while both colours become updateable', () => {
+    const { style, variables } = buildVectorStyleWithVariables(sssiStyle)
+    expect(style).toEqual({
+      'fill-color': ['var', 'class_0_fill'],
+      'stroke-color': ['var', 'class_0_stroke'],
+      'stroke-width': 1.25
+    })
+    expect(variables).toEqual({ class_0_fill: 'rgba(178, 102, 204, 1)', class_0_stroke: 'rgba(112, 48, 135, 1)' })
   })
 })
 

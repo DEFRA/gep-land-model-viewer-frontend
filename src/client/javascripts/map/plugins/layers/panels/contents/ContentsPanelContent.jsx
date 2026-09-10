@@ -1,10 +1,13 @@
 import { DragDropProvider } from '@dnd-kit/react'
 import { Accessibility, StyleInjector, defaultPreset } from '@dnd-kit/dom'
 import { move } from '@dnd-kit/helpers'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { CSPProvider } from '@base-ui/react/csp-provider'
+import { setNonce } from 'react-colorful'
 import { layerIndexAfterMove } from '../../reducer.js'
 import { ContentsRow } from './ContentsRow.jsx'
 import { getContentsEntries } from './contents-entries.js'
+import { EditLayerForm } from './EditLayerForm.jsx'
 
 const dragAnnouncements = {
   dragstart: ({ operation: { source } }) => source
@@ -31,14 +34,37 @@ const configureDragDropPlugins = styleNonce => [
     : plugin)
 ]
 
-export function ContentsPanelContent ({ pluginConfig, pluginState, services }) {
+export function ContentsPanelContent ({ pluginConfig, pluginState, appState, services }) {
   const { datasets, styleNonce } = pluginConfig
-  const { dispatch, layers } = pluginState
+  const { dispatch, layers, editingLayer } = pluginState
   const { announce } = services
   const panelRef = useRef(null)
+  const editorTriggerRef = useRef(null)
+  const editedDataset = datasets.find(dataset => dataset.id === editingLayer?.id)
+  const editedLayer = layers.find(layer => layer.id === editingLayer?.id)
+  const editorOpen = Boolean(editedDataset && editedLayer?.ready)
   const entries = getContentsEntries(datasets, pluginState)
   const layerIds = layers.map(layer => layer.id)
   const dndPlugins = useMemo(() => configureDragDropPlugins(styleNonce), [styleNonce])
+
+  // Picker styles are injected in child layout effects, so configure the nonce first.
+  setNonce(styleNonce)
+
+  useEffect(() => () => {
+    dispatch({ type: 'SET_EDITING_LAYER', payload: null })
+  }, [])
+
+  const openEditor = (entry, trigger) => {
+    editorTriggerRef.current = trigger
+    dispatch({ type: 'SET_EDITING_LAYER', payload: { id: entry.id } })
+  }
+
+  const closeEditor = () => {
+    const trigger = editorTriggerRef.current
+    dispatch({ type: 'SET_EDITING_LAYER', payload: null })
+    // Back reveals the mounted list before returning focus to its actions button.
+    requestAnimationFrame(() => trigger?.isConnected && trigger.focus())
+  }
 
   const handleVisibilityToggle = (entry) => {
     const hidden = !entry.hidden
@@ -67,31 +93,47 @@ export function ContentsPanelContent ({ pluginConfig, pluginState, services }) {
   }
 
   return (
-    <div className='app-map__contents-panel' ref={panelRef}>
-      {entries.length
-        ? (
-          <DragDropProvider plugins={dndPlugins} onDragEnd={handleDragEnd}>
-            <ul className='app-map__contents-list'>
-              {entries.map((entry, index) => (
-                <ContentsRow
-                  key={entry.id}
-                  entry={entry}
-                  index={index}
-                  total={entries.length}
-                  onVisibilityToggle={handleVisibilityToggle}
-                  onRemove={handleRemove}
-                  onMove={handleMove}
-                  portalContainerRef={panelRef}
-                />
-              ))}
-            </ul>
-          </DragDropProvider>
-          )
-        : (
-          <p className='govuk-body govuk-!-margin-bottom-0'>
-            No layers added
-          </p>
-          )}
-    </div>
+    <CSPProvider nonce={styleNonce}>
+      <div className='app-map__contents-panel' ref={panelRef}>
+        <div hidden={editorOpen}>
+          {entries.length
+            ? (
+              <DragDropProvider plugins={dndPlugins} onDragEnd={handleDragEnd}>
+                <ul className='app-map__contents-list'>
+                  {entries.map((entry, index) => (
+                    <ContentsRow
+                      key={entry.id}
+                      entry={entry}
+                      index={index}
+                      total={entries.length}
+                      onVisibilityToggle={handleVisibilityToggle}
+                      onRemove={handleRemove}
+                      onMove={handleMove}
+                      onEdit={openEditor}
+                      portalContainerRef={panelRef}
+                    />
+                  ))}
+                </ul>
+              </DragDropProvider>
+              )
+            : (
+              <p className='app-map__contents-message govuk-body govuk-!-margin-bottom-0'>
+                No layers added
+              </p>
+              )}
+        </div>
+        {editorOpen && (
+          <EditLayerForm
+            key={editedDataset.id}
+            dataset={editedDataset}
+            layer={editedLayer}
+            mobile={appState.breakpoint === 'mobile'}
+            colourKey={editingLayer.colourKey}
+            onBack={closeEditor}
+            dispatch={dispatch}
+          />
+        )}
+      </div>
+    </CSPProvider>
   )
 }

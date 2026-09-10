@@ -1,7 +1,8 @@
 import { SELECTION_Z_INDEX, layerIdFor, overviewIdFor } from '../../config/layers.js'
 import { createCogLayer } from './datasets/layers/cog.js'
-import { createFlatGeobufLayers } from './datasets/layers/fgb.js'
+import { createFlatGeobufLayer } from './datasets/layers/fgb.js'
 import { createWmsLayer } from './datasets/layers/wms.js'
+import { getLayerStyle } from './datasets/layer-style.js'
 import { isLayerStateVisible } from './reducer.js'
 
 // OpenLayers render order, bottom to top:
@@ -32,20 +33,18 @@ function wmsLayerNames (dataset, layers) {
   return names ? names.split(',') : undefined
 }
 
-async function createDatasetLayers (dataset, map) {
+async function createDatasetLayer (dataset, map) {
   const layerId = layerIdFor(dataset)
 
   switch (dataset.source.type) {
     case 'cog':
-      return [await createCogLayer(dataset, layerId)]
+      return createCogLayer(dataset, layerId)
     case 'fgb':
-      return createFlatGeobufLayers(dataset, layerId, map)
-    case 'wms': {
-      const layer = await createWmsLayer(dataset, layerId)
-      return layer ? [layer] : []
-    }
+      return createFlatGeobufLayer(dataset, layerId, map)
+    case 'wms':
+      return createWmsLayer(dataset, layerId)
     default:
-      return []
+      return null
   }
 }
 
@@ -68,6 +67,23 @@ function syncDatasetLayers (layers, layerState, zIndex) {
   for (const layer of layers) {
     layer.setVisible(visible)
   }
+}
+
+function syncDatasetStyle (loadedDataset, layerState) {
+  const { dataset, applyStyle, setOpacity } = loadedDataset
+  const styleOverrides = layerState?.styleOverrides
+
+  if (styleOverrides !== loadedDataset.styleOverrides && dataset.source.styleConfig) {
+    applyStyle(getLayerStyle(dataset, layerState).styleConfig)
+  }
+
+  const opacity = layerState?.opacity ?? dataset.source.opacity
+  if (opacity !== loadedDataset.opacity) {
+    setOpacity(opacity)
+  }
+
+  loadedDataset.styleOverrides = styleOverrides
+  loadedDataset.opacity = opacity
 }
 
 export function createLayerController ({ map, datasets, summaries, onDatasetLoaded, onDatasetFailed }) {
@@ -109,11 +125,12 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
     loadingDatasetIds.add(id)
 
     try {
-      const layers = await createDatasetLayers(dataset, map)
-      if (!layers.length) {
+      const datasetLayer = await createDatasetLayer(dataset, map)
+      if (!datasetLayer?.layers.length) {
         throw new Error('No OpenLayers layers were created')
       }
 
+      const { layers } = datasetLayer
       if (disposed) {
         removeDatasetLayers(layers)
         return
@@ -128,11 +145,14 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
       }
 
       const loadedDataset = {
-        layers,
+        dataset,
+        ...datasetLayer,
+        opacity: dataset.source.opacity,
         metadata: metadataFor(dataset, layers)
       }
       loadedDatasetsById.set(id, loadedDataset)
       const layerState = layerStatesById.get(id)
+      syncDatasetStyle(loadedDataset, layerState)
       syncDatasetLayers(layers, layerState, zIndexesById.get(id))
       notifyDatasetLoaded(id, loadedDataset.metadata, layerState)
     } catch (error) {
@@ -166,6 +186,7 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
 
     for (const [id, loadedDataset] of loadedDatasetsById) {
       const layerState = layerStatesById.get(id)
+      syncDatasetStyle(loadedDataset, layerState)
       syncDatasetLayers(loadedDataset.layers, layerState, zIndexesById.get(id))
       notifyDatasetLoaded(id, loadedDataset.metadata, layerState)
     }

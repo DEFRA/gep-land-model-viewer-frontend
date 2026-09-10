@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/react/sortable'
 import { Eye, EyeOff, X } from 'lucide-preact'
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { ActionsMenu } from './ActionsMenu.jsx'
 import { LayerSwatch } from './LayerSwatch.jsx'
 
@@ -20,8 +20,10 @@ export function ContentsRow ({
   onVisibilityToggle,
   onRemove,
   onMove,
+  onEdit,
   portalContainerRef
 }) {
+  const actionsRef = useRef(null)
   const sortableData = useMemo(() => ({ label: entry.label }), [entry.label])
   const { ref: rowRef, handleRef: reorderRef, isDragging } = useSortable({
     id: entry.id,
@@ -31,7 +33,7 @@ export function ContentsRow ({
   })
   const menuItems = [
     ...moveMenuItems(index, total, position => onMove(entry, position)),
-    ...(entry.kind === 'dataset' ? [{ id: 'edit', label: 'Edit layer', disabled: true }] : [])
+    { id: 'edit', label: 'Edit layer', disabled: entry.kind !== 'dataset', handleSelect: () => onEdit(entry, actionsRef.current) }
   ]
   const VisibilityIcon = entry.hidden ? EyeOff : Eye
   const className = [
@@ -65,6 +67,7 @@ export function ContentsRow ({
       <LayerSwatch swatch={entry.swatch} />
       <span className='app-map__contents-label'>{entry.label}</span>
       <ActionsMenu
+        triggerRef={actionsRef}
         label={entry.label}
         items={menuItems}
         disabled={entry.loading}

@@ -21,18 +21,21 @@ const { createPmtilesLayer } = await import('./pmtiles.js')
 
 const ARCHIVE_URL = 'https://example.com/data.pmtiles'
 
-const STYLE = { 'fill-color': 'rgba(178, 102, 204, 0.42)' }
+const STYLE_CONFIG = {
+  type: 'uniform',
+  classes: [{ bandValue: 1, fill: [178, 102, 204, 0.42], stroke: { color: [112, 48, 135, 0.8], width: 1.25 } }]
+}
 
 async function createLayer () {
-  const layer = await createPmtilesLayer(ARCHIVE_URL, 'gep-test-overview', {
-    style: STYLE,
+  const datasetLayer = await createPmtilesLayer(ARCHIVE_URL, 'gep-test-overview', {
+    styleConfig: STYLE_CONFIG,
     maxZoom: 4,
     opacity: 0.7
   })
   const archive = PMTiles.mock.instances.at(-1)
   const format = MVT.mock.instances.at(-1)
 
-  return { layer, archive, format }
+  return { datasetLayer, layer: datasetLayer.layers[0], archive, format }
 }
 
 function createTileStub () {
@@ -81,6 +84,20 @@ describe('#createPmtilesLayer', () => {
     const source = layer.getSource()
 
     expect(source.getTileUrlFunction()([3, 2, 4], 1, source.getProjection())).toBe('3/2/4')
+  })
+
+  test('applies fill, outline and opacity changes to the tile layer', async () => {
+    const { datasetLayer, layer } = await createLayer()
+
+    datasetLayer.applyStyle({
+      type: 'uniform',
+      classes: [{ ...STYLE_CONFIG.classes[0], fill: [255, 0, 0, 0.42], stroke: { color: [0, 0, 0, 0.8], width: 1.25 } }]
+    })
+    datasetLayer.setOpacity(0.4)
+
+    expect(layer.getStyle()).toEqual({ 'fill-color': [255, 0, 0, 0.42], 'stroke-color': [0, 0, 0, 0.8], 'stroke-width': 1.25 })
+    expect(layer.getOpacity()).toBe(0.4)
+    layer.dispose()
   })
 
   test('tile loader reads MVT features from the archive into the tile', async () => {

@@ -9,6 +9,27 @@ import { ContentsPanel } from './panels/contents/ContentsPanel.jsx'
 import { InfoPanel } from './panels/info/InfoPanel.jsx'
 import { ZoomWarning } from './controls/ZoomWarning.jsx'
 import { CONTENTS_PANEL_ID, INFO_PANEL_ID } from './constants.js'
+import { editableStyleEntries } from './datasets/style-config.js'
+
+function contentsPanelTitle ({ pluginState, pluginConfig, appState }) {
+  const { editingLayer, layers } = pluginState
+  if (!editingLayer) {
+    return 'Contents'
+  }
+
+  const dataset = pluginConfig.datasets.find(dataset => dataset.id === editingLayer.id)
+  const layer = layers.find(layer => layer.id === editingLayer.id)
+  if (!dataset || !layer?.ready) {
+    return 'Contents'
+  }
+
+  if (appState.breakpoint === 'mobile' && editingLayer.colourKey) {
+    return editableStyleEntries(dataset.source.styleConfig)
+      .find(entry => entry.key === editingLayer.colourKey)?.definition.label ?? 'Edit layer'
+  }
+
+  return 'Edit layer'
+}
 
 function infoPanelTitle ({ status, hits, hit }) {
   if (hit) {
@@ -133,7 +154,7 @@ export const manifest = {
     render: KeyPanel
   }, {
     id: CONTENTS_PANEL_ID,
-    label: 'Contents',
+    label: contentsPanelTitle,
     mobile: drawerPanel,
     tablet: contentsPanel,
     desktop: contentsPanel,

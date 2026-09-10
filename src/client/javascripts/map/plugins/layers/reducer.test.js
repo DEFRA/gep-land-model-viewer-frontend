@@ -11,12 +11,74 @@ const layer = id => ({ id, ready: true })
 const layerIds = state => state.layers.map(({ id }) => id)
 
 describe('layers reducer', () => {
+  test('stores sparse style settings, ignores unchanged values and clears defaults', () => {
+    const initial = { ...initialState, layers: [{ ...layer('peat'), hidden: true, minZoom: 7 }] }
+    const coloured = actions.SET_LAYER_COLOUR(initial, { id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })
+    const styled = actions.SET_LAYER_OPACITY(coloured, { id: 'peat', opacity: 0.01 })
+    expect(styled.layers[0]).toEqual({ ...initial.layers[0], opacity: 0.01, styleOverrides: { classes: [{ fill: [1, 2, 3, 1] }] } })
+    expect(actions.SET_LAYER_COLOUR(styled, { id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })).toBe(styled)
+    expect(actions.SET_LAYER_OPACITY(styled, { id: 'peat', opacity: 0.01 })).toBe(styled)
+    const clearedColour = actions.SET_LAYER_COLOUR(styled, { id: 'peat', classIndex: 0, part: 'fill', colour: undefined })
+    expect(clearedColour.layers[0].styleOverrides).toBeUndefined()
+    const cleared = actions.SET_LAYER_OPACITY(clearedColour, { id: 'peat', opacity: undefined })
+    expect(cleared).toEqual(initial)
+    expect(actions.RESET_LAYER_STYLE(styled, { id: 'peat' })).toEqual(initial)
+    expect(actions.RESET_LAYER_STYLE(initial, { id: 'peat' })).toBe(initial)
+  })
+
+  test('preserves other class overrides, order and hidden state until removal', () => {
+    const initial = { ...initialState, layers: [layer('peat'), layer('wood')] }
+    const first = actions.SET_LAYER_COLOUR(initial, { id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })
+    const second = actions.SET_LAYER_COLOUR(first, { id: 'peat', classIndex: 2, part: 'stroke', colour: [7, 8, 9, 0.5] })
+    const withDefault = actions.SET_LAYER_COLOUR(second, { id: 'peat', part: 'fill', colour: [4, 5, 6, 1] })
+    const cleared = actions.SET_LAYER_COLOUR(withDefault, { id: 'peat', classIndex: 0, part: 'fill' })
+    const hidden = actions.SET_LAYER_HIDDEN(cleared, { id: 'peat', hidden: true })
+    const moved = actions.MOVE_LAYER(hidden, { id: 'peat', position: 'bottom' })
+    expect(moved.layers[1]).toEqual({
+      ...layer('peat'),
+      hidden: true,
+      styleOverrides: {
+        classes: [undefined, undefined, { stroke: { color: [7, 8, 9, 0.5] } }],
+        default: { fill: [4, 5, 6, 1] }
+      }
+    })
+    const removed = actions.REMOVE_LAYER(moved, { id: 'peat' })
+    expect(actions.DATASET_LOADING(removed, { id: 'peat' }).layers[0]).toEqual({ id: 'peat', ready: false })
+    expect(actions.SET_LAYER_COLOUR(removed, { id: 'peat', part: 'fill', colour: [1, 2, 3, 1] })).toBe(removed)
+    expect(actions.SET_LAYER_OPACITY(removed, { id: 'peat', opacity: 0.5 })).toBe(removed)
+  })
+
+  test.each([
+    ['class', 0],
+    ['default', undefined]
+  ])('stores and clears the outline independently of %s fill', (_label, classIndex) => {
+    const initial = { ...initialState, layers: [layer('sssi')] }
+    const filled = actions.SET_LAYER_COLOUR(initial, { id: 'sssi', classIndex, part: 'fill', colour: [255, 0, 0, 0.8] })
+    const outlined = actions.SET_LAYER_COLOUR(initial, { id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })
+    const styled = actions.SET_LAYER_COLOUR(filled, { id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })
+    const definition = { fill: [255, 0, 0, 0.8], stroke: { color: [0, 0, 0, 1] } }
+    expect(styled.layers[0].styleOverrides).toEqual(classIndex === undefined ? { default: definition } : { classes: [definition] })
+    expect(actions.SET_LAYER_COLOUR(styled, { id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })).toBe(styled)
+    expect(actions.SET_LAYER_COLOUR(styled, { id: 'sssi', classIndex, part: 'stroke' })).toEqual(filled)
+    expect(actions.SET_LAYER_COLOUR(styled, { id: 'sssi', classIndex, part: 'fill' })).toEqual(outlined)
+    expect(actions.SET_LAYER_COLOUR(outlined, { id: 'sssi', classIndex, part: 'stroke' })).toEqual(initial)
+    expect(actions.RESET_LAYER_STYLE(styled, { id: 'sssi' })).toEqual(initial)
+  })
+
   test('starts with no layers or inspection result', () => {
     expect(initialState).toEqual({
       query: '',
       layers: [],
+      editingLayer: null,
       inspection: { status: 'idle', hits: [], hit: null }
     })
+  })
+
+  test('clears the editor selection when its layer is removed', () => {
+    const editingLayer = { id: 'peat', colourKey: 'class:0' }
+    const state = actions.SET_EDITING_LAYER({ ...initialState, layers: [layer('peat'), layer('wood')] }, editingLayer)
+    expect(actions.REMOVE_LAYER(state, { id: 'wood' }).editingLayer).toBe(editingLayer)
+    expect(actions.REMOVE_LAYER(state, { id: 'peat' }).editingLayer).toBeNull()
   })
 
   test('updates the Layers panel search query', () => {

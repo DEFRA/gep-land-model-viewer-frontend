@@ -1,4 +1,4 @@
-import { rgbaString } from '../shared/swatch-helpers.js'
+import { rgbaString } from '../../../../config/colours.js'
 import { StyleSwatch } from '../shared/StyleSwatch.jsx'
 
 function ColourGrid ({ colours }) {

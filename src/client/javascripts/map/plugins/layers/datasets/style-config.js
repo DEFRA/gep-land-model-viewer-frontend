@@ -1,5 +1,6 @@
+import { RGBA_ALPHA_INDEX, rgbaString } from '../../../config/colours.js'
+
 const TRANSPARENT = [0, 0, 0, 0]
-const RGBA_ALPHA_INDEX = 3
 
 function fillFor (definition) {
   return definition?.visible === false ? TRANSPARENT : definition?.fill ?? TRANSPARENT
@@ -9,7 +10,7 @@ function strokeFor (definition) {
   return definition?.visible === false ? undefined : definition?.stroke
 }
 
-function strokeColorFor (definition) {
+function strokeColourFor (definition) {
   return strokeFor(definition)?.color ?? TRANSPARENT
 }
 
@@ -43,7 +44,7 @@ function classCodedDefinitions (styleConfig) {
  * @param {object} styleConfig Style config
  * @returns {import('ol/expr/expression.js').EncodedExpression}
  */
-export function cogColorFor (styleConfig) {
+export function buildCogColourExpression (styleConfig) {
   /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
   const branches = ['case']
   // Generated COGs have one data band; OpenLayers handles their nodata alpha.
@@ -109,17 +110,73 @@ function vectorExpressionFor (styleConfig, valueFor) {
  * @param {object} styleConfig Style config
  * @returns {import('ol/style/flat.js').FlatStyle}
  */
-export function vectorStyleFor (styleConfig) {
+export function buildVectorStyle (styleConfig) {
   const style = {
     'fill-color': vectorExpressionFor(styleConfig, fillFor)
   }
 
   if (hasStroke(styleConfig)) {
-    style['stroke-color'] = vectorExpressionFor(styleConfig, strokeColorFor)
+    style['stroke-color'] = vectorExpressionFor(styleConfig, strokeColourFor)
     style['stroke-width'] = vectorExpressionFor(styleConfig, strokeWidthFor)
   }
 
   return style
+}
+
+function variableName (classIndex, part) {
+  const prefix = classIndex === undefined ? 'default' : `class_${classIndex}`
+  return `${prefix}_${part}`
+}
+
+/**
+ * Complete colour values, including defaults, for an existing vector renderer.
+ * @param {object} styleConfig Effective dataset style config
+ * @returns {import('ol/style/flat.js').StyleVariables}
+ */
+export function buildColourVariables (styleConfig) {
+  /** @type {import('ol/style/flat.js').StyleVariables} */
+  const variables = {}
+  // Use CSS strings so OpenLayers recognises these variables as colours.
+  for (const { classIndex, definition } of editableStyleEntries(styleConfig)) {
+    if (hasVisibleFill(definition)) {
+      variables[variableName(classIndex, 'fill')] = rgbaString(definition.fill)
+    }
+    if (hasVisibleStroke(definition)) {
+      variables[variableName(classIndex, 'stroke')] = rgbaString(definition.stroke.color)
+    }
+  }
+  return variables
+}
+
+function definitionWithVariables (definition, classIndex, variables) {
+  if (!definition) {
+    return definition
+  }
+
+  const fillName = variableName(classIndex, 'fill')
+  const strokeName = variableName(classIndex, 'stroke')
+  return {
+    ...definition,
+    ...(fillName in variables && { fill: ['var', fillName] }),
+    ...(strokeName in variables && {
+      stroke: { ...definition.stroke, color: ['var', strokeName] }
+    })
+  }
+}
+
+/**
+ * Build vector colour expressions with variables so edits avoid rebuilding the renderer.
+ * @param {object} styleConfig Dataset style config
+ */
+export function buildVectorStyleWithVariables (styleConfig) {
+  const variables = buildColourVariables(styleConfig)
+  const config = {
+    ...styleConfig,
+    classes: styleConfig.classes.map((definition, index) => definitionWithVariables(definition, index, variables)),
+    default: definitionWithVariables(styleConfig.default, undefined, variables)
+  }
+
+  return { style: buildVectorStyle(config), variables }
 }
 
 function rangeClassForValue (styleConfig, value) {
@@ -157,6 +214,17 @@ export function hasVisibleFill (definition) {
 export function hasVisibleStroke (definition) {
   const stroke = strokeFor(definition)
   return stroke?.color?.[RGBA_ALPHA_INDEX] > 0 && stroke.width > 0
+}
+
+export function editableStyleEntries (styleConfig) {
+  if (!styleConfig) {
+    return []
+  }
+
+  return [
+    ...styleConfig.classes.map((definition, classIndex) => ({ key: `class:${classIndex}`, classIndex, definition })),
+    { key: 'default', classIndex: undefined, definition: styleConfig.default }
+  ].filter(({ definition }) => hasVisibleFill(definition) || hasVisibleStroke(definition))
 }
 
 /**

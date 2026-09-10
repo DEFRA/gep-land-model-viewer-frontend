@@ -26,16 +26,18 @@ vi.mock('ol/source/GeoTIFF.js', () => ({
 vi.mock('ol/layer/WebGLTile.js', () => ({
   default: vi.fn().mockImplementation(function (opts) {
     this._opts = opts
+    this.setStyle = vi.fn()
+    this.setOpacity = vi.fn()
   })
 }))
 
 vi.mock('../style-config.js', () => ({
-  cogColorFor: vi.fn(() => ['case', ['==', ['band', 1], 1], [194, 158, 215, 1], [0, 0, 0, 0]])
+  buildCogColourExpression: vi.fn(() => ['case', ['==', ['band', 1], 1], [194, 158, 215, 1], [0, 0, 0, 0]])
 }))
 
 const { default: GeoTIFF } = await import('ol/source/GeoTIFF.js')
 const { default: WebGLTileLayer } = await import('ol/layer/WebGLTile.js')
-const { cogColorFor } = await import('../style-config.js')
+const { buildCogColourExpression } = await import('../style-config.js')
 const { createCogLayer, createCogOverviewLayer } = await import('./cog.js')
 
 const SOURCE_VALUE_RANGE_STYLE = {
@@ -63,7 +65,7 @@ describe('#createCogLayer', () => {
       }
     }
 
-    await createCogLayer(dataset, 'gep-test-cog')
+    const datasetLayer = await createCogLayer(dataset, 'gep-test-cog')
 
     expect(GeoTIFF).toHaveBeenCalledWith({
       sources: [{ url: '/land-model/raster/test.tif' }],
@@ -71,11 +73,22 @@ describe('#createCogLayer', () => {
       interpolate: false
     })
 
-    expect(cogColorFor).toHaveBeenCalledWith(SOURCE_VALUE_RANGE_STYLE)
+    expect(buildCogColourExpression).toHaveBeenCalledWith(SOURCE_VALUE_RANGE_STYLE)
     const [layerOptions] = WebGLTileLayer.mock.calls[0]
     expect(layerOptions.properties).toEqual({ id: 'gep-test-cog' })
     expect(layerOptions.opacity).toBe(0.8)
-    expect(layerOptions.style.color).toEqual(cogColorFor.mock.results[0].value)
+    expect(layerOptions.style.color).toEqual(buildCogColourExpression.mock.results[0].value)
+
+    const updatedStyle = { ...SOURCE_VALUE_RANGE_STYLE, default: { label: 'Over 20cm', fill: [255, 0, 0, 1] } }
+    datasetLayer.applyStyle(updatedStyle)
+    datasetLayer.setOpacity(0.4)
+
+    const [layer] = datasetLayer.layers
+    expect(buildCogColourExpression).toHaveBeenLastCalledWith(updatedStyle)
+    expect(layer.setStyle).toHaveBeenCalledWith({ color: buildCogColourExpression.mock.results.at(-1).value })
+    expect(layer.setOpacity).toHaveBeenCalledWith(0.4)
+    expect(GeoTIFF).toHaveBeenCalledOnce()
+    expect(WebGLTileLayer).toHaveBeenCalledOnce()
   })
 })
 
@@ -106,12 +119,12 @@ describe('#createCogOverviewLayer', () => {
     const source = GeoTIFF.mock.instances.at(-1)
     expect(source.getView).toHaveBeenCalled()
 
-    expect(cogColorFor).toHaveBeenCalledWith(styleConfig)
+    expect(buildCogColourExpression).toHaveBeenCalledWith(styleConfig)
     const [layerOptions] = WebGLTileLayer.mock.calls.at(-1)
     expect(layerOptions.properties).toEqual({ id: 'gep-test-fgb-overview' })
     expect(layerOptions.opacity).toBe(1)
     expect(layerOptions.className).toBe('ol-layer gep-test-fgb-composite')
-    expect(layerOptions.style.color).toEqual(cogColorFor.mock.results.at(-1).value)
+    expect(layerOptions.style.color).toEqual(buildCogColourExpression.mock.results.at(-1).value)
     expect(layerOptions.minZoom).toBeUndefined()
     expect(layerOptions.maxZoom).toBeUndefined()
     expect(layerOptions.preload).toBe(Infinity)

@@ -3,6 +3,7 @@ import VectorTileLayer from 'ol/layer/VectorTile.js'
 import VectorTileSource from 'ol/source/VectorTile.js'
 import MVT from 'ol/format/MVT.js'
 import TileState from 'ol/TileState.js'
+import { buildVectorStyle } from '../style-config.js'
 
 // PMTiles overviews are supplied in Web Mercator.
 const EPSG_3857 = 'EPSG:3857'
@@ -13,12 +14,12 @@ const EPSG_3857 = 'EPSG:3857'
  * @param {string} url PMTiles archive URL
  * @param {string} layerId Map layer id
  * @param {object} options
- * @param {import('ol/style/flat.js').FlatStyle} options.style
+ * @param {object} options.styleConfig Style config
  * @param {number} options.maxZoom Last map zoom the overview renders at
- * @param {number} [options.opacity]
- * @returns {Promise<VectorTileLayer>}
+ * @param {number} options.opacity
+ * @returns Dataset layer for the vector tile overview
  */
-export async function createPmtilesLayer (url, layerId, { style, maxZoom, opacity }) {
+export async function createPmtilesLayer (url, layerId, { styleConfig, maxZoom, opacity }) {
   const archive = new PMTiles(url)
   const header = await archive.getHeader()
   const format = new MVT()
@@ -49,11 +50,17 @@ export async function createPmtilesLayer (url, layerId, { style, maxZoom, opacit
     }
   })
 
-  return new VectorTileLayer({
+  const layer = new VectorTileLayer({
     properties: { id: layerId },
     source,
-    style,
+    style: buildVectorStyle(styleConfig),
     maxZoom,
     opacity
   })
+
+  return {
+    layers: [layer],
+    applyStyle: styleConfig => layer.setStyle(buildVectorStyle(styleConfig)),
+    setOpacity: opacity => layer.setOpacity(opacity)
+  }
 }
