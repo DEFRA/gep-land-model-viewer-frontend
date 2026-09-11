@@ -1,4 +1,5 @@
-import { hasVisibleFill, hasVisibleStroke } from '../../datasets/style-config.js'
+import { rgbaString } from '../../../../config/colours.js'
+import { editableStyleEntries, hasVisibleFill, hasVisibleStroke } from '../../datasets/style-config.js'
 
 /**
  * @typedef {object} StyleDefinition
@@ -12,15 +13,7 @@ const MINIMUM_SWATCH_STROKE_WIDTH = 2
 
 /** @returns {StyleDefinition[]} */
 export function visibleStyleDefinitions (styleConfig) {
-  return [...styleConfig.classes, styleConfig.default]
-    .filter(definition => definition && (hasVisibleFill(definition) || hasVisibleStroke(definition)))
-}
-
-/** @param {number[]} colour */
-export function rgbaString (colour) {
-  const [red, green, blue, alpha] = colour
-
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+  return editableStyleEntries(styleConfig).map(({ definition }) => definition)
 }
 
 /** @param {StyleDefinition} definition */
@@ -38,11 +31,11 @@ export function swatchStyle (definition) {
   }
 }
 
-export function swatchColours (styleConfig) {
+export function swatchColours (definitions) {
   const colours = []
   const seen = new Set()
 
-  for (const definition of visibleStyleDefinitions(styleConfig)) {
+  for (const definition of definitions) {
     const colour = hasVisibleFill(definition) ? definition.fill : definition.stroke.color
     const key = colour.join(',')
     if (!seen.has(key)) {

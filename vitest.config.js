@@ -27,7 +27,11 @@ export default defineConfig({
             'preact/hooks',
             'lucide-preact',
             '@testing-library/preact',
-            '@base-ui/react/menu'
+            '@base-ui/react/menu',
+            '@base-ui/react/popover',
+            '@base-ui/react/slider',
+            '@base-ui/react/csp-provider',
+            'react-colorful'
           ]
         }
       }
@@ -36,7 +40,9 @@ export default defineConfig({
       deps: {
         // UI dependencies must resolve through our Preact aliases.
         // Inline OpenLayers too so its class identities stay consistent with optimisation enabled.
-        inline: [/@dnd-kit/, /@base-ui/, /use-sync-external-store/, 'ol']
+        // Transform optimiser chunks too: their external React imports need the aliases,
+        // and shared chunks must keep one identity with and without Vite's version query.
+        inline: [/\/\.vite\/vitest\//, /@dnd-kit/, /@base-ui/, /use-sync-external-store/, 'react-colorful', 'ol']
       }
     },
     coverage: {

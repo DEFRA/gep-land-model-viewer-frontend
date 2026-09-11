@@ -1,4 +1,5 @@
 import { SUMMARIES } from '../../summaries/config.js'
+import { getLayerStyle } from '../../datasets/layer-style.js'
 import { swatchColours, visibleStyleDefinitions } from '../shared/swatch-helpers.js'
 
 /**
@@ -20,15 +21,15 @@ import { swatchColours, visibleStyleDefinitions } from '../shared/swatch-helpers
 
 /** @returns {ContentsEntry} */
 function datasetEntry (dataset, layer) {
-  const styleConfig = dataset.source.styleConfig
-  const definitions = styleConfig ? visibleStyleDefinitions(styleConfig) : []
+  const { styleConfig } = getLayerStyle(dataset, layer)
+  const definitions = visibleStyleDefinitions(styleConfig)
   /** @type {ContentsSwatch} */
   let swatch
 
   if (definitions.length === 1) {
     swatch = { type: 'style', definition: definitions[0] }
   } else if (styleConfig) {
-    swatch = { type: 'colours', colours: swatchColours(styleConfig) }
+    swatch = { type: 'colours', colours: swatchColours(definitions) }
   } else {
     swatch = { type: 'wms' }
   }

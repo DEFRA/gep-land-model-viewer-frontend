@@ -1,7 +1,7 @@
 import { parse, newParsingContext, ColorType, NumberType } from 'ol/expr/expression.js'
 import { datasets } from './datasets.js'
 import { operationalDatasets } from './operational-datasets.js'
-import { cogColorFor, vectorStyleFor } from '../plugins/layers/datasets/style-config.js'
+import { buildCogColourExpression, buildVectorStyle } from '../plugins/layers/datasets/style-config.js'
 
 const wmsDatasets = datasets.filter(dataset => dataset.source.type === 'wms')
 
@@ -11,12 +11,13 @@ describe('#datasets', () => {
     expect(datasets.slice(0, operationalDatasets.length)).toEqual(operationalDatasets)
   })
 
-  test('every dataset has an id, label and typed source', () => {
+  test('every dataset has an id, label, source type and opacity', () => {
     for (const dataset of datasets) {
       expect(dataset).toHaveProperty('id')
       expect(dataset).toHaveProperty('label')
       expect(dataset.source).toHaveProperty('url')
       expect(['wms', 'cog', 'fgb']).toContain(dataset.source.type)
+      expect(dataset.source.opacity).toEqual(expect.any(Number))
     }
   })
 
@@ -37,7 +38,7 @@ describe('#datasets', () => {
     expect(fgbDatasets.length).toBeGreaterThan(0)
 
     for (const dataset of fgbDatasets) {
-      const style = vectorStyleFor(dataset.source.styleConfig)
+      const style = buildVectorStyle(dataset.source.styleConfig)
       expect(() => parse(style['fill-color'], ColorType, newParsingContext())).not.toThrow()
       if (style['stroke-color'] !== undefined) {
         expect(() => parse(style['stroke-color'], ColorType, newParsingContext())).not.toThrow()
@@ -53,7 +54,7 @@ describe('#datasets', () => {
     expect(cogStyled.length).toBeGreaterThan(0)
 
     for (const dataset of cogStyled) {
-      expect(() => parse(cogColorFor(dataset.source.styleConfig), ColorType, newParsingContext())).not.toThrow()
+      expect(() => parse(buildCogColourExpression(dataset.source.styleConfig), ColorType, newParsingContext())).not.toThrow()
     }
   })
 })

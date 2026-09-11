@@ -1,4 +1,5 @@
 import { visibleStyleDefinitions } from '../shared/swatch-helpers.js'
+import { getLayerStyle } from '../../datasets/layer-style.js'
 
 /**
  * @typedef {{ id: string, label: string } & (
@@ -37,8 +38,9 @@ export function getKeyEntries (datasets, pluginState) {
       continue
     }
 
-    if (dataset.source.styleConfig) {
-      const styles = visibleStyleDefinitions(dataset.source.styleConfig)
+    const { styleConfig } = getLayerStyle(dataset, layer)
+    if (styleConfig) {
+      const styles = visibleStyleDefinitions(styleConfig)
       if (styles.length) {
         entries.push({ type: 'style', id: layer.id, label: dataset.label, styles })
       }

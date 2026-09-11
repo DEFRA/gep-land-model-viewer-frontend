@@ -40,7 +40,7 @@ export async function fetchWmsLayerNames (wmsUrl) {
  *
  * @param {object} dataset Dataset definition with a wms source
  * @param {string} layerId Map layer id
- * @returns {Promise<ImageLayer|null>} Null when no queryable layers were found
+ * @returns Dataset layer, or null when no queryable layers were found
  */
 export async function createWmsLayer (dataset, layerId) {
   const layerNames = dataset.source.layers?.length
@@ -58,7 +58,7 @@ export async function createWmsLayer (dataset, layerId) {
     CRS: EPSG_27700
   }
 
-  return new ImageLayer({
+  const layer = new ImageLayer({
     properties: { id: layerId, wms: true },
     source: new ImageWMS({
       url: dataset.source.url,
@@ -67,8 +67,16 @@ export async function createWmsLayer (dataset, layerId) {
       ratio: 1.5,
       crossOrigin: 'anonymous'
     }),
-    opacity: dataset.source.opacity ?? 1
+    opacity: dataset.source.opacity
   })
+
+  return {
+    layers: [layer],
+    applyStyle (_styleConfig) {
+      throw new Error('WMS styling is not supported')
+    },
+    setOpacity: opacity => layer.setOpacity(opacity)
+  }
 }
 
 export function getSourceUrl (source) {

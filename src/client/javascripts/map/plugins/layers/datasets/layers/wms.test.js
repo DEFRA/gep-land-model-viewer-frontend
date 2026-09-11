@@ -4,6 +4,7 @@ import { vi, describe, test, expect, afterEach } from 'vitest'
 vi.mock('ol/layer/Image.js', () => ({
   default: vi.fn().mockImplementation(function (opts) {
     this._opts = opts
+    this.setOpacity = vi.fn()
   })
 }))
 
@@ -73,6 +74,14 @@ describe('#createWmsLayer', () => {
         })
       })
     )
+  })
+
+  test('updates the WMS layer opacity', async () => {
+    const datasetLayer = await createWmsLayer(wmsDataset({ layers: ['layer1'] }), 'gep-test-dataset')
+
+    datasetLayer.setOpacity(0.4)
+
+    expect(datasetLayer.layers[0].setOpacity).toHaveBeenCalledWith(0.4)
   })
 
   test('discovers queryable layer names via GetCapabilities', async () => {

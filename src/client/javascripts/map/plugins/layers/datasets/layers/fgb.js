@@ -5,7 +5,7 @@ import { overviewIdFor } from '../../../../config/layers.js'
 import { createPmtilesLayer } from './pmtiles.js'
 import { createCogOverviewLayer } from './cog.js'
 import { createFgbLoadController } from './fgb-loader.js'
-import { vectorStyleFor } from '../style-config.js'
+import { buildColourVariables, buildVectorStyleWithVariables } from '../style-config.js'
 
 // Datasets state the first zoom that draws. OL hides a layer at its minZoom, so
 // step back one to make that level the first that renders.
@@ -37,8 +37,8 @@ function registerLoadRecovery (map, detailLayer, loadController) {
   detailLayer.on('change:visible', retryFailedViewport)
 }
 
-function registerSharedCanvasOpacity (layers, opacity) {
-  const canvasOpacity = String(opacity)
+function registerSharedCanvasOpacity (layers, initialOpacity) {
+  let canvasOpacity = String(initialOpacity)
   const applyOpacity = (event) => {
     const { style } = event.context.canvas
     if (style.opacity !== canvasOpacity) {
@@ -50,6 +50,18 @@ function registerSharedCanvasOpacity (layers, opacity) {
   for (const layer of layers) {
     layer.addEventListener('precompose', applyOpacity)
   }
+
+  return (opacity) => {
+    const next = String(opacity)
+    if (next === canvasOpacity) {
+      return
+    }
+
+    canvasOpacity = next
+    for (const layer of layers) {
+      layer.changed()
+    }
+  }
 }
 
 /**
@@ -58,24 +70,24 @@ function registerSharedCanvasOpacity (layers, opacity) {
  * @param {object} dataset Dataset definition with an fgb source
  * @param {string} layerId Map layer id for the detail layer
  * @param {import('ol/Map.js').default} map Map that will own the layers
- * @returns {Promise<import('ol/layer/Layer.js').default[]>}
+ * @returns Dataset layer containing the detail layer and optional overview
  */
-export async function createFlatGeobufLayers (dataset, layerId, map) {
+export async function createFlatGeobufLayer (dataset, layerId, map) {
   const { url, styleConfig, attribution, opacity, minZoom, overview } = dataset.source
-  const hasCogOverview = overview?.type === 'cog'
+  const sharedCanvas = overview?.type === 'cog'
   const hasPmtilesOverview = overview?.type === 'pmtiles'
-  if (overview && !hasPmtilesOverview && !hasCogOverview) {
+  if (overview && !hasPmtilesOverview && !sharedCanvas) {
     throw new Error(`Dataset ${dataset.id} has unsupported overview type "${overview.type}", only pmtiles and cog are supported`)
   }
 
-  const vectorStyle = vectorStyleFor(styleConfig)
+  const { style, variables } = buildVectorStyleWithVariables(styleConfig)
   const source = new VectorSource({
     strategy: bbox,
     attributions: attribution,
     // WebGL has its own render batch and hit buffer; this source is not queried by extent.
     useSpatialIndex: false
   })
-  const compositeClassName = hasCogOverview ? `ol-layer ${layerId}-composite` : undefined
+  const compositeClassName = sharedCanvas ? `ol-layer ${layerId}-composite` : undefined
 
   // PMTiles hands over above its last zoom. A COG has no upper zoom, so the
   // dataset controls where detail starts.
@@ -84,36 +96,49 @@ export async function createFlatGeobufLayers (dataset, layerId, map) {
     properties: { id: layerId },
     source,
     minZoom: exclusiveMinZoomFor(firstZoom),
-    style: vectorStyle,
+    style,
+    variables,
     // Consecutive WebGL layers with the same className share a canvas:
     // https://openlayers.org/en/latest/examples/webgl-layer-swipe.html
     // Opaque detail pixels replace the COG before dataset opacity is applied.
-    opacity: hasCogOverview ? 1 : opacity,
+    opacity: sharedCanvas ? 1 : opacity,
     className: compositeClassName
   })
 
   let layers
+  let overviewLayer
   if (!overview) {
     layers = [detail]
-  } else if (hasCogOverview) {
-    const overviewLayer = await createCogOverviewLayer(overview, overviewIdFor(layerId), {
+  } else if (sharedCanvas) {
+    overviewLayer = await createCogOverviewLayer(overview, overviewIdFor(layerId), {
       styleConfig,
       className: compositeClassName
     })
-    registerSharedCanvasOpacity([overviewLayer, detail], opacity ?? 1)
-    layers = [overviewLayer, detail]
+    layers = [...overviewLayer.layers, detail]
   } else {
-    const overviewLayer = await createPmtilesLayer(overview.url, overviewIdFor(layerId), {
-      style: vectorStyle,
+    overviewLayer = await createPmtilesLayer(overview.url, overviewIdFor(layerId), {
+      styleConfig,
       maxZoom: overview.maxZoom,
       opacity
     })
-    layers = [detail, overviewLayer]
+    layers = [detail, ...overviewLayer.layers]
   }
 
   const loadController = createFgbLoadController(source, url, detail)
   source.setLoader(loadController.loader)
   registerLoadRecovery(map, detail, loadController)
 
-  return layers
+  return {
+    layers,
+    applyStyle (next) {
+      detail.updateStyleVariables(buildColourVariables(next))
+      overviewLayer?.applyStyle(next)
+    },
+    setOpacity: sharedCanvas
+      ? registerSharedCanvasOpacity(layers, opacity)
+      : (next) => {
+          detail.setOpacity(next)
+          overviewLayer?.setOpacity(next)
+        }
+  }
 }

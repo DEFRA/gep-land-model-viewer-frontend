@@ -1,4 +1,5 @@
 import { SUMMARIES } from './summaries/config.js'
+import { colourForDefinition, coloursEqual } from './datasets/layer-style.js'
 
 const INSPECTION_STATUS = /** @type {const} */ ({
   IDLE: 'idle',
@@ -12,6 +13,10 @@ const INSPECTION_STATUS = /** @type {const} */ ({
 
 /** @typedef {typeof INSPECTION_STATUS[keyof typeof INSPECTION_STATUS]} InspectionStatus */
 
+/** @typedef {import('../../config/colours.js').RgbaColour} RgbaColour */
+/** @typedef {{ fill?: RgbaColour, stroke?: { color: RgbaColour } }} DefinitionOverride */
+/** @typedef {{ classes?: (DefinitionOverride | undefined)[], default?: DefinitionOverride }} StyleOverrides */
+
 /**
  * State for one added dataset or summary layer.
  *
@@ -21,6 +26,8 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @property {number} [minZoom]
  * @property {string[]} [wmsLayerNames]
  * @property {boolean} [hidden]
+ * @property {number} [opacity]
+ * @property {StyleOverrides} [styleOverrides]
  */
 
 /**
@@ -34,6 +41,7 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @typedef {object} LayersState
  * @property {string} query
  * @property {LayerState[]} layers Top-most entry first
+ * @property {{ id: string, colourKey?: string } | null} editingLayer
  * @property {InspectionState} inspection
  */
 
@@ -48,6 +56,7 @@ const initialInspectionState = {
 const initialState = {
   query: '',
   layers: [],
+  editingLayer: null,
   inspection: initialInspectionState
 }
 
@@ -76,6 +85,8 @@ const setQuery = (state, query) => ({
   ...state,
   query
 })
+
+const setEditingLayer = (state, editingLayer) => state.editingLayer === editingLayer ? state : { ...state, editingLayer }
 
 const datasetLoading = (state, { id }) => {
   if (state.layers.some(layer => layer.id === id)) {
@@ -108,7 +119,8 @@ const removeLayer = (state, { id }) => {
 
   return {
     ...state,
-    layers
+    layers,
+    editingLayer: state.editingLayer?.id === id ? null : state.editingLayer
   }
 }
 
@@ -144,6 +156,74 @@ const setLayerHidden = (state, { id, hidden }) => updateLayer(state, id, (layer)
   const updatedLayer = { ...layer }
   delete updatedLayer.hidden
   return updatedLayer
+})
+
+// An undefined value removes an override when the editor restores a dataset default.
+const setLayerOpacity = (state, { id, opacity }) => updateLayer(state, id, (layer) => {
+  if (layer.opacity === opacity) {
+    return layer
+  }
+
+  const updated = { ...layer, opacity }
+  if (opacity === undefined) {
+    delete updated.opacity
+  }
+  return updated
+})
+
+function updateDefinitionColour (previous, part, colour) {
+  const definition = { ...previous }
+  if (colour === undefined) {
+    delete definition[part]
+  } else {
+    definition[part] = part === 'stroke' ? { color: [...colour] } : [...colour]
+  }
+
+  return Object.keys(definition).length ? definition : undefined
+}
+
+const setLayerColour = (state, { id, classIndex, part, colour }) => updateLayer(state, id, (layer) => {
+  const previous = classIndex === undefined
+    ? layer.styleOverrides?.default
+    : layer.styleOverrides?.classes?.[classIndex]
+  if (coloursEqual(colourForDefinition(previous, part), colour)) {
+    return layer
+  }
+
+  const remaining = updateDefinitionColour(previous, part, colour)
+  const styleOverrides = { ...layer.styleOverrides }
+  if (classIndex === undefined) {
+    if (remaining) {
+      styleOverrides.default = remaining
+    } else {
+      delete styleOverrides.default
+    }
+  } else {
+    const classes = [...styleOverrides.classes ?? []]
+    classes[classIndex] = remaining
+    if (classes.some(Boolean)) {
+      styleOverrides.classes = classes
+    } else {
+      delete styleOverrides.classes
+    }
+  }
+
+  const updated = { ...layer, styleOverrides }
+  if (!Object.keys(styleOverrides).length) {
+    delete updated.styleOverrides
+  }
+  return updated
+})
+
+const resetLayerStyle = (state, { id }) => updateLayer(state, id, (layer) => {
+  if (layer.opacity === undefined && !layer.styleOverrides) {
+    return layer
+  }
+
+  const updated = { ...layer }
+  delete updated.opacity
+  delete updated.styleOverrides
+  return updated
 })
 
 export function layerIndexAfterMove (index, length, position) {
@@ -291,11 +371,15 @@ export function inspectableLayerIds (datasets, state) {
 
 const actions = {
   SET_QUERY: setQuery,
+  SET_EDITING_LAYER: setEditingLayer,
   DATASET_LOADING: datasetLoading,
   DATASET_LOADED: datasetLoaded,
   REMOVE_LAYER: removeLayer,
   SET_SUMMARY: setSummary,
   SET_LAYER_HIDDEN: setLayerHidden,
+  SET_LAYER_COLOUR: setLayerColour,
+  SET_LAYER_OPACITY: setLayerOpacity,
+  RESET_LAYER_STYLE: resetLayerStyle,
   MOVE_LAYER: moveLayer,
   SET_LAYER_ORDER: setLayerOrder,
   SEARCH_STARTED: searchStarted,

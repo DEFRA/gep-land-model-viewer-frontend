@@ -6,10 +6,11 @@ const menuItemClassName = ({ highlighted }) => [
   highlighted && 'im-c-popup-menu__item--selected'
 ].filter(Boolean).join(' ')
 
-export function ActionsMenu ({ label, items, portalContainerRef, disabled = false }) {
+export function ActionsMenu ({ label, items, portalContainerRef, triggerRef, disabled = false }) {
   return (
     <Menu.Root modal={false} disabled={disabled} highlightItemOnHover={false}>
       <Menu.Trigger
+        ref={triggerRef}
         className='im-c-map-button app-map__contents-icon-button'
         aria-label={`Layer actions for ${label}`}
       >
