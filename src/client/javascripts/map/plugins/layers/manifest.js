@@ -17,8 +17,8 @@ function contentsPanelTitle ({ pluginState, pluginConfig, appState }) {
     return 'Contents'
   }
 
-  const dataset = pluginConfig.datasets.find(dataset => dataset.id === editingLayer.id)
-  const layer = layers.find(layer => layer.id === editingLayer.id)
+  const dataset = pluginConfig.datasets.find(candidate => candidate.id === editingLayer.id)
+  const layer = layers.find(candidate => candidate.id === editingLayer.id)
   if (!dataset || !layer?.ready) {
     return 'Contents'
   }

@@ -37,8 +37,8 @@ function registerLoadRecovery (map, detailLayer, loadController) {
   detailLayer.on('change:visible', retryFailedViewport)
 }
 
-function registerSharedCanvasOpacity (layers, opacity) {
-  let canvasOpacity = String(opacity)
+function registerSharedCanvasOpacity (layers, initialOpacity) {
+  let canvasOpacity = String(initialOpacity)
   const applyOpacity = (event) => {
     const { style } = event.context.canvas
     if (style.opacity !== canvasOpacity) {
@@ -130,15 +130,15 @@ export async function createFlatGeobufLayer (dataset, layerId, map) {
 
   return {
     layers,
-    applyStyle (styleConfig) {
-      detail.updateStyleVariables(buildColourVariables(styleConfig))
-      overviewLayer?.applyStyle(styleConfig)
+    applyStyle (next) {
+      detail.updateStyleVariables(buildColourVariables(next))
+      overviewLayer?.applyStyle(next)
     },
     setOpacity: sharedCanvas
       ? registerSharedCanvasOpacity(layers, opacity)
-      : (opacity) => {
-          detail.setOpacity(opacity)
-          overviewLayer?.setOpacity(opacity)
+      : (next) => {
+          detail.setOpacity(next)
+          overviewLayer?.setOpacity(next)
         }
   }
 }

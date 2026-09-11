@@ -14,14 +14,14 @@ export function OpacityInput ({ opacity, inputId, onCommit }) {
   const errorId = `${inputId}-error`
   const value = draft ?? String(percentage)
 
-  const apply = (percentage) => {
+  const apply = (nextPercentage) => {
     setDraft(null)
     setError(false)
-    onCommit(percentage / 100)
+    onCommit(nextPercentage / 100)
   }
 
-  const commit = (value) => {
-    const next = parsePercentage(value)
+  const commit = (nextValue) => {
+    const next = parsePercentage(nextValue)
     if (next === null) {
       setError(true)
       return

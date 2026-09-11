@@ -12,8 +12,8 @@ function createCogDatasetLayer (options, styleConfig) {
 
   return {
     layers: [layer],
-    applyStyle: styleConfig => layer.setStyle(cogStyleFor(styleConfig)),
-    setOpacity: opacity => layer.setOpacity(opacity)
+    applyStyle: next => layer.setStyle(cogStyleFor(next)),
+    setOpacity: next => layer.setOpacity(next)
   }
 }
 

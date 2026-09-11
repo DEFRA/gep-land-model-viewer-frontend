@@ -5,6 +5,8 @@
 }
 
 .app-map__edit-layer-view {
+  padding: 0 govuk-spacing(3) govuk-spacing(3);
+
   .govuk-label,
   .govuk-hint,
   .govuk-input,
@@ -128,10 +130,6 @@
 
 .app-map .app-map__reset-style {
   margin-top: govuk-spacing(3);
-}
-
-.app-map__edit-layer-view {
-  padding: 0 govuk-spacing(3) govuk-spacing(3);
 }
 
 .app-map .app-map__editor-back {

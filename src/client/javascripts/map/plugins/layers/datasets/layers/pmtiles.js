@@ -60,7 +60,7 @@ export async function createPmtilesLayer (url, layerId, { styleConfig, maxZoom, 
 
   return {
     layers: [layer],
-    applyStyle: styleConfig => layer.setStyle(buildVectorStyle(styleConfig)),
-    setOpacity: opacity => layer.setOpacity(opacity)
+    applyStyle: next => layer.setStyle(buildVectorStyle(next)),
+    setOpacity: next => layer.setOpacity(next)
   }
 }

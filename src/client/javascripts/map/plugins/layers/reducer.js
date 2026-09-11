@@ -171,6 +171,17 @@ const setLayerOpacity = (state, { id, opacity }) => updateLayer(state, id, (laye
   return updated
 })
 
+function updateDefinitionColour (previous, part, colour) {
+  const definition = { ...previous }
+  if (colour === undefined) {
+    delete definition[part]
+  } else {
+    definition[part] = part === 'stroke' ? { color: [...colour] } : [...colour]
+  }
+
+  return Object.keys(definition).length ? definition : undefined
+}
+
 const setLayerColour = (state, { id, classIndex, part, colour }) => updateLayer(state, id, (layer) => {
   const previous = classIndex === undefined
     ? layer.styleOverrides?.default
@@ -179,14 +190,7 @@ const setLayerColour = (state, { id, classIndex, part, colour }) => updateLayer(
     return layer
   }
 
-  const definition = { ...previous }
-  if (colour === undefined) {
-    delete definition[part]
-  } else {
-    definition[part] = part === 'stroke' ? { color: [...colour] } : [...colour]
-  }
-
-  const remaining = Object.keys(definition).length ? definition : undefined
+  const remaining = updateDefinitionColour(previous, part, colour)
   const styleOverrides = { ...layer.styleOverrides }
   if (classIndex === undefined) {
     if (remaining) {

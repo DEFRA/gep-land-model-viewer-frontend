@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 
-export const LinkButton = forwardRef(function LinkButton (
+export const LinkButton = forwardRef(function LinkButtonComponent (
   /** @type {import('react').ComponentProps<'button'>} */ { className = '', children, ...props }, ref
 ) {
   return (

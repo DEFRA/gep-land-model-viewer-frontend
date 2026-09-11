@@ -10,9 +10,10 @@ const COLOUR_PARTS = { fill: 'Fill', stroke: 'Outline' }
 
 function ColourPickerControls ({ definition, part, partLabel, inputId, hexLabel, onCommit }) {
   const selectedColour = colourForDefinition(definition, part)
-  const colour = hexForColour(selectedColour.slice(0, 3))
+  const colour = hexForColour(selectedColour.slice(0, RGBA_ALPHA_INDEX))
   const [draft, setDraft] = useState(null)
   const [error, setError] = useState(false)
+  const hintId = `${inputId}-hint`
   const errorId = `${inputId}-error`
   const value = draft ?? colour
   const previewHex = normaliseHex(value)
@@ -21,13 +22,13 @@ function ColourPickerControls ({ definition, part, partLabel, inputId, hexLabel,
     ? { ...definition, fill: previewColour }
     : { ...definition, stroke: { ...definition.stroke, color: previewColour } }
 
-  const updateDraft = (value) => {
-    setDraft(value)
+  const updateDraft = (nextValue) => {
+    setDraft(nextValue)
     setError(false)
   }
 
-  const commit = (value) => {
-    const hex = normaliseHex(value)
+  const commit = (nextValue) => {
+    const hex = normaliseHex(nextValue)
     if (!hex) {
       setError(true)
       return
@@ -49,7 +50,7 @@ function ColourPickerControls ({ definition, part, partLabel, inputId, hexLabel,
       />
       <div className={`govuk-form-group govuk-!-margin-bottom-0${error ? ' govuk-form-group--error' : ''}`}>
         <label className='govuk-label govuk-label--s' htmlFor={inputId}>{hexLabel}</label>
-        <div className='govuk-hint' id={`${inputId}-hint`}>For example, #00703c</div>
+        <div className='govuk-hint' id={hintId}>For example, #00703c</div>
         {error && (
           <ErrorMessage id={errorId}>Enter 3 or 6 hexadecimal characters.</ErrorMessage>
         )}
@@ -61,7 +62,7 @@ function ColourPickerControls ({ definition, part, partLabel, inputId, hexLabel,
             spellcheck={false}
             value={value}
             aria-invalid={error || undefined}
-            aria-describedby={`${inputId}-hint${error ? ` ${errorId}` : ''}`}
+            aria-describedby={error ? `${hintId} ${errorId}` : hintId}
             onInput={event => updateDraft(event.currentTarget.value)}
             onBlur={event => commit(event.currentTarget.value)}
             onKeyDown={(event) => {

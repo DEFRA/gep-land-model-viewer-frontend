@@ -223,7 +223,7 @@ export function editableStyleEntries (styleConfig) {
 
   return [
     ...styleConfig.classes.map((definition, classIndex) => ({ key: `class:${classIndex}`, classIndex, definition })),
-    { key: 'default', classIndex: undefined, definition: styleConfig.default }
+    { key: 'default', definition: styleConfig.default }
   ].filter(({ definition }) => hasVisibleFill(definition) || hasVisibleStroke(definition))
 }
 
