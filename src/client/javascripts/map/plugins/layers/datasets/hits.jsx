@@ -15,6 +15,8 @@ import { isCoarsePointer } from '../../../pointer.js'
 import { queryFgbNearPoint } from './layers/fgb-lookup.js'
 import { DatasetAttributes } from './DatasetAttributes.jsx'
 import { visibleClassForBands, visibleClassForFieldValue } from './style-config.js'
+import { getLayerStyle, getLayerTheme } from './layer-style.js'
+import { isLayerStateVisible } from '../reducer.js'
 
 const FINE_POINTER_HIT_TOLERANCE = 3
 const COARSE_POINTER_HIT_TOLERANCE = 12
@@ -79,17 +81,30 @@ function createHighlight (map) {
  *
  * @param {import('ol/Map').default} map
  * @param {Array<object>} datasets
+ * @param {(id: string) => import('../reducer.js').LayerState | undefined} getLayerState Current layer state
  * @returns {import('../inspection/index.js').HitSource & { dispose: () => void }}
  */
-export function createDatasetHits (map, datasets) {
+export function createDatasetHits (map, datasets, getLayerState) {
   const highlight = createHighlight(map)
+  const getStyle = dataset => {
+    const { theme, styleConfig } = getLayerStyle(dataset, getLayerState(dataset.id))
+    return {
+      styleConfig,
+      isCurrent: () => {
+        const layer = getLayerState(dataset.id)
+        return isLayerStateVisible(layer) && getLayerTheme(dataset, layer) === theme
+      }
+    }
+  }
+
+  const context = { map, datasets, highlight, getStyle }
 
   return {
     async getHits (coords, { signal }) {
       const pixel = map.getPixelFromCoordinate(coords)
-      const { hits: vectorHits, datasetIds: vectorHitDatasetIds } = vectorHitsAt(map, datasets, highlight, pixel, coords)
-      const cogOverviewHits = cogOverviewHitsAt(map, datasets, highlight, pixel, coords, vectorHitDatasetIds)
-      const rasterHits = rasterHitsAt(map, datasets, highlight, pixel, coords)
+      const { hits: vectorHits, datasetIds: vectorHitDatasetIds } = vectorHitsAt(context, pixel, coords)
+      const cogOverviewHits = cogOverviewHitsAt(context, pixel, coords, vectorHitDatasetIds)
+      const rasterHits = rasterHitsAt(context, pixel, coords)
       const wmsHits = await wmsHitsAt(map, datasets, highlight, coords, signal)
       return [...vectorHits, ...cogOverviewHits, ...rasterHits, ...wmsHits]
     },
@@ -113,19 +128,24 @@ function isOverviewLayer (layer, datasets) {
   return layer.get('id') === overviewIdFor(layerIdFor(dataset))
 }
 
-function vectorHitsAt (map, datasets, highlight, pixel, coords) {
+function vectorHitsAt ({ map, datasets, highlight, getStyle }, pixel, coords) {
   const grouped = new Map()
 
   const collect = (feature, layer) => {
     const dataset = datasetForLayer(layer, datasets)
-    if (!dataset || !featureHasVisibleStyle(feature, dataset.source.styleConfig)) {
+    if (!dataset) {
+      return
+    }
+
+    const { styleConfig, isCurrent } = getStyle(dataset)
+    if (!featureHasVisibleStyle(feature, styleConfig)) {
       return
     }
     const group = grouped.get(dataset.id)
     if (group) {
       group.matches.push({ feature, layer })
     } else {
-      grouped.set(dataset.id, { dataset, matches: [{ feature, layer }] })
+      grouped.set(dataset.id, { dataset, matches: [{ feature, layer }], isCurrent })
     }
   }
 
@@ -140,7 +160,7 @@ function vectorHitsAt (map, datasets, highlight, pixel, coords) {
   })
 
   return {
-    hits: [...grouped.values()].map(({ dataset, matches }) => makeVectorHit(map, highlight, dataset, matches, coords)),
+    hits: [...grouped.values()].map(({ dataset, matches, isCurrent }) => makeVectorHit({ map, highlight, dataset, matches, coords, isCurrent })),
     datasetIds: new Set(grouped.keys())
   }
 }
@@ -150,7 +170,7 @@ function featureHasVisibleStyle (feature, styleConfig) {
   return visibleClassForFieldValue(styleConfig, value) !== null
 }
 
-function makeVectorHit (map, highlight, dataset, matches, coords) {
+function makeVectorHit ({ map, highlight, dataset, matches, coords, isCurrent }) {
   const overviewId = overviewIdFor(layerIdFor(dataset))
   const detailMatches = matches.filter((match) => match.layer.get('id') !== overviewId)
   // Overview tiles carry generalised RenderFeatures, the real geometry comes
@@ -160,7 +180,7 @@ function makeVectorHit (map, highlight, dataset, matches, coords) {
   return {
     label: dataset.label,
     panelTitle: DATASET_PANEL_TITLE,
-    stillValid: () => matches.some((match) => match.layer.getVisible()),
+    stillValid: () => isCurrent() && matches.some((match) => match.layer.getVisible()),
 
     select () {
       highlight.show(geometries)
@@ -173,6 +193,10 @@ function makeVectorHit (map, highlight, dataset, matches, coords) {
 
       const resolution = map.getView().getResolution()
       const nearest = await queryFgbNearPoint(dataset.source.url, coords, resolution, { signal })
+      if (signal.aborted || !isCurrent()) {
+        return []
+      }
+
       if (!nearest) {
         return []
       }
@@ -186,7 +210,7 @@ function makeVectorHit (map, highlight, dataset, matches, coords) {
   }
 }
 
-function cogOverviewHitsAt (map, datasets, highlight, pixel, coords, vectorHitDatasetIds) {
+function cogOverviewHitsAt ({ map, datasets, highlight, getStyle }, pixel, coords, vectorHitDatasetIds) {
   const layers = map.getLayers().getArray()
 
   return layers.flatMap(layer => {
@@ -207,17 +231,17 @@ function cogOverviewHitsAt (map, datasets, highlight, pixel, coords, vectorHitDa
       return []
     }
 
-    const styleConfig = dataset.source.styleConfig
-    const classDefinition = visibleClassForBands(styleConfig, layer.getData(pixel))
+    const { styleConfig, isCurrent } = getStyle(dataset)
+    const classDefinition = visibleClassForBands(styleConfig, layer.getData(pixel), layer.getSource())
     if (!classDefinition) {
       return []
     }
 
-    return [makeCogOverviewHit(map, highlight, dataset, detailLayer, styleConfig, classDefinition, coords)]
+    return [makeCogOverviewHit({ map, highlight, dataset, detailLayer, styleConfig, classDefinition, coords, isCurrent })]
   })
 }
 
-function makeCogOverviewHit (map, highlight, dataset, detailLayer, styleConfig, classDefinition, coords) {
+function makeCogOverviewHit ({ map, highlight, dataset, detailLayer, styleConfig, classDefinition, coords, isCurrent }) {
   // The COG pixel has a class but no geometry, so the FGB lookup supplies it.
   let geometries = []
 
@@ -225,7 +249,7 @@ function makeCogOverviewHit (map, highlight, dataset, detailLayer, styleConfig, 
     label: dataset.label,
     panelTitle: DATASET_PANEL_TITLE,
     // Both layers toggle together; detail is the dataset's visibility state.
-    stillValid: () => detailLayer.getVisible(),
+    stillValid: () => isCurrent() && detailLayer.getVisible(),
 
     select () {
       highlight.show(geometries)
@@ -234,6 +258,10 @@ function makeCogOverviewHit (map, highlight, dataset, detailLayer, styleConfig, 
     async loadDetails ({ signal }) {
       const resolution = map.getView().getResolution()
       const nearest = await queryFgbNearPoint(dataset.source.url, coords, resolution, { signal })
+      if (signal.aborted || !isCurrent()) {
+        return []
+      }
+
       if (!nearest) {
         return [attributesForClass(styleConfig, classDefinition)]
       }
@@ -262,15 +290,15 @@ function featureProperties (feature) {
   )
 }
 
-function rasterHitsAt (map, datasets, highlight, pixel, coords) {
+function rasterHitsAt ({ map, datasets, highlight, getStyle }, pixel, coords) {
   return map.getLayers().getArray().flatMap(layer => {
     const dataset = datasetForLayer(layer, datasets)
     if (dataset?.source.type !== 'cog' || !layer.getVisible()) {
       return []
     }
 
-    const styleConfig = dataset.source.styleConfig
-    const classDefinition = visibleClassForBands(styleConfig, layer.getData(pixel))
+    const { styleConfig, isCurrent } = getStyle(dataset)
+    const classDefinition = visibleClassForBands(styleConfig, layer.getData(pixel), layer.getSource())
     if (!classDefinition) {
       return []
     }
@@ -279,7 +307,7 @@ function rasterHitsAt (map, datasets, highlight, pixel, coords) {
     return [{
       label: dataset.label,
       panelTitle: DATASET_PANEL_TITLE,
-      stillValid: () => layer.getVisible(),
+      stillValid: () => isCurrent() && layer.getVisible(),
       select: () => highlight.showPoint(coords),
       loadDetails: async () => [attributes],
       render: (details) => <DatasetAttributes label={dataset.label} features={details} />

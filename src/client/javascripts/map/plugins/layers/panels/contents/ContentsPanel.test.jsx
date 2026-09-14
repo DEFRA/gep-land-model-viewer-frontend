@@ -2,13 +2,14 @@
 import './test-helpers/browser-mocks.js'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { waitFor } from '@testing-library/dom'
-import { fireEvent, render } from '@testing-library/preact'
+import { act, fireEvent, render } from '@testing-library/preact'
 import { ContentsPanelContent } from './ContentsPanelContent.jsx'
 import { useReducer } from 'react'
 import { actions, initialState } from '../../reducer.js'
 import { KeyPanel } from '../key/KeyPanel.jsx'
 import sssiStyle from '../../../../../../data/styles/sssi.json'
 import { blurInput } from './test-helpers/preact.js'
+import { THEMED_DATASET } from '../../datasets/test-helpers/themed-dataset.js'
 
 const STYLED_DATASET = {
   id: 'styled',
@@ -17,13 +18,17 @@ const STYLED_DATASET = {
     type: 'fgb',
     opacity: 0.7,
     styleConfig: {
-      type: 'match',
-      classes: [
-        { label: 'Woodland', fill: [0, 112, 60, 1] },
-        { label: 'Hidden class', fill: [0, 0, 0, 0] },
-        { label: 'Grassland', fill: [0, 112, 60, 1] }
-      ],
-      default: { label: 'Other', fill: [255, 255, 255, 1] }
+      themes: [{
+        label: 'Land cover',
+        type: 'match',
+        band: 1,
+        classes: [
+          { label: 'Woodland', fill: [0, 112, 60, 1] },
+          { label: 'Hidden class', fill: [0, 0, 0, 0] },
+          { label: 'Grassland', fill: [0, 112, 60, 1] }
+        ],
+        default: { label: 'Other', fill: [255, 255, 255, 1] }
+      }]
     }
   }
 }
@@ -233,11 +238,14 @@ describe('ContentsPanel', () => {
   })
 })
 
-function StatefulContents ({ dataset = STYLED_DATASET, open = true, breakpoint = 'desktop' }) {
+function StatefulContents ({ dataset = STYLED_DATASET, open = true, breakpoint = 'desktop', stateRef }) {
   const [state, reduce] = useReducer((state, action) => {
     dispatch(action)
     return actions[action.type](state, action.payload)
   }, { ...initialState, layers: [{ id: dataset.id, ready: true }] })
+  if (stateRef) {
+    stateRef.current = { state, dispatch: reduce }
+  }
   const props = {
     pluginConfig: { datasets: [dataset], styleNonce: 'test-style-nonce' },
     pluginState: { ...state, dispatch: reduce },
@@ -252,14 +260,53 @@ function StatefulContents ({ dataset = STYLED_DATASET, open = true, breakpoint =
   )
 }
 
-function openEditor (dataset = STYLED_DATASET, breakpoint = 'desktop') {
-  const view = render(<StatefulContents dataset={dataset} breakpoint={breakpoint} />)
+function openEditor (dataset = STYLED_DATASET, breakpoint = 'desktop', stateRef) {
+  const view = render(<StatefulContents dataset={dataset} breakpoint={breakpoint} stateRef={stateRef} />)
   fireEvent.click(view.getByRole('button', { name: `Layer actions for ${dataset.label}` }))
   fireEvent.click(view.getByRole('menuitem', { name: 'Edit layer' }))
   return view
 }
 
 describe('layer editing integration', () => {
+  test('keeps theme edits independent', async () => {
+    const stateRef = { current: null }
+    const view = openEditor(THEMED_DATASET, 'desktop', stateRef)
+    const switchTheme = themeBand => act(() => stateRef.current.dispatch({
+      type: 'SET_LAYER_THEME', payload: { id: THEMED_DATASET.id, themeBand }
+    }))
+    const editColour = (label, value) => {
+      fireEvent.click(view.getByRole('button', { name: `Edit colour for ${label}` }))
+      const hex = view.getByRole('textbox', { name: 'Hex colour' })
+      fireEvent.input(hex, { target: { value } })
+      fireEvent.keyDown(hex, { key: 'Enter' })
+    }
+
+    editColour('Potato', '#ff0000')
+    fireEvent.input(view.getByRole('textbox', { name: 'Hex colour' }), { target: { value: '#1' } })
+    switchTheme(2)
+    expect(view.queryByRole('textbox', { name: 'Hex colour' })).toBeNull()
+    expect(view.queryByRole('button', { name: 'Edit colour for Potato' })).toBeNull()
+    expect(view.container.querySelector('.app-map__key-style-row').textContent).toContain('Lincolnshire')
+    editColour('Lincolnshire', '#008000')
+
+    switchTheme(1)
+    fireEvent.click(view.getByRole('button', { name: 'Edit colour for Potato' }))
+    expect(view.getByRole('textbox', { name: 'Hex colour' }).value).toBe('#ff0000')
+    fireEvent.click(view.getByRole('button', { name: 'Reset to defaults' }))
+    await waitFor(() => expect(view.queryByRole('textbox', { name: 'Hex colour' })).toBeNull())
+    fireEvent.click(view.getByRole('button', { name: 'Edit colour for Potato' }))
+    expect(view.getByRole('textbox', { name: 'Hex colour' }).value).toBe('#702601')
+
+    switchTheme(2)
+    fireEvent.click(view.getByRole('button', { name: 'Edit colour for Lincolnshire' }))
+    expect(view.getByRole('textbox', { name: 'Hex colour' }).value).toBe('#008000')
+
+    view.unmount()
+    const fresh = openEditor(THEMED_DATASET)
+    fireEvent.click(fresh.getByRole('button', { name: 'Edit colour for Potato' }))
+    expect(fresh.getByRole('textbox', { name: 'Hex colour' }).value).toBe('#702601')
+  })
+
   test('retains colour edits when navigating between mobile editor views', () => {
     const view = openEditor(STYLED_DATASET, 'mobile')
     const swatch = view.getByRole('button', { name: 'Edit colour for Grassland' })
@@ -288,13 +335,13 @@ describe('layer editing integration', () => {
     expect(hex.value).toBe('F0A')
     expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_LAYER_COLOUR' }))
     fireEvent.keyDown(hex, { key: 'Enter' })
-    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { id: 'styled', classIndex: 2, part: 'fill', colour: [255, 0, 170, 1] } })
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { themeBand: 1, id: 'styled', classIndex: 2, part: 'fill', colour: [255, 0, 170, 1] } })
     expect(hex.value).toBe('#ff00aa')
     const keyRows = view.container.querySelectorAll('.app-map__key-style-row')
     expect(keyRows[1].querySelector('span').style.backgroundColor).toBe('rgb(255, 0, 170)')
     fireEvent.input(hex, { target: { value: '#00703c' } })
     blurInput(hex)
-    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { id: 'styled', classIndex: 2, part: 'fill', colour: undefined } })
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { themeBand: 1, id: 'styled', classIndex: 2, part: 'fill', colour: undefined } })
   })
 
   test('retains committed settings after leaving or closing the editor', async () => {

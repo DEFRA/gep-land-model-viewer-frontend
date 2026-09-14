@@ -33,16 +33,16 @@ function wmsLayerNames (dataset, layers) {
   return names ? names.split(',') : undefined
 }
 
-async function createDatasetLayer (dataset, map) {
+async function createDatasetLayer (dataset, map, style) {
   const layerId = layerIdFor(dataset)
 
   switch (dataset.source.type) {
     case 'cog':
-      return createCogLayer(dataset, layerId)
+      return createCogLayer(dataset, layerId, style)
     case 'fgb':
-      return createFlatGeobufLayer(dataset, layerId, map)
+      return createFlatGeobufLayer(dataset, layerId, map, style)
     case 'wms':
-      return createWmsLayer(dataset, layerId)
+      return createWmsLayer(dataset, layerId, style)
     default:
       return null
   }
@@ -71,18 +71,18 @@ function syncDatasetLayers (layers, layerState, zIndex) {
 
 function syncDatasetStyle (loadedDataset, layerState) {
   const { dataset, applyStyle, setOpacity } = loadedDataset
-  const styleOverrides = layerState?.styleOverrides
+  const { theme, overrides, styleConfig, opacity } = getLayerStyle(dataset, layerState)
 
-  if (styleOverrides !== loadedDataset.styleOverrides && dataset.source.styleConfig) {
-    applyStyle(getLayerStyle(dataset, layerState).styleConfig)
+  if (theme && (theme !== loadedDataset.theme || overrides !== loadedDataset.overrides)) {
+    applyStyle(styleConfig)
   }
 
-  const opacity = layerState?.opacity ?? dataset.source.opacity
   if (opacity !== loadedDataset.opacity) {
     setOpacity(opacity)
   }
 
-  loadedDataset.styleOverrides = styleOverrides
+  loadedDataset.theme = theme
+  loadedDataset.overrides = overrides
   loadedDataset.opacity = opacity
 }
 
@@ -125,7 +125,8 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
     loadingDatasetIds.add(id)
 
     try {
-      const datasetLayer = await createDatasetLayer(dataset, map)
+      const style = getLayerStyle(dataset, layerStatesById.get(id))
+      const datasetLayer = await createDatasetLayer(dataset, map, style)
       if (!datasetLayer?.layers.length) {
         throw new Error('No OpenLayers layers were created')
       }
@@ -147,7 +148,9 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
       const loadedDataset = {
         dataset,
         ...datasetLayer,
-        opacity: dataset.source.opacity,
+        theme: style.theme,
+        overrides: style.overrides,
+        opacity: style.opacity,
         metadata: metadataFor(dataset, layers)
       }
       loadedDatasetsById.set(id, loadedDataset)

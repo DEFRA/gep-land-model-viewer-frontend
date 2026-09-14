@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/preact'
+import { THEMED_DATASET } from './datasets/test-helpers/themed-dataset.js'
 
 vi.mock('@defra/interactive-map', () => ({
   EVENTS: { MAP_STYLE_CHANGE: 'map:stylechange' }
@@ -22,7 +23,7 @@ const { getAttribution } = await import('./datasets/attribution.js')
 const { createLayerController } = await import('./layer-controller.js')
 const { LayersInit } = await import('./LayersInit.jsx')
 
-const DATASETS = [{ id: 'woodland', label: 'Ancient Woodland' }]
+const DATASETS = [{ ...THEMED_DATASET, id: 'woodland', label: 'Ancient Woodland' }]
 const MAP_STYLE = { id: 'os-outdoor-ngd', attribution: '© Ordnance Survey' }
 
 let view
@@ -111,6 +112,26 @@ afterEach(() => {
 })
 
 describe('LayersInit', () => {
+  test('identify reads current layer state and reconciles on theme changes without recreating sources', () => {
+    const initial = { id: 'woodland', ready: true }
+    renderInit({ pluginState: pluginState({ layers: [initial] }) })
+    const getLayerState = createDatasetHits.mock.calls[0][2]
+    expect(getLayerState('woodland')).toBe(initial)
+    inspection.reconcile.mockClear()
+
+    const switched = { ...initial, themeBand: 2 }
+    view.rerender(<LayersInit {...props({ pluginState: pluginState({ layers: [switched] }) })} />)
+    expect(getLayerState('woodland')).toBe(switched)
+    expect(inspection.reconcile).toHaveBeenCalledOnce()
+    expect(createDatasetHits).toHaveBeenCalledOnce()
+
+    inspection.reconcile.mockClear()
+    const edited = { ...switched, styleOverridesByTheme: { 2: { classes: [{ fill: [255, 0, 0, 1] }] } } }
+    view.rerender(<LayersInit {...props({ pluginState: pluginState({ layers: [edited] }) })} />)
+    expect(getLayerState('woodland')).toBe(edited)
+    expect(inspection.reconcile).not.toHaveBeenCalled()
+  })
+
   test('composes the fixed inspection sources directly', () => {
     renderInit()
 
@@ -125,7 +146,7 @@ describe('LayersInit', () => {
     })
     expect(createGridSummary).toHaveBeenCalledWith(services.eventBus, olMap)
     expect(createFeatureSummary).toHaveBeenCalledWith(olMap)
-    expect(createDatasetHits).toHaveBeenCalledWith(olMap, DATASETS)
+    expect(createDatasetHits).toHaveBeenCalledWith(olMap, DATASETS, expect.any(Function))
     expect(createLayerController).toHaveBeenCalledWith({
       map: olMap,
       datasets: DATASETS,

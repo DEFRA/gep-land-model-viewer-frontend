@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest'
 import {
   initialState,
   actions,
-  inspectableLayerIds,
+  inspectableLayers,
   isLayerVisible
 } from './reducer.js'
 
@@ -11,40 +11,60 @@ const layer = id => ({ id, ready: true })
 const layerIds = state => state.layers.map(({ id }) => id)
 
 describe('layers reducer', () => {
+  test('switching clears the picker selection and a late colour commit still targets its original theme', () => {
+    const initial = {
+      ...initialState,
+      layers: [layer('themed')],
+      editingLayer: { id: 'themed', colourKey: 'class:0' }
+    }
+    const switched = actions.SET_LAYER_THEME(initial, { id: 'themed', themeBand: 2 })
+    const edited = actions.SET_LAYER_COLOUR(switched, {
+      id: 'themed', themeBand: 1, classIndex: 0, part: 'fill', colour: [255, 0, 0, 1]
+    })
+
+    expect(edited.editingLayer).toEqual({ id: 'themed' })
+    expect(edited.layers[0].themeBand).toBe(2)
+    expect(edited.layers[0].styleOverridesByTheme[1].classes[0].fill).toEqual([255, 0, 0, 1])
+    expect(edited.layers[0].styleOverridesByTheme[2]).toBeUndefined()
+    expect(actions.SET_LAYER_THEME(edited, { id: 'themed', themeBand: 2 })).toBe(edited)
+  })
+
   test('stores sparse style settings, ignores unchanged values and clears defaults', () => {
     const initial = { ...initialState, layers: [{ ...layer('peat'), hidden: true, minZoom: 7 }] }
-    const coloured = actions.SET_LAYER_COLOUR(initial, { id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })
+    const coloured = actions.SET_LAYER_COLOUR(initial, { themeBand: 1, id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })
     const styled = actions.SET_LAYER_OPACITY(coloured, { id: 'peat', opacity: 0.01 })
-    expect(styled.layers[0]).toEqual({ ...initial.layers[0], opacity: 0.01, styleOverrides: { classes: [{ fill: [1, 2, 3, 1] }] } })
-    expect(actions.SET_LAYER_COLOUR(styled, { id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })).toBe(styled)
+    expect(styled.layers[0]).toEqual({ ...initial.layers[0], opacity: 0.01, styleOverridesByTheme: { 1: { classes: [{ fill: [1, 2, 3, 1] }] } } })
+    expect(actions.SET_LAYER_COLOUR(styled, { themeBand: 1, id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })).toBe(styled)
     expect(actions.SET_LAYER_OPACITY(styled, { id: 'peat', opacity: 0.01 })).toBe(styled)
-    const clearedColour = actions.SET_LAYER_COLOUR(styled, { id: 'peat', classIndex: 0, part: 'fill', colour: undefined })
-    expect(clearedColour.layers[0].styleOverrides).toBeUndefined()
+    const clearedColour = actions.SET_LAYER_COLOUR(styled, { themeBand: 1, id: 'peat', classIndex: 0, part: 'fill', colour: undefined })
+    expect(clearedColour.layers[0].styleOverridesByTheme).toBeUndefined()
     const cleared = actions.SET_LAYER_OPACITY(clearedColour, { id: 'peat', opacity: undefined })
     expect(cleared).toEqual(initial)
-    expect(actions.RESET_LAYER_STYLE(styled, { id: 'peat' })).toEqual(initial)
-    expect(actions.RESET_LAYER_STYLE(initial, { id: 'peat' })).toBe(initial)
+    expect(actions.RESET_LAYER_STYLE(styled, { themeBand: 1, id: 'peat' })).toEqual(initial)
+    expect(actions.RESET_LAYER_STYLE(initial, { themeBand: 1, id: 'peat' })).toBe(initial)
   })
 
   test('preserves other class overrides, order and hidden state until removal', () => {
     const initial = { ...initialState, layers: [layer('peat'), layer('wood')] }
-    const first = actions.SET_LAYER_COLOUR(initial, { id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })
-    const second = actions.SET_LAYER_COLOUR(first, { id: 'peat', classIndex: 2, part: 'stroke', colour: [7, 8, 9, 0.5] })
-    const withDefault = actions.SET_LAYER_COLOUR(second, { id: 'peat', part: 'fill', colour: [4, 5, 6, 1] })
-    const cleared = actions.SET_LAYER_COLOUR(withDefault, { id: 'peat', classIndex: 0, part: 'fill' })
+    const first = actions.SET_LAYER_COLOUR(initial, { themeBand: 1, id: 'peat', classIndex: 0, part: 'fill', colour: [1, 2, 3, 1] })
+    const second = actions.SET_LAYER_COLOUR(first, { themeBand: 1, id: 'peat', classIndex: 2, part: 'stroke', colour: [7, 8, 9, 0.5] })
+    const withDefault = actions.SET_LAYER_COLOUR(second, { themeBand: 1, id: 'peat', part: 'fill', colour: [4, 5, 6, 1] })
+    const cleared = actions.SET_LAYER_COLOUR(withDefault, { themeBand: 1, id: 'peat', classIndex: 0, part: 'fill' })
     const hidden = actions.SET_LAYER_HIDDEN(cleared, { id: 'peat', hidden: true })
     const moved = actions.MOVE_LAYER(hidden, { id: 'peat', position: 'bottom' })
     expect(moved.layers[1]).toEqual({
       ...layer('peat'),
       hidden: true,
-      styleOverrides: {
-        classes: [undefined, undefined, { stroke: { color: [7, 8, 9, 0.5] } }],
-        default: { fill: [4, 5, 6, 1] }
+      styleOverridesByTheme: {
+        1: {
+          classes: [undefined, undefined, { stroke: { color: [7, 8, 9, 0.5] } }],
+          default: { fill: [4, 5, 6, 1] }
+        }
       }
     })
     const removed = actions.REMOVE_LAYER(moved, { id: 'peat' })
     expect(actions.DATASET_LOADING(removed, { id: 'peat' }).layers[0]).toEqual({ id: 'peat', ready: false })
-    expect(actions.SET_LAYER_COLOUR(removed, { id: 'peat', part: 'fill', colour: [1, 2, 3, 1] })).toBe(removed)
+    expect(actions.SET_LAYER_COLOUR(removed, { themeBand: 1, id: 'peat', part: 'fill', colour: [1, 2, 3, 1] })).toBe(removed)
     expect(actions.SET_LAYER_OPACITY(removed, { id: 'peat', opacity: 0.5 })).toBe(removed)
   })
 
@@ -53,16 +73,16 @@ describe('layers reducer', () => {
     ['default', undefined]
   ])('stores and clears the outline independently of %s fill', (_label, classIndex) => {
     const initial = { ...initialState, layers: [layer('sssi')] }
-    const filled = actions.SET_LAYER_COLOUR(initial, { id: 'sssi', classIndex, part: 'fill', colour: [255, 0, 0, 0.8] })
-    const outlined = actions.SET_LAYER_COLOUR(initial, { id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })
-    const styled = actions.SET_LAYER_COLOUR(filled, { id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })
+    const filled = actions.SET_LAYER_COLOUR(initial, { themeBand: 1, id: 'sssi', classIndex, part: 'fill', colour: [255, 0, 0, 0.8] })
+    const outlined = actions.SET_LAYER_COLOUR(initial, { themeBand: 1, id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })
+    const styled = actions.SET_LAYER_COLOUR(filled, { themeBand: 1, id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })
     const definition = { fill: [255, 0, 0, 0.8], stroke: { color: [0, 0, 0, 1] } }
-    expect(styled.layers[0].styleOverrides).toEqual(classIndex === undefined ? { default: definition } : { classes: [definition] })
-    expect(actions.SET_LAYER_COLOUR(styled, { id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })).toBe(styled)
-    expect(actions.SET_LAYER_COLOUR(styled, { id: 'sssi', classIndex, part: 'stroke' })).toEqual(filled)
-    expect(actions.SET_LAYER_COLOUR(styled, { id: 'sssi', classIndex, part: 'fill' })).toEqual(outlined)
-    expect(actions.SET_LAYER_COLOUR(outlined, { id: 'sssi', classIndex, part: 'stroke' })).toEqual(initial)
-    expect(actions.RESET_LAYER_STYLE(styled, { id: 'sssi' })).toEqual(initial)
+    expect(styled.layers[0].styleOverridesByTheme[1]).toEqual(classIndex === undefined ? { default: definition } : { classes: [definition] })
+    expect(actions.SET_LAYER_COLOUR(styled, { themeBand: 1, id: 'sssi', classIndex, part: 'stroke', colour: [0, 0, 0, 1] })).toBe(styled)
+    expect(actions.SET_LAYER_COLOUR(styled, { themeBand: 1, id: 'sssi', classIndex, part: 'stroke' })).toEqual(filled)
+    expect(actions.SET_LAYER_COLOUR(styled, { themeBand: 1, id: 'sssi', classIndex, part: 'fill' })).toEqual(outlined)
+    expect(actions.SET_LAYER_COLOUR(outlined, { themeBand: 1, id: 'sssi', classIndex, part: 'stroke' })).toEqual(initial)
+    expect(actions.RESET_LAYER_STYLE(styled, { themeBand: 1, id: 'sssi' })).toEqual(initial)
   })
 
   test('starts with no layers or inspection result', () => {
@@ -211,11 +231,11 @@ describe('layers reducer', () => {
     expect(isLayerVisible(state, 'ready')).toBe(true)
     expect(isLayerVisible(state, 'hidden')).toBe(false)
     expect(isLayerVisible(state, 'loading')).toBe(false)
-    expect(inspectableLayerIds([
-      { id: 'ready' },
-      { id: 'hidden' },
-      { id: 'loading' }
-    ], state)).toEqual(['grid', 'ready'])
+    expect(inspectableLayers([
+      { id: 'ready', source: {} },
+      { id: 'hidden', source: {} },
+      { id: 'loading', source: {} }
+    ], state)).toEqual([{ id: 'grid' }, { id: 'ready', themeBand: undefined }])
   })
 
   test('starts a new inspection and clears the previous result', () => {

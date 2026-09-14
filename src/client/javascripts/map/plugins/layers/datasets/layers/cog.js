@@ -55,10 +55,11 @@ function waitForMetadata (source) {
  *
  * @param {object} dataset Dataset definition with a cog source
  * @param {string} layerId Map layer id
+ * @param {object} presentation Resolved layer style and opacity
  * @returns Dataset layer with raster styling and opacity controls
  */
-export async function createCogLayer (dataset, layerId) {
-  const { url, opacity, styleConfig, normalize, interpolate } = dataset.source
+export async function createCogLayer (dataset, layerId, { styleConfig, opacity }) {
+  const { url, normalize, interpolate } = dataset.source
 
   return createCogDatasetLayer({
     properties: { id: layerId },
@@ -73,7 +74,7 @@ export async function createCogLayer (dataset, layerId) {
  * @param {object} overview Overview definition with a cog url
  * @param {string} layerId Map layer id
  * @param {object} options
- * @param {object} options.styleConfig Style config
+ * @param {object} options.styleConfig Resolved style theme
  * @param {string} options.className Shared WebGL canvas class
  * @returns Dataset layer for the raster overview
  */

@@ -18,22 +18,42 @@ function mergeDefinition (definition, overrides) {
   }
 }
 
+function mergeThemeOverrides (theme, overrides) {
+  if (!theme || !overrides) {
+    return theme
+  }
+
+  return {
+    ...theme,
+    classes: theme.classes.map((definition, index) => mergeDefinition(definition, overrides.classes?.[index])),
+    ...(theme.default && { default: mergeDefinition(theme.default, overrides.default) })
+  }
+}
+
 /**
- * Combines dataset defaults with the layer's colour and opacity overrides.
+ * Resolves the selected theme, falling back to the first configured theme.
+ * @param {object} dataset
+ * @param {import('../reducer.js').LayerState} [layer]
+ */
+export function getLayerTheme (dataset, layer) {
+  const themes = dataset.source.styleConfig?.themes
+  return themes?.find(theme => theme.band === layer?.themeBand) ?? themes?.[0]
+}
+
+/**
+ * Derives presentation from immutable dataset config and page-local layer state.
+ * The original theme and its overrides retain their identity for renderer updates.
  * @param {object} dataset
  * @param {import('../reducer.js').LayerState} [layer]
  */
 export function getLayerStyle (dataset, layer) {
-  const defaults = dataset.source.styleConfig
-  const overrides = layer?.styleOverrides
-  let styleConfig = defaults
-  if (defaults && overrides) {
-    styleConfig = {
-      ...defaults,
-      classes: defaults.classes.map((definition, index) => mergeDefinition(definition, overrides.classes?.[index])),
-      ...(defaults.default && { default: mergeDefinition(defaults.default, overrides.default) })
-    }
-  }
+  const theme = getLayerTheme(dataset, layer)
+  const overrides = layer?.styleOverridesByTheme?.[theme?.band]
 
-  return { opacity: layer?.opacity ?? dataset.source.opacity, styleConfig }
+  return {
+    theme,
+    overrides,
+    styleConfig: mergeThemeOverrides(theme, overrides),
+    opacity: layer?.opacity ?? dataset.source.opacity
+  }
 }

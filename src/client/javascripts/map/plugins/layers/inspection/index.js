@@ -191,6 +191,10 @@ class Inspection {
   reconcile () {
     const { hits, hit } = this.getInspectionState()
     if (!hits.length) {
+      if (this.pending) {
+        this.cancelPending()
+        this.dispatch({ type: 'RESET_INSPECTION' })
+      }
       return
     }
 

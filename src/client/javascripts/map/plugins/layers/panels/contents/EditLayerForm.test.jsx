@@ -16,13 +16,17 @@ const STYLED_DATASET = {
     type: 'fgb',
     opacity: 0.7,
     styleConfig: {
-      type: 'match',
-      classes: [
-        { label: 'Woodland', fill: [0, 112, 60, 1] },
-        { label: 'Hidden class', fill: [0, 0, 0, 0] },
-        { label: 'Grassland', fill: [0, 112, 60, 1] }
-      ],
-      default: { label: 'Other', fill: [255, 255, 255, 1] }
+      themes: [{
+        label: 'Land cover',
+        type: 'match',
+        band: 1,
+        classes: [
+          { label: 'Woodland', fill: [0, 112, 60, 1] },
+          { label: 'Hidden class', fill: [0, 0, 0, 0] },
+          { label: 'Grassland', fill: [0, 112, 60, 1] }
+        ],
+        default: { label: 'Other', fill: [255, 255, 255, 1] }
+      }]
     }
   }
 }
@@ -63,7 +67,7 @@ describe('EditLayerForm', () => {
     expect(hex.value).toBe('#ffffff')
     fireEvent.input(hex, { target: { value: '#123abc' } })
     fireEvent.keyDown(hex, { key: 'Enter' })
-    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { id: 'styled', classIndex: undefined, part: 'fill', colour: [18, 58, 188, 1] } })
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { themeBand: 1, id: 'styled', classIndex: undefined, part: 'fill', colour: [18, 58, 188, 1] } })
   })
 
   test('keeps incomplete hex for correction without applying an intermediate colour', () => {
@@ -80,7 +84,7 @@ describe('EditLayerForm', () => {
 
     fireEvent.input(hex, { target: { value: '#123456' } })
     fireEvent.keyDown(hex, { key: 'Enter' })
-    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { id: 'styled', classIndex: 0, part: 'fill', colour: [18, 52, 86, 1] } })
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { themeBand: 1, id: 'styled', classIndex: 0, part: 'fill', colour: [18, 52, 86, 1] } })
     expect(view.queryByRole('alert')).toBeNull()
     expect(hex.getAttribute('aria-invalid')).toBeNull()
   })
@@ -201,14 +205,14 @@ describe('EditLayerForm', () => {
   })
 
   test('edits a visible outline when the fill is transparent', () => {
-    const dataset = { ...SSSI_DATASET, source: { ...SSSI_DATASET.source, styleConfig: { type: 'uniform', classes: [{ label: 'Boundary', fill: [0, 0, 0, 0], stroke: { color: [112, 48, 135, 0.5], width: 2 } }] } } }
+    const dataset = { ...SSSI_DATASET, source: { ...SSSI_DATASET.source, styleConfig: { themes: [{ label: 'Sites', type: 'uniform', band: 1, classes: [{ label: 'Boundary', fill: [0, 0, 0, 0], stroke: { color: [112, 48, 135, 0.5], width: 2 } }] }] } } }
     const view = renderForm(dataset)
     fireEvent.click(view.getByRole('button', { name: 'Edit colour for Boundary' }))
     expect(view.queryByRole('group', { name: 'Colour to edit' })).toBeNull()
     const hex = view.getByRole('textbox', { name: 'Outline hex colour' })
     fireEvent.input(hex, { target: { value: '#fff' } })
     fireEvent.keyDown(hex, { key: 'Enter' })
-    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { id: 'sssi', classIndex: 0, part: 'stroke', colour: [255, 255, 255, 0.5] } })
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_LAYER_COLOUR', payload: { themeBand: 1, id: 'sssi', classIndex: 0, part: 'stroke', colour: [255, 255, 255, 0.5] } })
     const preview = view.container.querySelector('.app-map__colour-value .app-map__style-swatch')
     expect(preview.style.backgroundColor).toBe('rgba(0, 0, 0, 0)')
     expect(preview.style.borderColor).toBe('rgba(255, 255, 255, 0.5)')

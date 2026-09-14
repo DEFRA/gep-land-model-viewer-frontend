@@ -20,7 +20,7 @@ const DATASETS = [{
 }, {
   id: 'habitats',
   label: 'Habitats',
-  source: { type: 'fgb', styleConfig: STYLE_CONFIG }
+  source: { type: 'fgb', styleConfig: { themes: [{ label: 'Habitat', band: 1, ...STYLE_CONFIG }] } }
 }]
 
 function createPluginState (overrides = {}) {

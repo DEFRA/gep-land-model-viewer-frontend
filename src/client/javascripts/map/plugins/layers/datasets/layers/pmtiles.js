@@ -14,7 +14,7 @@ const EPSG_3857 = 'EPSG:3857'
  * @param {string} url PMTiles archive URL
  * @param {string} layerId Map layer id
  * @param {object} options
- * @param {object} options.styleConfig Style config
+ * @param {object} options.styleConfig Resolved style theme
  * @param {number} options.maxZoom Last map zoom the overview renders at
  * @param {number} options.opacity
  * @returns Dataset layer for the vector tile overview

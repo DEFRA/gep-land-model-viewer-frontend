@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { CSPProvider } from '@base-ui/react/csp-provider'
 import { setNonce } from 'react-colorful'
 import { layerIndexAfterMove } from '../../reducer.js'
+import { getLayerTheme } from '../../datasets/layer-style.js'
 import { ContentsRow } from './ContentsRow.jsx'
 import { getContentsEntries } from './contents-entries.js'
 import { EditLayerForm } from './EditLayerForm.jsx'
@@ -124,7 +125,7 @@ export function ContentsPanelContent ({ pluginConfig, pluginState, appState, ser
         </div>
         {editorOpen && (
           <EditLayerForm
-            key={editedDataset.id}
+            key={`${editedDataset.id}:${getLayerTheme(editedDataset, editedLayer)?.band}`}
             dataset={editedDataset}
             layer={editedLayer}
             mobile={appState.breakpoint === 'mobile'}

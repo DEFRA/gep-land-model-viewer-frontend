@@ -6,18 +6,20 @@ import { createDatasetHits } from './datasets/hits.jsx'
 import { createInspection } from './inspection/index.js'
 import { getAttribution } from './datasets/attribution.js'
 import { createLayerController } from './layer-controller.js'
-import { inspectableLayerIds } from './reducer.js'
+import { inspectableLayers } from './reducer.js'
 
 const ATTRIBUTIONS_SELECTOR = '.im-c-attributions'
 
 export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, appState, services }) {
   const { datasets } = pluginConfig
   const layerControllerRef = useRef(null)
+  const layersRef = useRef(pluginState.layers)
+  layersRef.current = pluginState.layers
   const inspectionStateRef = useRef(pluginState.inspection)
   inspectionStateRef.current = pluginState.inspection
 
   const inspectionRef = pluginState.useRef('inspection')
-  const inspectableLayerIdsKey = JSON.stringify(inspectableLayerIds(datasets, pluginState))
+  const inspectableLayersKey = JSON.stringify(inspectableLayers(datasets, pluginState))
   const attribution = getAttribution(datasets, pluginState, mapState.mapStyle?.attribution)
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     const grid = createGridSummary(services.eventBus, map)
     const features = createFeatureSummary(map)
     const summaries = { grid, features }
-    const datasetHits = createDatasetHits(map, datasets)
+    const datasetHits = createDatasetHits(map, datasets, id => layersRef.current.find(layer => layer.id === id))
     const inspection = createInspection({
       map,
       eventBus: services.eventBus,
@@ -90,7 +92,7 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     }
 
     inspectionRef.current?.reconcile()
-  }, [mapState.isMapReady, inspectableLayerIdsKey])
+  }, [mapState.isMapReady, inspectableLayersKey])
 
   // interactive-map has no API for adding dataset attributions.
   useEffect(() => {
