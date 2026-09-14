@@ -37,7 +37,7 @@
   "license": "OGL-UK-3.0",
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "3.1111.0",
-    "@base-ui/react": "1.7.0",
+    "@base-ui/react": "1.8.0",
     "@defra/cdp-auditing": "0.6.1",
     "@defra/cdp-metrics": "0.6.0",
     "@defra/hapi-secure-context": "0.4.0",
