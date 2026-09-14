@@ -103,6 +103,22 @@ function inspectAt (coordinate = [1, 2]) {
 }
 
 describe('#createInspection', () => {
+  test('reconciliation cancels a pending search when the inspectable themes change', async () => {
+    const request = Promise.withResolvers()
+    const source = sourceWith(() => request.promise)
+    useSources(source)
+    const pending = inspectAt()
+    const signal = source.getHits.mock.calls[0][1].signal
+
+    harness.inspection.reconcile()
+    expect(signal.aborted).toBe(true)
+    request.resolve([hit('Old theme')])
+    await pending
+
+    expect(harness.state.inspection).toEqual({ status: 'idle', hits: [], hit: null })
+    expect(harness.appDispatch).not.toHaveBeenCalled()
+  })
+
   test('owns map and panel-close listeners for its lifetime', () => {
     expect(harness.map.on).toHaveBeenCalledWith('singleclick', expect.any(Function))
     expect(harness.eventBus.on).toHaveBeenCalledWith('app:panelclosed', expect.any(Function))

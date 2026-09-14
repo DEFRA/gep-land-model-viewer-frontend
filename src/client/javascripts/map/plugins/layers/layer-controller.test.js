@@ -1,3 +1,5 @@
+import { getLayerStyle } from './datasets/layer-style.js'
+import { THEMED_DATASET } from './datasets/test-helpers/themed-dataset.js'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { SELECTION_Z_INDEX } from '../../config/layers.js'
 import sssiStyle from '../../../../data/styles/sssi.json'
@@ -82,6 +84,47 @@ afterEach(() => {
 })
 
 describe('layer controller', () => {
+  test('restyles when the theme changes without overrides and retains the cached layer', async () => {
+    const dataset = THEMED_DATASET
+    const datasetLayer = createDatasetLayer([layer('gep-themed')])
+    createFlatGeobufLayer.mockResolvedValue(datasetLayer)
+    const { controller, onDatasetLoaded } = harness({ datasets: [dataset] })
+    controller.sync([{ id: dataset.id, ready: false }])
+    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+
+    controller.sync([{ id: dataset.id, ready: true, themeBand: 2 }])
+    expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(dataset.source.styleConfig.themes[1])
+    controller.sync([{ id: dataset.id, ready: true, themeBand: 1 }])
+    expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(dataset.source.styleConfig.themes[0])
+    expect(datasetLayer.applyStyle).toHaveBeenCalledTimes(2)
+    expect(createFlatGeobufLayer).toHaveBeenCalledOnce()
+  })
+
+  test('creates the selected theme and applies the latest state after an asynchronous load', async () => {
+    const dataset = THEMED_DATASET
+    const pending = deferred()
+    const datasetLayer = createDatasetLayer([layer('gep-themed')])
+    createFlatGeobufLayer.mockReturnValue(pending.promise)
+    const { controller, map, onDatasetLoaded } = harness({ datasets: [dataset] })
+    const initial = { id: dataset.id, ready: false, themeBand: 2, opacity: 0.3 }
+    controller.sync([initial])
+    expect(createFlatGeobufLayer).toHaveBeenCalledWith(dataset, 'gep-themed', map, getLayerStyle(dataset, initial))
+
+    const latest = {
+      ...initial,
+      themeBand: 1,
+      opacity: 0.6,
+      styleOverridesByTheme: { 1: { classes: [{ fill: [255, 0, 0, 1] }] } }
+    }
+    controller.sync([latest])
+    pending.resolve(datasetLayer)
+    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+
+    expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(getLayerStyle(dataset, latest).styleConfig)
+    expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.6)
+    expect(createFlatGeobufLayer).toHaveBeenCalledOnce()
+  })
+
   test('applies colour and opacity overrides independently and restores defaults', async () => {
     const dataset = { ...WOODLAND, source: { ...WOODLAND.source, styleConfig: sssiStyle, opacity: 0.7 } }
     const datasetLayer = createDatasetLayer([layer('gep-woodland'), layer('gep-woodland-overview')])
@@ -95,13 +138,13 @@ describe('layer controller', () => {
     const edited = {
       id: 'woodland',
       ready: true,
-      styleOverrides: { classes: [{ fill: [255, 0, 0, 1], stroke: { color: [0, 0, 0, 1] } }] },
+      styleOverridesByTheme: { 1: { classes: [{ fill: [255, 0, 0, 1], stroke: { color: [0, 0, 0, 1] } }] } },
       opacity: 0.4
     }
     controller.sync([edited])
     expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith({
-      ...sssiStyle,
-      classes: [{ ...sssiStyle.classes[0], fill: [255, 0, 0, 1], stroke: { color: [0, 0, 0, 1], width: 1.25 } }]
+      ...sssiStyle.themes[0],
+      classes: [{ ...sssiStyle.themes[0].classes[0], fill: [255, 0, 0, 1], stroke: { color: [0, 0, 0, 1], width: 1.25 } }]
     })
     expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.4)
 
@@ -115,13 +158,13 @@ describe('layer controller', () => {
     expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.6)
 
     controller.sync([{ id: 'woodland', ready: true }])
-    expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(sssiStyle)
+    expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(sssiStyle.themes[0])
     expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.7)
 
     controller.sync([edited])
     controller.sync([])
     controller.sync([{ id: 'woodland', ready: false }])
-    expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(sssiStyle)
+    expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(sssiStyle.themes[0])
     expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.7)
     expect(createFlatGeobufLayer).toHaveBeenCalledOnce()
   })
@@ -162,7 +205,7 @@ describe('layer controller', () => {
     controller.sync([{ id: 'peat', ready: false }])
 
     await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
-    expect(createCogLayer).toHaveBeenCalledWith(PEAT, 'gep-peat')
+    expect(createCogLayer).toHaveBeenCalledWith(PEAT, 'gep-peat', getLayerStyle(PEAT))
     expect(map.addLayer).toHaveBeenCalledWith(cogLayer)
   })
 

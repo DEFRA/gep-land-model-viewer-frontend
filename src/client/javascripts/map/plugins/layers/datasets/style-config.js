@@ -25,7 +25,7 @@ function hasStroke (styleConfig) {
 /**
  * Returns whether a COG stores class codes rather than source range values.
  *
- * @param {object} styleConfig Style config
+ * @param {object} styleConfig Resolved style theme
  * @returns {boolean} Whether band values are required for COG rendering
  */
 function isClassCodedCog (styleConfig) {
@@ -41,14 +41,14 @@ function classCodedDefinitions (styleConfig) {
 /**
  * Builds a WebGL tile colour expression for a class-coded or source-value COG.
  *
- * @param {object} styleConfig Style config
+ * @param {object} styleConfig Resolved style theme
  * @returns {import('ol/expr/expression.js').EncodedExpression}
  */
 export function buildCogColourExpression (styleConfig) {
   /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
   const branches = ['case']
-  // Generated COGs have one data band; OpenLayers handles their nodata alpha.
-  const band = ['band', 1]
+  // Sources retain the file's band order; OpenLayers handles nodata alpha.
+  const band = ['band', styleConfig.band]
 
   if (styleConfig.type === 'range' && !isClassCodedCog(styleConfig)) {
     branches.push(['<', band, styleConfig.minValue], fillFor(styleConfig.default))
@@ -259,23 +259,29 @@ export function classForCogValue (styleConfig, value) {
 }
 
 /**
- * Finds the visible class drawn for a single-band COG pixel. OpenLayers
- * appends a mask band that decides whether the pixel is drawn at all.
+ * Finds the visible class drawn for a theme's COG band. Pixel data can include
+ * source nodata alpha or coverage alpha appended by OpenLayers reprojection.
  *
- * @param {object} styleConfig Style config
+ * @param {object} styleConfig Resolved style theme
  * @param {ArrayLike<number>|null|undefined} bands Pixel band values
+ * @param {{ bandCount: number, hasAlpha: boolean }} source GeoTIFF source band layout
  * @returns {object|null} The visible class/default definition
  */
-export function visibleClassForBands (styleConfig, bands) {
+export function visibleClassForBands (styleConfig, bands, source) {
   if (!bands?.length) {
     return null
   }
 
-  if (bands.length > 1 && !bands[bands.length - 1]) {
+  const dataBandCount = source.bandCount - (source.hasAlpha ? 1 : 0)
+  if (styleConfig.band > dataBandCount) {
     return null
   }
 
-  const value = bands[0]
+  if (bands.length > dataBandCount && !bands[dataBandCount]) {
+    return null
+  }
+
+  const value = bands[styleConfig.band - 1]
   if (value === undefined || value === null) {
     return null
   }

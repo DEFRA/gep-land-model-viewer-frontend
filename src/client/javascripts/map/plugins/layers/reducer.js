@@ -1,5 +1,5 @@
 import { SUMMARIES } from './summaries/config.js'
-import { colourForDefinition, coloursEqual } from './datasets/layer-style.js'
+import { colourForDefinition, coloursEqual, getLayerTheme } from './datasets/layer-style.js'
 
 const INSPECTION_STATUS = /** @type {const} */ ({
   IDLE: 'idle',
@@ -27,7 +27,8 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @property {string[]} [wmsLayerNames]
  * @property {boolean} [hidden]
  * @property {number} [opacity]
- * @property {StyleOverrides} [styleOverrides]
+ * @property {number} [themeBand]
+ * @property {Record<number, StyleOverrides>} [styleOverridesByTheme]
  */
 
 /**
@@ -182,16 +183,43 @@ function updateDefinitionColour (previous, part, colour) {
   return Object.keys(definition).length ? definition : undefined
 }
 
-const setLayerColour = (state, { id, classIndex, part, colour }) => updateLayer(state, id, (layer) => {
+function withThemeOverrides (layer, themeBand, overrides) {
+  const styleOverridesByTheme = { ...layer.styleOverridesByTheme }
+  if (overrides && Object.keys(overrides).length) {
+    styleOverridesByTheme[themeBand] = overrides
+  } else {
+    delete styleOverridesByTheme[themeBand]
+  }
+
+  const updated = { ...layer }
+  if (Object.keys(styleOverridesByTheme).length) {
+    updated.styleOverridesByTheme = styleOverridesByTheme
+  } else {
+    delete updated.styleOverridesByTheme
+  }
+  return updated
+}
+
+const setLayerTheme = (state, { id, themeBand }) => {
+  const updated = updateLayer(state, id, layer => layer.themeBand === themeBand ? layer : { ...layer, themeBand })
+  if (updated === state || state.editingLayer?.id !== id) {
+    return updated
+  }
+
+  return { ...updated, editingLayer: { id } }
+}
+
+const setLayerColour = (state, { id, themeBand, classIndex, part, colour }) => updateLayer(state, id, (layer) => {
+  const overrides = layer.styleOverridesByTheme?.[themeBand]
   const previous = classIndex === undefined
-    ? layer.styleOverrides?.default
-    : layer.styleOverrides?.classes?.[classIndex]
+    ? overrides?.default
+    : overrides?.classes?.[classIndex]
   if (coloursEqual(colourForDefinition(previous, part), colour)) {
     return layer
   }
 
   const remaining = updateDefinitionColour(previous, part, colour)
-  const styleOverrides = { ...layer.styleOverrides }
+  const styleOverrides = { ...overrides }
   if (classIndex === undefined) {
     if (remaining) {
       styleOverrides.default = remaining
@@ -208,21 +236,16 @@ const setLayerColour = (state, { id, classIndex, part, colour }) => updateLayer(
     }
   }
 
-  const updated = { ...layer, styleOverrides }
-  if (!Object.keys(styleOverrides).length) {
-    delete updated.styleOverrides
-  }
-  return updated
+  return withThemeOverrides(layer, themeBand, styleOverrides)
 })
 
-const resetLayerStyle = (state, { id }) => updateLayer(state, id, (layer) => {
-  if (layer.opacity === undefined && !layer.styleOverrides) {
+const resetLayerStyle = (state, { id, themeBand }) => updateLayer(state, id, (layer) => {
+  if (layer.opacity === undefined && !layer.styleOverridesByTheme?.[themeBand]) {
     return layer
   }
 
-  const updated = { ...layer }
+  const updated = withThemeOverrides(layer, themeBand, undefined)
   delete updated.opacity
-  delete updated.styleOverrides
   return updated
 })
 
@@ -358,15 +381,18 @@ export function isLayerVisible (state, id) {
   return isLayerStateVisible(layer)
 }
 
-export function inspectableLayerIds (datasets, state) {
+export function inspectableLayers (datasets, state) {
   return [
     ...SUMMARIES
       .filter(summary => isLayerVisible(state, summary.id))
-      .map(summary => summary.id),
+      .map(summary => ({ id: summary.id })),
     ...datasets
       .filter(dataset => isLayerVisible(state, dataset.id))
-      .map(dataset => dataset.id)
-  ].sort((a, b) => a.localeCompare(b))
+      .map(dataset => ({
+        id: dataset.id,
+        themeBand: getLayerTheme(dataset, state.layers.find(layer => layer.id === dataset.id))?.band
+      }))
+  ].sort((a, b) => a.id.localeCompare(b.id))
 }
 
 const actions = {
@@ -377,6 +403,7 @@ const actions = {
   REMOVE_LAYER: removeLayer,
   SET_SUMMARY: setSummary,
   SET_LAYER_HIDDEN: setLayerHidden,
+  SET_LAYER_THEME: setLayerTheme,
   SET_LAYER_COLOUR: setLayerColour,
   SET_LAYER_OPACITY: setLayerOpacity,
   RESET_LAYER_STYLE: resetLayerStyle,

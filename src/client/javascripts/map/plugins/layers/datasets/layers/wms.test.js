@@ -1,3 +1,4 @@
+import { getLayerStyle } from '../layer-style.js'
 // @vitest-environment jsdom
 import { vi, describe, test, expect, afterEach } from 'vitest'
 
@@ -63,7 +64,7 @@ describe('#createWmsLayer', () => {
   test('skips GetCapabilities when the dataset states its layers', async () => {
     vi.stubGlobal('fetch', vi.fn())
 
-    await createWmsLayer(wmsDataset({ layers: ['layer1', 'layer2'] }), 'gep-test-dataset')
+    await createLayerForTest(wmsDataset({ layers: ['layer1', 'layer2'] }), 'gep-test-dataset')
 
     expect(global.fetch).not.toHaveBeenCalled()
     expect(ImageWMS).toHaveBeenCalledWith(
@@ -77,7 +78,7 @@ describe('#createWmsLayer', () => {
   })
 
   test('updates the WMS layer opacity', async () => {
-    const datasetLayer = await createWmsLayer(wmsDataset({ layers: ['layer1'] }), 'gep-test-dataset')
+    const datasetLayer = await createLayerForTest(wmsDataset({ layers: ['layer1'] }), 'gep-test-dataset')
 
     datasetLayer.setOpacity(0.4)
 
@@ -87,7 +88,7 @@ describe('#createWmsLayer', () => {
   test('discovers queryable layer names via GetCapabilities', async () => {
     stubGetCapabilities(['discovered_layer'])
 
-    await createWmsLayer(wmsDataset(), 'gep-test-dataset')
+    await createLayerForTest(wmsDataset(), 'gep-test-dataset')
 
     expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('GetCapabilities'))
     expect(ImageWMS).toHaveBeenCalledWith(
@@ -109,7 +110,7 @@ describe('#createWmsLayer', () => {
   test('returns null when no queryable layers are found', async () => {
     stubGetCapabilities([])
 
-    const layer = await createWmsLayer(wmsDataset(), 'gep-test-dataset')
+    const layer = await createLayerForTest(wmsDataset(), 'gep-test-dataset')
 
     expect(layer).toBeNull()
     expect(ImageLayer).not.toHaveBeenCalled()
@@ -118,8 +119,8 @@ describe('#createWmsLayer', () => {
   test('caches successful capabilities responses per service URL', async () => {
     stubGetCapabilities(['discovered_layer'])
 
-    await createWmsLayer(wmsDataset(), 'gep-test-dataset')
-    await createWmsLayer(wmsDataset(), 'gep-test-dataset')
+    await createLayerForTest(wmsDataset(), 'gep-test-dataset')
+    await createLayerForTest(wmsDataset(), 'gep-test-dataset')
 
     expect(global.fetch).toHaveBeenCalledTimes(1)
   })
@@ -130,11 +131,11 @@ describe('#createWmsLayer', () => {
       text: vi.fn().mockResolvedValue('Service unavailable')
     }))
 
-    const failed = await createWmsLayer(wmsDataset(), 'gep-test-dataset')
+    const failed = await createLayerForTest(wmsDataset(), 'gep-test-dataset')
     expect(failed).toBeNull()
 
     stubGetCapabilities(['retry_layer'])
-    const layer = await createWmsLayer(wmsDataset(), 'gep-test-dataset')
+    const layer = await createLayerForTest(wmsDataset(), 'gep-test-dataset')
 
     expect(global.fetch).toHaveBeenCalledTimes(1)
     expect(layer).not.toBeNull()
@@ -177,3 +178,7 @@ describe('#getVisibleWmsLayers', () => {
     expect(getVisibleWmsLayers(map)).toEqual([queryable])
   })
 })
+
+function createLayerForTest (dataset, layerId) {
+  return createWmsLayer(dataset, layerId, getLayerStyle(dataset))
+}

@@ -1,886 +1,883 @@
 {
-  "type": "match",
-  "field": "lucode",
-  "classes": [
-    {
-      "bandValue": 1,
-      "fieldValues": [
-        "AC44"
-      ],
-      "label": "Potato",
-      "fill": [
-        112,
-        38,
-        1,
-        1
-      ]
-    },
-    {
-      "bandValue": 2,
-      "fieldValues": [
-        "AC100"
-      ],
-      "label": "Italian Ryegrass",
-      "fill": [
-        173,
-        0,
-        124,
-        1
-      ]
-    },
-    {
-      "bandValue": 3,
-      "fieldValues": [
-        "AC71"
-      ],
-      "label": "Coriander",
-      "fill": [
-        127,
-        211,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 4,
-      "fieldValues": [
-        "AC36"
-      ],
-      "label": "Spring Oilseed",
-      "fill": [
-        255,
-        255,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 5,
-      "fieldValues": [
-        "AC16"
-      ],
-      "label": "Spring Linseed",
-      "fill": [
-        214,
-        255,
-        112,
-        1
-      ]
-    },
-    {
-      "bandValue": 6,
-      "fieldValues": [
-        "AC66"
-      ],
-      "label": "Winter Wheat",
-      "fill": [
-        165,
-        112,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 7,
-      "fieldValues": [
-        "WA00"
-      ],
-      "label": "Water",
-      "fill": [
-        76,
-        112,
-        164,
-        1
-      ]
-    },
-    {
-      "bandValue": 8,
-      "fieldValues": [
-        "LG17"
-      ],
-      "label": "LG17",
-      "fill": [
-        205,
-        233,
-        247,
-        1
-      ]
-    },
-    {
-      "bandValue": 9,
-      "fieldValues": [
-        "WO12"
-      ],
-      "label": "Cluster of Trees",
-      "fill": [
-        0,
-        153,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 10,
-      "fieldValues": [
-        "LG08"
-      ],
-      "label": "Soya",
-      "fill": [
-        38,
-        112,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 11,
-      "fieldValues": [
-        "AC37"
-      ],
-      "label": "Brown Mustard",
-      "fill": [
-        0,
-        175,
-        76,
-        1
-      ]
-    },
-    {
-      "bandValue": 12,
-      "fieldValues": [
-        "AC19"
-      ],
-      "label": "Spring Oats",
-      "fill": [
-        161,
-        89,
-        137,
-        1
-      ]
-    },
-    {
-      "bandValue": 13,
-      "fieldValues": [
-        "AC17"
-      ],
-      "label": "Maize",
-      "fill": [
-        255,
-        211,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 14,
-      "fieldValues": [
-        "AC11"
-      ],
-      "label": "AC11",
-      "fill": [
-        205,
-        233,
-        247,
-        1
-      ]
-    },
-    {
-      "bandValue": 15,
-      "fieldValues": [
-        "LG11"
-      ],
-      "label": "Lucerne",
-      "fill": [
-        255,
-        165,
-        226,
-        1
-      ]
-    },
-    {
-      "bandValue": 16,
-      "fieldValues": [
-        "PG01"
-      ],
-      "label": "Grass",
-      "fill": [
-        233,
-        255,
-        191,
-        1
-      ]
-    },
-    {
-      "bandValue": 17,
-      "fieldValues": [
-        "AC34"
-      ],
-      "label": "Spring Cabbage",
-      "fill": [
-        183,
-        75,
-        20,
-        1
-      ]
-    },
-    {
-      "bandValue": 18,
-      "fieldValues": [
-        "AC35"
-      ],
-      "label": "Turnip",
-      "fill": [
-        255,
-        102,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 19,
-      "fieldValues": [
-        "AC58"
-      ],
-      "label": "Mixed Crop - Group 1",
-      "fill": [
-        204,
-        103,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 20,
-      "fieldValues": [
-        "AC26"
-      ],
-      "label": "Spinach",
-      "fill": [
-        255,
-        102,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 21,
-      "fieldValues": [
-        "AC70"
-      ],
-      "label": "Winter Cabbage",
-      "fill": [
-        255,
-        102,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 22,
-      "fieldValues": [
-        "AC50"
-      ],
-      "label": "Squash",
-      "fill": [
-        255,
-        103,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 23,
-      "fieldValues": [
-        "LG14"
-      ],
-      "label": "Clover",
-      "fill": [
-        232,
-        192,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 24,
-      "fieldValues": [
-        "TC01"
-      ],
-      "label": "Perennial Crops and Isolated Trees",
-      "fill": [
-        255,
-        103,
-        103,
-        1
-      ]
-    },
-    {
-      "bandValue": 25,
-      "fieldValues": [
-        "AC81"
-      ],
-      "label": "Poppy",
-      "fill": [
-        232,
-        191,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 26,
-      "fieldValues": [
-        "LG03"
-      ],
-      "label": "Spring Field Beans",
-      "fill": [
-        130,
-        101,
-        73,
-        1
-      ]
-    },
-    {
-      "bandValue": 27,
-      "fieldValues": [
-        "LG21"
-      ],
-      "label": "Winter Peas",
-      "fill": [
-        84,
-        255,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 28,
-      "fieldValues": [
-        "LG07"
-      ],
-      "label": "Spring Peas",
-      "fill": [
-        84,
-        255,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 29,
-      "fieldValues": [
-        "AC76"
-      ],
-      "label": "AC76",
-      "fill": [
-        205,
-        233,
-        247,
-        1
-      ]
-    },
-    {
-      "bandValue": 30,
-      "fieldValues": [
-        "AC22"
-      ],
-      "label": "Parsley",
-      "fill": [
-        255,
-        102,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 31,
-      "fieldValues": [
-        "AC07"
-      ],
-      "label": "Carrot",
-      "fill": [
-        255,
-        204,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 32,
-      "fieldValues": [
-        "AC24"
-      ],
-      "label": "Spring Rye",
-      "fill": [
-        173,
-        0,
-        124,
-        1
-      ]
-    },
-    {
-      "bandValue": 33,
-      "fieldValues": [
-        "AC03"
-      ],
-      "label": "Beet",
-      "fill": [
-        111,
-        85,
-        202,
-        1
-      ]
-    },
-    {
-      "bandValue": 34,
-      "fieldValues": [
-        "AC74"
-      ],
-      "label": "Phacelia",
-      "fill": [
-        255,
-        234,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 35,
-      "fieldValues": [
-        "FA01"
-      ],
-      "label": "Fallow or Sparsely-Vegetated Land",
-      "fill": [
-        191,
-        191,
-        191,
-        1
-      ]
-    },
-    {
-      "bandValue": 36,
-      "fieldValues": [
-        "AC30"
-      ],
-      "label": "Spring Triticale",
-      "fill": [
-        214,
-        157,
-        189,
-        1
-      ]
-    },
-    {
-      "bandValue": 37,
-      "fieldValues": [
-        "AC59"
-      ],
-      "label": "Mixed Crop - Group 2",
-      "fill": [
-        204,
-        103,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 38,
-      "fieldValues": [
-        "TG01"
-      ],
-      "label": "TG01",
-      "fill": [
-        205,
-        233,
-        247,
-        1
-      ]
-    },
-    {
-      "bandValue": 39,
-      "fieldValues": [
-        "AC15"
-      ],
-      "label": "Lettuce",
-      "fill": [
-        255,
-        102,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 40,
-      "fieldValues": [
-        "AC01"
-      ],
-      "label": "Spring Barley",
-      "fill": [
-        218,
-        227,
-        27,
-        1
-      ]
-    },
-    {
-      "bandValue": 41,
-      "fieldValues": [
-        "AC65"
-      ],
-      "label": "Winter Oats",
-      "fill": [
-        161,
-        89,
-        137,
-        1
-      ]
-    },
-    {
-      "bandValue": 42,
-      "fieldValues": [
-        "AC27"
-      ],
-      "label": "Strawberry",
-      "fill": [
-        255,
-        0,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 43,
-      "fieldValues": [
-        "AC77"
-      ],
-      "label": "AC77",
-      "fill": [
-        205,
-        233,
-        247,
-        1
-      ]
-    },
-    {
-      "bandValue": 44,
-      "fieldValues": [
-        "AC63"
-      ],
-      "label": "Winter Barley",
-      "fill": [
-        218,
-        227,
-        27,
-        1
-      ]
-    },
-    {
-      "bandValue": 45,
-      "fieldValues": [
-        "AC68"
-      ],
-      "label": "Winter Rye",
-      "fill": [
-        173,
-        0,
-        124,
-        1
-      ]
-    },
-    {
-      "bandValue": 46,
-      "fieldValues": [
-        "LG01"
-      ],
-      "label": "Chick Peas",
-      "fill": [
-        0,
-        175,
-        76,
-        1
-      ]
-    },
-    {
-      "bandValue": 47,
-      "fieldValues": [
-        "AC38"
-      ],
-      "label": "Mustard",
-      "fill": [
-        0,
-        175,
-        76,
-        1
-      ]
-    },
-    {
-      "bandValue": 48,
-      "fieldValues": [
-        "NA01"
-      ],
-      "label": "Non-Vegetated or Sparsely Vegetated Land",
-      "fill": [
-        151,
-        151,
-        151,
-        1
-      ]
-    },
-    {
-      "bandValue": 49,
-      "fieldValues": [
-        "AC10"
-      ],
-      "label": "Daffodil",
-      "fill": [
-        232,
-        191,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 50,
-      "fieldValues": [
-        "LG15"
-      ],
-      "label": "Mixed Leguminous Crops - Group 1",
-      "fill": [
-        255,
-        211,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 51,
-      "fieldValues": [
-        "AC64"
-      ],
-      "label": "Winter Linseed",
-      "fill": [
-        127,
-        153,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 52,
-      "fieldValues": [
-        "AC67"
-      ],
-      "label": "Winter Oilseed",
-      "fill": [
-        255,
-        255,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 53,
-      "fieldValues": [
-        "AC54"
-      ],
-      "label": "AC54",
-      "fill": [
-        205,
-        233,
-        247,
-        1
-      ]
-    },
-    {
-      "bandValue": 54,
-      "fieldValues": [
-        "AC04"
-      ],
-      "label": "Borage",
-      "fill": [
-        255,
-        102,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 55,
-      "fieldValues": [
-        "AC23"
-      ],
-      "label": "Parsnips",
-      "fill": [
-        255,
-        204,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 56,
-      "fieldValues": [
-        "AC05"
-      ],
-      "label": "Buckwheat",
-      "fill": [
-        255,
-        102,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 57,
-      "fieldValues": [
-        "AC06"
-      ],
-      "label": "Canary Seed",
-      "fill": [
-        255,
-        102,
-        102,
-        1
-      ]
-    },
-    {
-      "bandValue": 58,
-      "fieldValues": [
-        "LG20"
-      ],
-      "label": "Winter Field Beans",
-      "fill": [
-        130,
-        101,
-        73,
-        1
-      ]
-    },
-    {
-      "bandValue": 59,
-      "fieldValues": [
-        "AC85"
-      ],
-      "label": "AC85",
-      "fill": [
-        205,
-        233,
-        247,
-        1
-      ]
-    },
-    {
-      "bandValue": 60,
-      "fieldValues": [
-        "AC88"
-      ],
-      "label": "Sunflower",
-      "fill": [
-        255,
-        204,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 61,
-      "fieldValues": [
-        "AC08"
-      ],
-      "label": "AC08",
-      "fill": [
-        205,
-        233,
-        247,
-        1
-      ]
-    },
-    {
-      "bandValue": 62,
-      "fieldValues": [
-        "AC69"
-      ],
-      "label": "Winter Triticale",
-      "fill": [
-        214,
-        157,
-        189,
-        1
-      ]
-    },
-    {
-      "bandValue": 63,
-      "fieldValues": [
-        "AC41"
-      ],
-      "label": "Radish",
-      "fill": [
-        122,
-        171,
-        0,
-        1
-      ]
-    },
-    {
-      "bandValue": 64,
-      "fieldValues": [
-        "AC20"
-      ],
-      "label": "Onions",
-      "fill": [
-        255,
-        204,
-        255,
-        1
-      ]
-    },
-    {
-      "bandValue": 65,
-      "fieldValues": [
-        "AC32"
-      ],
-      "label": "Spring Wheat",
-      "fill": [
-        217,
-        181,
-        107,
-        1
-      ]
-    },
-    {
-      "bandValue": 66,
-      "fieldValues": [
-        "NU01"
-      ],
-      "label": "Nursery Crops",
-      "fill": [
-        255,
-        103,
-        103,
-        1
-      ]
-    },
-    {
-      "bandValue": 67,
-      "fieldValues": [
-        "AC14"
-      ],
-      "label": "Hemp",
-      "fill": [
-        63,
-        130,
-        0,
-        1
+  "themes": [
+    {
+      "label": "Crop_Map_Of_England_2020",
+      "type": "match",
+      "band": 1,
+      "field": "lucode",
+      "classes": [
+        {
+          "bandValue": 1,
+          "fieldValues": [
+            "AC44"
+          ],
+          "label": "Potato",
+          "fill": [
+            112,
+            38,
+            1,
+            1
+          ]
+        },
+        {
+          "bandValue": 2,
+          "fieldValues": [
+            "AC100"
+          ],
+          "label": "Italian Ryegrass",
+          "fill": [
+            173,
+            0,
+            124,
+            1
+          ]
+        },
+        {
+          "bandValue": 3,
+          "fieldValues": [
+            "AC71"
+          ],
+          "label": "Coriander",
+          "fill": [
+            127,
+            211,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 4,
+          "fieldValues": [
+            "AC36"
+          ],
+          "label": "Spring Oilseed",
+          "fill": [
+            255,
+            255,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 5,
+          "fieldValues": [
+            "AC16"
+          ],
+          "label": "Spring Linseed",
+          "fill": [
+            214,
+            255,
+            112,
+            1
+          ]
+        },
+        {
+          "bandValue": 6,
+          "fieldValues": [
+            "AC66"
+          ],
+          "label": "Winter Wheat",
+          "fill": [
+            165,
+            112,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 7,
+          "fieldValues": [
+            "WA00"
+          ],
+          "label": "Water",
+          "fill": [
+            76,
+            112,
+            164,
+            1
+          ]
+        },
+        {
+          "bandValue": 8,
+          "fieldValues": [
+            "LG17"
+          ],
+          "label": "LG17",
+          "fill": [
+            205,
+            233,
+            247,
+            1
+          ]
+        },
+        {
+          "bandValue": 9,
+          "fieldValues": [
+            "WO12"
+          ],
+          "label": "Cluster of Trees",
+          "fill": [
+            0,
+            153,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 10,
+          "fieldValues": [
+            "LG08"
+          ],
+          "label": "Soya",
+          "fill": [
+            38,
+            112,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 11,
+          "fieldValues": [
+            "AC37"
+          ],
+          "label": "Brown Mustard",
+          "fill": [
+            0,
+            175,
+            76,
+            1
+          ]
+        },
+        {
+          "bandValue": 12,
+          "fieldValues": [
+            "AC19"
+          ],
+          "label": "Spring Oats",
+          "fill": [
+            161,
+            89,
+            137,
+            1
+          ]
+        },
+        {
+          "bandValue": 13,
+          "fieldValues": [
+            "AC17"
+          ],
+          "label": "Maize",
+          "fill": [
+            255,
+            211,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 14,
+          "fieldValues": [
+            "AC11"
+          ],
+          "label": "AC11",
+          "fill": [
+            205,
+            233,
+            247,
+            1
+          ]
+        },
+        {
+          "bandValue": 15,
+          "fieldValues": [
+            "LG11"
+          ],
+          "label": "Lucerne",
+          "fill": [
+            255,
+            165,
+            226,
+            1
+          ]
+        },
+        {
+          "bandValue": 16,
+          "fieldValues": [
+            "PG01"
+          ],
+          "label": "Grass",
+          "fill": [
+            233,
+            255,
+            191,
+            1
+          ]
+        },
+        {
+          "bandValue": 17,
+          "fieldValues": [
+            "AC34"
+          ],
+          "label": "Spring Cabbage",
+          "fill": [
+            183,
+            75,
+            20,
+            1
+          ]
+        },
+        {
+          "bandValue": 18,
+          "fieldValues": [
+            "AC35"
+          ],
+          "label": "Turnip",
+          "fill": [
+            255,
+            102,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 19,
+          "fieldValues": [
+            "AC58"
+          ],
+          "label": "Mixed Crop - Group 1",
+          "fill": [
+            204,
+            103,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 20,
+          "fieldValues": [
+            "AC26"
+          ],
+          "label": "Spinach",
+          "fill": [
+            255,
+            102,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 21,
+          "fieldValues": [
+            "AC70"
+          ],
+          "label": "Winter Cabbage",
+          "fill": [
+            255,
+            102,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 22,
+          "fieldValues": [
+            "AC50"
+          ],
+          "label": "Squash",
+          "fill": [
+            255,
+            103,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 23,
+          "fieldValues": [
+            "LG14"
+          ],
+          "label": "Clover",
+          "fill": [
+            232,
+            192,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 24,
+          "fieldValues": [
+            "TC01"
+          ],
+          "label": "Perennial Crops and Isolated Trees",
+          "fill": [
+            255,
+            103,
+            103,
+            1
+          ]
+        },
+        {
+          "bandValue": 25,
+          "fieldValues": [
+            "AC81"
+          ],
+          "label": "Poppy",
+          "fill": [
+            232,
+            191,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 26,
+          "fieldValues": [
+            "LG03"
+          ],
+          "label": "Spring Field Beans",
+          "fill": [
+            130,
+            101,
+            73,
+            1
+          ]
+        },
+        {
+          "bandValue": 27,
+          "fieldValues": [
+            "LG21"
+          ],
+          "label": "Winter Peas",
+          "fill": [
+            84,
+            255,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 28,
+          "fieldValues": [
+            "LG07"
+          ],
+          "label": "Spring Peas",
+          "fill": [
+            84,
+            255,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 29,
+          "fieldValues": [
+            "AC76"
+          ],
+          "label": "AC76",
+          "fill": [
+            205,
+            233,
+            247,
+            1
+          ]
+        },
+        {
+          "bandValue": 30,
+          "fieldValues": [
+            "AC22"
+          ],
+          "label": "Parsley",
+          "fill": [
+            255,
+            102,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 31,
+          "fieldValues": [
+            "AC07"
+          ],
+          "label": "Carrot",
+          "fill": [
+            255,
+            204,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 32,
+          "fieldValues": [
+            "AC24"
+          ],
+          "label": "Spring Rye",
+          "fill": [
+            173,
+            0,
+            124,
+            1
+          ]
+        },
+        {
+          "bandValue": 33,
+          "fieldValues": [
+            "AC03"
+          ],
+          "label": "Beet",
+          "fill": [
+            111,
+            85,
+            202,
+            1
+          ]
+        },
+        {
+          "bandValue": 34,
+          "fieldValues": [
+            "AC74"
+          ],
+          "label": "Phacelia",
+          "fill": [
+            255,
+            234,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 35,
+          "fieldValues": [
+            "FA01"
+          ],
+          "label": "Fallow or Sparsely-Vegetated Land",
+          "fill": [
+            191,
+            191,
+            191,
+            1
+          ]
+        },
+        {
+          "bandValue": 36,
+          "fieldValues": [
+            "AC30"
+          ],
+          "label": "Spring Triticale",
+          "fill": [
+            214,
+            157,
+            189,
+            1
+          ]
+        },
+        {
+          "bandValue": 37,
+          "fieldValues": [
+            "AC59"
+          ],
+          "label": "Mixed Crop - Group 2",
+          "fill": [
+            204,
+            103,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 38,
+          "fieldValues": [
+            "TG01"
+          ],
+          "label": "TG01",
+          "fill": [
+            205,
+            233,
+            247,
+            1
+          ]
+        },
+        {
+          "bandValue": 39,
+          "fieldValues": [
+            "AC15"
+          ],
+          "label": "Lettuce",
+          "fill": [
+            255,
+            102,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 40,
+          "fieldValues": [
+            "AC01"
+          ],
+          "label": "Spring Barley",
+          "fill": [
+            218,
+            227,
+            27,
+            1
+          ]
+        },
+        {
+          "bandValue": 41,
+          "fieldValues": [
+            "AC65"
+          ],
+          "label": "Winter Oats",
+          "fill": [
+            161,
+            89,
+            137,
+            1
+          ]
+        },
+        {
+          "bandValue": 42,
+          "fieldValues": [
+            "AC27"
+          ],
+          "label": "Strawberry",
+          "fill": [
+            255,
+            0,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 43,
+          "fieldValues": [
+            "AC77"
+          ],
+          "label": "AC77",
+          "fill": [
+            205,
+            233,
+            247,
+            1
+          ]
+        },
+        {
+          "bandValue": 44,
+          "fieldValues": [
+            "AC63"
+          ],
+          "label": "Winter Barley",
+          "fill": [
+            218,
+            227,
+            27,
+            1
+          ]
+        },
+        {
+          "bandValue": 45,
+          "fieldValues": [
+            "AC68"
+          ],
+          "label": "Winter Rye",
+          "fill": [
+            173,
+            0,
+            124,
+            1
+          ]
+        },
+        {
+          "bandValue": 46,
+          "fieldValues": [
+            "LG01"
+          ],
+          "label": "Chick Peas",
+          "fill": [
+            0,
+            175,
+            76,
+            1
+          ]
+        },
+        {
+          "bandValue": 47,
+          "fieldValues": [
+            "AC38"
+          ],
+          "label": "Mustard",
+          "fill": [
+            0,
+            175,
+            76,
+            1
+          ]
+        },
+        {
+          "bandValue": 48,
+          "fieldValues": [
+            "NA01"
+          ],
+          "label": "Non-Vegetated or Sparsely Vegetated Land",
+          "fill": [
+            151,
+            151,
+            151,
+            1
+          ]
+        },
+        {
+          "bandValue": 49,
+          "fieldValues": [
+            "AC10"
+          ],
+          "label": "Daffodil",
+          "fill": [
+            232,
+            191,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 50,
+          "fieldValues": [
+            "LG15"
+          ],
+          "label": "Mixed Leguminous Crops - Group 1",
+          "fill": [
+            255,
+            211,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 51,
+          "fieldValues": [
+            "AC64"
+          ],
+          "label": "Winter Linseed",
+          "fill": [
+            127,
+            153,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 52,
+          "fieldValues": [
+            "AC67"
+          ],
+          "label": "Winter Oilseed",
+          "fill": [
+            255,
+            255,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 53,
+          "fieldValues": [
+            "AC54"
+          ],
+          "label": "AC54",
+          "fill": [
+            205,
+            233,
+            247,
+            1
+          ]
+        },
+        {
+          "bandValue": 54,
+          "fieldValues": [
+            "AC04"
+          ],
+          "label": "Borage",
+          "fill": [
+            255,
+            102,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 55,
+          "fieldValues": [
+            "AC23"
+          ],
+          "label": "Parsnips",
+          "fill": [
+            255,
+            204,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 56,
+          "fieldValues": [
+            "AC05"
+          ],
+          "label": "Buckwheat",
+          "fill": [
+            255,
+            102,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 57,
+          "fieldValues": [
+            "AC06"
+          ],
+          "label": "Canary Seed",
+          "fill": [
+            255,
+            102,
+            102,
+            1
+          ]
+        },
+        {
+          "bandValue": 58,
+          "fieldValues": [
+            "LG20"
+          ],
+          "label": "Winter Field Beans",
+          "fill": [
+            130,
+            101,
+            73,
+            1
+          ]
+        },
+        {
+          "bandValue": 59,
+          "fieldValues": [
+            "AC85"
+          ],
+          "label": "AC85",
+          "fill": [
+            205,
+            233,
+            247,
+            1
+          ]
+        },
+        {
+          "bandValue": 60,
+          "fieldValues": [
+            "AC88"
+          ],
+          "label": "Sunflower",
+          "fill": [
+            255,
+            204,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 61,
+          "fieldValues": [
+            "AC08"
+          ],
+          "label": "AC08",
+          "fill": [
+            205,
+            233,
+            247,
+            1
+          ]
+        },
+        {
+          "bandValue": 62,
+          "fieldValues": [
+            "AC69"
+          ],
+          "label": "Winter Triticale",
+          "fill": [
+            214,
+            157,
+            189,
+            1
+          ]
+        },
+        {
+          "bandValue": 63,
+          "fieldValues": [
+            "AC41"
+          ],
+          "label": "Radish",
+          "fill": [
+            122,
+            171,
+            0,
+            1
+          ]
+        },
+        {
+          "bandValue": 64,
+          "fieldValues": [
+            "AC20"
+          ],
+          "label": "Onions",
+          "fill": [
+            255,
+            204,
+            255,
+            1
+          ]
+        },
+        {
+          "bandValue": 65,
+          "fieldValues": [
+            "AC32"
+          ],
+          "label": "Spring Wheat",
+          "fill": [
+            217,
+            181,
+            107,
+            1
+          ]
+        },
+        {
+          "bandValue": 66,
+          "fieldValues": [
+            "NU01"
+          ],
+          "label": "Nursery Crops",
+          "fill": [
+            255,
+            103,
+            103,
+            1
+          ]
+        },
+        {
+          "bandValue": 67,
+          "fieldValues": [
+            "AC14"
+          ],
+          "label": "Hemp",
+          "fill": [
+            63,
+            130,
+            0,
+            1
+          ]
+        }
       ]
     }
-  ],
-  "default": {
-    "label": "Other",
-    "fill": [
-      0,
-      0,
-      0,
-      0
-    ]
-  }
+  ]
 }

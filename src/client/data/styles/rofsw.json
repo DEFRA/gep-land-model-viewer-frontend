@@ -1,44 +1,50 @@
 {
-  "type": "match",
-  "field": "Risk_band",
-  "classes": [
+  "themes": [
     {
-      "bandValue": 1,
-      "fieldValues": [
-        "High"
-      ],
-      "label": "High",
-      "fill": [
-        61,
-        68,
-        137,
-        1.0
-      ]
-    },
-    {
-      "bandValue": 2,
-      "fieldValues": [
-        "Medium"
-      ],
-      "label": "Medium",
-      "fill": [
-        102,
-        153,
-        205,
-        1.0
-      ]
-    },
-    {
-      "bandValue": 3,
-      "fieldValues": [
-        "Low"
-      ],
-      "label": "Low",
-      "fill": [
-        162,
-        207,
-        255,
-        1.0
+      "label": "RoFSW",
+      "type": "match",
+      "band": 1,
+      "field": "Risk_band",
+      "classes": [
+        {
+          "bandValue": 1,
+          "fieldValues": [
+            "High"
+          ],
+          "label": "High",
+          "fill": [
+            61,
+            68,
+            137,
+            1
+          ]
+        },
+        {
+          "bandValue": 2,
+          "fieldValues": [
+            "Medium"
+          ],
+          "label": "Medium",
+          "fill": [
+            102,
+            153,
+            205,
+            1
+          ]
+        },
+        {
+          "bandValue": 3,
+          "fieldValues": [
+            "Low"
+          ],
+          "label": "Low",
+          "fill": [
+            162,
+            207,
+            255,
+            1
+          ]
+        }
       ]
     }
   ]

@@ -7,8 +7,12 @@ const DATASETS = [{
   source: {
     type: 'fgb',
     styleConfig: {
-      classes: [{ label: 'One', fill: [10, 20, 30, 1] }],
-      default: { label: 'Other', fill: [40, 50, 60, 1] }
+      themes: [{
+        label: 'Woodland',
+        band: 1,
+        classes: [{ label: 'One', fill: [10, 20, 30, 1] }],
+        default: { label: 'Other', fill: [40, 50, 60, 1] }
+      }]
     }
   }
 }, {
@@ -57,7 +61,7 @@ describe('Contents entries', () => {
       label: 'Single style',
       source: {
         type: 'fgb',
-        styleConfig: { classes: [], default: style }
+        styleConfig: { themes: [{ label: 'Single style', band: 1, classes: [], default: style }] }
       }
     }]
 

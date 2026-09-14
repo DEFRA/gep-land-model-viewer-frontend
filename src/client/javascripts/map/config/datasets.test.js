@@ -26,6 +26,21 @@ describe('#datasets', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
+  test('operational styles declare labelled themes with distinct COG bands', () => {
+    for (const { source } of operationalDatasets) {
+      expect(Object.keys(source.styleConfig)).toEqual(['themes'])
+      const { themes } = source.styleConfig
+      expect(themes.length).toBeGreaterThan(0)
+      expect(new Set(themes.map(theme => theme.band)).size).toBe(themes.length)
+      for (const theme of themes) {
+        expect(theme.label).toEqual(expect.any(String))
+        expect(theme.label.length).toBeGreaterThan(0)
+        expect(Number.isInteger(theme.band)).toBe(true)
+        expect(theme.band).toBeGreaterThan(0)
+      }
+    }
+  })
+
   test('EA datasets point at the EA spatial data host and carry attribution', () => {
     for (const dataset of wmsDatasets) {
       expect(dataset.source.url).toMatch(/^https:\/\/environment\.data\.gov\.uk\/spatialdata\//)
@@ -38,13 +53,15 @@ describe('#datasets', () => {
     expect(fgbDatasets.length).toBeGreaterThan(0)
 
     for (const dataset of fgbDatasets) {
-      const style = buildVectorStyle(dataset.source.styleConfig)
-      expect(() => parse(style['fill-color'], ColorType, newParsingContext())).not.toThrow()
-      if (style['stroke-color'] !== undefined) {
-        expect(() => parse(style['stroke-color'], ColorType, newParsingContext())).not.toThrow()
-      }
-      if (style['stroke-width'] !== undefined) {
-        expect(() => parse(style['stroke-width'], NumberType, newParsingContext())).not.toThrow()
+      for (const theme of dataset.source.styleConfig.themes) {
+        const style = buildVectorStyle(theme)
+        expect(() => parse(style['fill-color'], ColorType, newParsingContext())).not.toThrow()
+        if (style['stroke-color'] !== undefined) {
+          expect(() => parse(style['stroke-color'], ColorType, newParsingContext())).not.toThrow()
+        }
+        if (style['stroke-width'] !== undefined) {
+          expect(() => parse(style['stroke-width'], NumberType, newParsingContext())).not.toThrow()
+        }
       }
     }
   })
@@ -54,7 +71,9 @@ describe('#datasets', () => {
     expect(cogStyled.length).toBeGreaterThan(0)
 
     for (const dataset of cogStyled) {
-      expect(() => parse(buildCogColourExpression(dataset.source.styleConfig), ColorType, newParsingContext())).not.toThrow()
+      for (const theme of dataset.source.styleConfig.themes) {
+        expect(() => parse(buildCogColourExpression(theme), ColorType, newParsingContext())).not.toThrow()
+      }
     }
   })
 })

@@ -70,10 +70,12 @@ function registerSharedCanvasOpacity (layers, initialOpacity) {
  * @param {object} dataset Dataset definition with an fgb source
  * @param {string} layerId Map layer id for the detail layer
  * @param {import('ol/Map.js').default} map Map that will own the layers
+ * @param {object} presentation Resolved layer style and opacity
  * @returns Dataset layer containing the detail layer and optional overview
  */
-export async function createFlatGeobufLayer (dataset, layerId, map) {
-  const { url, styleConfig, attribution, opacity, minZoom, overview } = dataset.source
+export async function createFlatGeobufLayer (dataset, layerId, map, { styleConfig, opacity }) {
+  const { url, attribution, minZoom, overview } = dataset.source
+  let themeBand = styleConfig.band
   const sharedCanvas = overview?.type === 'cog'
   const hasPmtilesOverview = overview?.type === 'pmtiles'
   if (overview && !hasPmtilesOverview && !sharedCanvas) {
@@ -131,7 +133,14 @@ export async function createFlatGeobufLayer (dataset, layerId, map) {
   return {
     layers,
     applyStyle (next) {
-      detail.updateStyleVariables(buildColourVariables(next))
+      if (next.band === themeBand) {
+        detail.updateStyleVariables(buildColourVariables(next))
+      } else {
+        const { style: nextStyle, variables: nextVariables } = buildVectorStyleWithVariables(next)
+        detail.updateStyleVariables(nextVariables)
+        detail.setStyle(nextStyle)
+        themeBand = next.band
+      }
       overviewLayer?.applyStyle(next)
     },
     setOpacity: sharedCanvas

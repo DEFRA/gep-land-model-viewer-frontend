@@ -13,21 +13,21 @@ export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, disp
   const [opacityKey, setOpacityKey] = useState(0)
   const editorRef = useRef(null)
   const id = useId()
-  const { opacity, styleConfig } = getLayerStyle(dataset, layer)
-  const defaults = getLayerStyle(dataset)
+  const { theme, opacity, styleConfig } = getLayerStyle(dataset, layer)
   const entries = editableStyleEntries(styleConfig)
   const selectedColour = entries.find(entry => entry.key === colourKey)
   const drawerColourOpen = mobile && Boolean(selectedColour)
   const ColourButton = mobile ? 'button' : Popover.Trigger
 
   const commitColour = ({ classIndex }, hex, part) => {
-    const definition = classIndex === undefined ? defaults.styleConfig.default : defaults.styleConfig.classes[classIndex]
+    const definition = classIndex === undefined ? theme.default : theme.classes[classIndex]
     const defaultColour = colourForDefinition(definition, part)
     const colour = [...colourForHex(hex), defaultColour[RGBA_ALPHA_INDEX]]
     dispatch({
       type: 'SET_LAYER_COLOUR',
       payload: {
         id: dataset.id,
+        themeBand: theme.band,
         classIndex,
         part,
         colour: coloursEqual(colour, defaultColour) ? undefined : colour
@@ -36,7 +36,7 @@ export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, disp
   }
 
   const reset = () => {
-    dispatch({ type: 'RESET_LAYER_STYLE', payload: { id: dataset.id } })
+    dispatch({ type: 'RESET_LAYER_STYLE', payload: { id: dataset.id, themeBand: theme?.band } })
     setOpacityKey(key => key + 1) // Reset the OpacityInput
   }
 
@@ -77,7 +77,7 @@ export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, disp
               opacity={opacity}
               onCommit={value => dispatch({
                 type: 'SET_LAYER_OPACITY',
-                payload: { id: dataset.id, opacity: value === defaults.opacity ? undefined : value }
+                payload: { id: dataset.id, opacity: value === dataset.source.opacity ? undefined : value }
               })}
             />
             <Popover.Close render={<LinkButton />} className='app-map__reset-style' onClick={reset}>

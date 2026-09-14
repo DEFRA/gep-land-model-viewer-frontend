@@ -17,7 +17,9 @@ const OUTSIDE_RANGE = [0, 0, 224, 1]
 
 function matchStyle (overrides = {}) {
   return {
+    label: 'Habitat',
     type: 'match',
+    band: 1,
     field: 'category',
     classes: [
       { bandValue: 1, fieldValues: ['Bog'], label: 'Bog', fill: BOG },
@@ -30,7 +32,9 @@ function matchStyle (overrides = {}) {
 
 function sourceValueRangeStyle (overrides = {}) {
   return {
+    label: 'Soil depth',
     type: 'range',
+    band: 1,
     field: 'depth',
     minValue: 0,
     classes: [
@@ -54,7 +58,9 @@ function classCodedRangeStyle () {
 
 function uniformStyle (classOverrides = {}) {
   return {
+    label: 'Sites',
     type: 'uniform',
+    band: 1,
     classes: [{
       bandValue: 1,
       label: 'Site',
@@ -88,6 +94,16 @@ describe('class-coded COG rules', () => {
     expect(buildCogColourExpression(uniformStyle({ visible: false }))).toEqual([
       'case',
       ['==', ['band', 1], 1], TRANSPARENT,
+      TRANSPARENT
+    ])
+  })
+
+  test('a later-band class-coded range matches its codes and default independently of its bounds', () => {
+    expect(buildCogColourExpression({ ...classCodedRangeStyle(), band: 5 })).toEqual([
+      'case',
+      ['==', ['band', 5], 1], [204, 204, 255, 1],
+      ['==', ['band', 5], 2], [20, 20, 227, 1],
+      ['==', ['band', 5], 3], OUTSIDE_RANGE,
       TRANSPARENT
     ])
   })
@@ -282,7 +298,7 @@ describe('WebGL vector colour variables', () => {
   })
 
   test('SSSI keeps its outline width while both colours become updateable', () => {
-    const { style, variables } = buildVectorStyleWithVariables(sssiStyle)
+    const { style, variables } = buildVectorStyleWithVariables(sssiStyle.themes[0])
     expect(style).toEqual({
       'fill-color': ['var', 'class_0_fill'],
       'stroke-color': ['var', 'class_0_stroke'],
@@ -325,14 +341,37 @@ describe('hit classification rules', () => {
   })
 
   test('a COG reads its value from the first band when its mask is visible', () => {
-    expect(visibleClassForBands(matchStyle(), new Float32Array([2, 255]))?.label).toBe('Water')
+    expect(visibleClassForBands(matchStyle(), new Float32Array([2, 255]), { bandCount: 2, hasAlpha: true })?.label).toBe('Water')
   })
 
   test.each([
     { name: 'missing pixel data cannot be identified', bands: null },
     { name: 'a zero mask cannot be identified', bands: new Float32Array([2, 0]) }
   ])('$name', ({ bands }) => {
-    expect(visibleClassForBands(matchStyle(), bands)).toBeNull()
+    expect(visibleClassForBands(matchStyle(), bands, { bandCount: 2, hasAlpha: true })).toBeNull()
+  })
+
+  test.each([
+    { name: 'two data bands without a mask', band: 1, bands: [2, 0], bandCount: 2, hasAlpha: false, label: 'Water' },
+    { name: 'the second data band without a mask', band: 2, bands: [1, 2], bandCount: 2, hasAlpha: false, label: 'Water' },
+    { name: 'a data band after the first RGBA texture', band: 5, bands: [0, 0, 0, 0, 2], bandCount: 5, hasAlpha: false, label: 'Water' },
+    { name: 'two data bands with a visible source mask', band: 2, bands: [1, 2, 255], bandCount: 3, hasAlpha: true, label: 'Water' },
+    { name: 'two data bands with a zero source mask', band: 2, bands: [1, 2, 0], bandCount: 3, hasAlpha: true, label: undefined },
+    { name: 'reprojection coverage appended to two data bands', band: 2, bands: [1, 2, 255], bandCount: 2, hasAlpha: false, label: 'Water' },
+    { name: 'zero reprojection coverage', band: 2, bands: [1, 2, 0], bandCount: 2, hasAlpha: false, label: undefined },
+    { name: 'an undeclared class code', band: 2, bands: [1, 99], bandCount: 2, hasAlpha: false, label: undefined },
+    { name: 'a fractional class code', band: 2, bands: [1, 1.9999998], bandCount: 2, hasAlpha: false, label: undefined },
+    { name: 'a configured band beyond the data bands', band: 2, bands: [1, 2], bandCount: 2, hasAlpha: true, label: undefined }
+  ])('identifies $name', ({ band, bands, bandCount, hasAlpha, label }) => {
+    expect(visibleClassForBands(matchStyle({ band }), new Float32Array(bands), { bandCount, hasAlpha })?.label).toBe(label)
+  })
+
+  test('a zero soil depth in the selected data band is identified when the COG has no mask', () => {
+    const theme = sourceValueRangeStyle({ band: 2 })
+    const pixel = new Float32Array([99, 0])
+    const source = { bandCount: 2, hasAlpha: false }
+
+    expect(visibleClassForBands(theme, pixel, source)?.label).toBe('Up to 20cm')
   })
 
   test('class-coded COG values, including the default, must match a bandValue exactly', () => {
@@ -353,7 +392,7 @@ describe('hit classification rules', () => {
       stroke: { color: [1, 2, 3, 1], width: 1 }
     })
 
-    expect(visibleClassForBands(hidden, new Float32Array([1]))).toBeNull()
-    expect(visibleClassForBands(transparentWithStroke, new Float32Array([1]))).toBeNull()
+    expect(visibleClassForBands(hidden, new Float32Array([1]), { bandCount: 1, hasAlpha: false })).toBeNull()
+    expect(visibleClassForBands(transparentWithStroke, new Float32Array([1]), { bandCount: 1, hasAlpha: false })).toBeNull()
   })
 })

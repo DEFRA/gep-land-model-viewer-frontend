@@ -10,6 +10,7 @@ import { InfoPanel } from './panels/info/InfoPanel.jsx'
 import { ZoomWarning } from './controls/ZoomWarning.jsx'
 import { CONTENTS_PANEL_ID, INFO_PANEL_ID } from './constants.js'
 import { editableStyleEntries } from './datasets/style-config.js'
+import { getLayerStyle } from './datasets/layer-style.js'
 
 function contentsPanelTitle ({ pluginState, pluginConfig, appState }) {
   const { editingLayer, layers } = pluginState
@@ -24,7 +25,7 @@ function contentsPanelTitle ({ pluginState, pluginConfig, appState }) {
   }
 
   if (appState.breakpoint === 'mobile' && editingLayer.colourKey) {
-    return editableStyleEntries(dataset.source.styleConfig)
+    return editableStyleEntries(getLayerStyle(dataset, layer).styleConfig)
       .find(entry => entry.key === editingLayer.colourKey)?.definition.label ?? 'Edit layer'
   }
 

@@ -40,9 +40,10 @@ export async function fetchWmsLayerNames (wmsUrl) {
  *
  * @param {object} dataset Dataset definition with a wms source
  * @param {string} layerId Map layer id
+ * @param {object} presentation Resolved layer opacity
  * @returns Dataset layer, or null when no queryable layers were found
  */
-export async function createWmsLayer (dataset, layerId) {
+export async function createWmsLayer (dataset, layerId, { opacity }) {
   const layerNames = dataset.source.layers?.length
     ? dataset.source.layers
     : await fetchWmsLayerNames(dataset.source.url)
@@ -67,7 +68,7 @@ export async function createWmsLayer (dataset, layerId) {
       ratio: 1.5,
       crossOrigin: 'anonymous'
     }),
-    opacity: dataset.source.opacity
+    opacity
   })
 
   return {
@@ -75,7 +76,7 @@ export async function createWmsLayer (dataset, layerId) {
     applyStyle (_styleConfig) {
       throw new Error('WMS styling is not supported')
     },
-    setOpacity: opacity => layer.setOpacity(opacity)
+    setOpacity: next => layer.setOpacity(next)
   }
 }
 

@@ -2,6 +2,7 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import Polygon from 'ol/geom/Polygon.js'
 import { render } from '@testing-library/preact'
+import { THEMED_DATASET } from './test-helpers/themed-dataset.js'
 
 vi.mock('../../../config/datasets.js', () => ({
   datasets: [
@@ -12,8 +13,12 @@ vi.mock('../../../config/datasets.js', () => ({
         type: 'fgb',
         url: '/vector/woodland.fgb',
         styleConfig: {
-          type: 'uniform',
-          classes: [{ bandValue: 1, label: 'Ancient Woodland', fill: [59, 104, 0, 1] }]
+          themes: [{
+            label: 'Woodland',
+            type: 'uniform',
+            band: 1,
+            classes: [{ bandValue: 1, label: 'Ancient Woodland', fill: [59, 104, 0, 1] }]
+          }]
         }
       }
     },
@@ -24,12 +29,16 @@ vi.mock('../../../config/datasets.js', () => ({
         type: 'cog',
         url: '/raster/peat.tif',
         styleConfig: {
-          type: 'range',
-          minValue: 0,
-          classes: [
-            { maxValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] }
-          ],
-          default: { label: 'Over 20cm', fill: [0, 0, 224, 1] }
+          themes: [{
+            label: 'Soil depth',
+            type: 'range',
+            band: 1,
+            minValue: 0,
+            classes: [
+              { maxValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] }
+            ],
+            default: { label: 'Over 20cm', fill: [0, 0, 224, 1] }
+          }]
         }
       }
     },
@@ -42,10 +51,13 @@ vi.mock('../../../config/datasets.js', () => ({
         url: '/vector/habitats.fgb',
         minZoom: 5,
         styleConfig: {
-          type: 'match',
-          field: 'A_pred',
-          classes: [{ bandValue: 2, fieldValues: ['Water'], label: 'Water', fill: [190, 232, 255, 1] }],
-          default: { label: 'Other', fill: [0, 0, 0, 0] }
+          themes: [{
+            label: 'Habitat',
+            type: 'match',
+            band: 1,
+            field: 'A_pred',
+            classes: [{ bandValue: 2, fieldValues: ['Water'], label: 'Water', fill: [190, 232, 255, 1] }]
+          }]
         },
         overview: { type: 'cog', url: '/raster/habitats.tif' }
       }
@@ -85,17 +97,19 @@ function stubLayer (id, { visible = true } = {}) {
 }
 
 const MATCH_STYLE_CONFIG = {
+  label: 'Habitat',
   type: 'match',
+  band: 1,
   field: 'A_pred',
-  classes: [{ bandValue: 2, fieldValues: ['Water'], label: 'Water', fill: [190, 232, 255, 1] }],
-  default: { label: 'Other', fill: [0, 0, 0, 0] }
+  classes: [{ bandValue: 2, fieldValues: ['Water'], label: 'Water', fill: [190, 232, 255, 1] }]
 }
 
-function stubCogOverviewLayer ({ visible = true, bands = new Float32Array([2]) } = {}) {
+function stubCogOverviewLayer ({ visible = true, bands = new Float32Array([2]), bandCount = 1, hasAlpha = false } = {}) {
   const properties = { id: 'gep-habitats-overview' }
   return {
     get: vi.fn((key) => properties[key]),
     getVisible: vi.fn(() => visible),
+    getSource: vi.fn(() => ({ bandCount, hasAlpha })),
     getData: vi.fn(() => bands)
   }
 }
@@ -139,7 +153,7 @@ function createOlMap ({ vectorHits = [], layers = [], zoom = 2 } = {}) {
 }
 
 function getHits (map) {
-  return createDatasetHits(map, datasets).getHits(COORDS, { signal: SIGNAL })
+  return createDatasetHits(map, datasets, id => ({ id, ready: true })).getHits(COORDS, { signal: SIGNAL })
 }
 
 function highlightedFeatures (map) {
@@ -155,11 +169,89 @@ describe('#createDatasetHits', () => {
     getVisibleWmsLayers.mockReturnValue([])
     queryFgbNearPoint.mockReset()
     queryFgbNearPoint.mockResolvedValue(null)
-    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = MATCH_STYLE_CONFIG
+    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = { themes: [MATCH_STYLE_CONFIG] }
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  test.each(['cog', 'overview'])('identifies the current theme of a %s and invalidates hits from the previous theme', async (type) => {
+    const dataset = {
+      ...THEMED_DATASET,
+      source: {
+        ...THEMED_DATASET.source,
+        type: type === 'cog' ? 'cog' : 'fgb',
+        overview: type === 'overview' ? { type: 'cog', url: '/overview.tif' } : undefined
+      }
+    }
+    const raster = {
+      ...stubLayer(type === 'cog' ? 'gep-themed' : 'gep-themed-overview'),
+      getData: () => new Float32Array([1, 1, 255]),
+      getSource: () => ({ bandCount: 3, hasAlpha: true })
+    }
+    const map = createOlMap({ layers: type === 'cog' ? [raster] : [raster, stubLayer('gep-themed')] })
+    let state = { id: dataset.id, ready: true, themeBand: 1 }
+    const source = createDatasetHits(map, [dataset], () => state)
+    const [cropHit] = await source.getHits(COORDS, { signal: SIGNAL })
+    await expect(cropHit.loadDetails({ signal: SIGNAL })).resolves.toEqual([{ lucode: 'AC44' }])
+
+    state = { ...state, themeBand: 2 }
+    expect(cropHit.stillValid()).toBe(false)
+    const [countyHit] = await source.getHits(COORDS, { signal: SIGNAL })
+    expect(countyHit.stillValid()).toBe(true)
+    await expect(countyHit.loadDetails({ signal: SIGNAL })).resolves.toEqual([{ county: 'LIN' }])
+    state = { ...state, themeBand: 1 }
+    expect(countyHit.stillValid()).toBe(false)
+    source.dispose()
+  })
+
+  test('vector identify follows the selected field when the theme changes', async () => {
+    const layer = stubLayer('gep-themed')
+    const potato = { lucode: 'AC44', county: 'unknown' }
+    const lincolnshire = { lucode: 'unknown', county: 'LIN' }
+    const map = createOlMap({
+      vectorHits: [
+        { layer, feature: stubFeature(potato) },
+        { layer, feature: stubFeature(lincolnshire) }
+      ]
+    })
+    let state = { id: 'themed', ready: true, themeBand: 1 }
+    const source = createDatasetHits(map, [THEMED_DATASET], () => state)
+    const [cropHit] = await source.getHits(COORDS, { signal: SIGNAL })
+    await expect(cropHit.loadDetails({ signal: SIGNAL })).resolves.toEqual([potato])
+
+    state = { ...state, themeBand: 2 }
+    expect(cropHit.stillValid()).toBe(false)
+    const [countyHit] = await source.getHits(COORDS, { signal: SIGNAL })
+    await expect(countyHit.loadDetails({ signal: SIGNAL })).resolves.toEqual([lincolnshire])
+    source.dispose()
+  })
+
+  test('an overview lookup finishing after a theme switch cannot restore the old highlight', async () => {
+    const dataset = {
+      ...THEMED_DATASET,
+      source: { ...THEMED_DATASET.source, overview: { type: 'cog', url: '/overview.tif' } }
+    }
+    const raster = {
+      ...stubLayer('gep-themed-overview'),
+      getData: () => new Float32Array([1, 1]),
+      getSource: () => ({ bandCount: 2, hasAlpha: false })
+    }
+    const map = createOlMap({ layers: [raster, stubLayer('gep-themed')] })
+    let state = { id: 'themed', ready: true, themeBand: 1 }
+    const source = createDatasetHits(map, [dataset], () => state)
+    const [hit] = await source.getHits(COORDS, { signal: SIGNAL })
+    const lookup = Promise.withResolvers()
+    queryFgbNearPoint.mockReturnValueOnce(lookup.promise)
+    const pending = hit.loadDetails({ signal: SIGNAL })
+
+    state = { ...state, themeBand: 2 }
+    lookup.resolve({ geometry: { type: 'Point', coordinates: COORDS }, properties: { lucode: 'AC44' } })
+
+    await expect(pending).resolves.toEqual([])
+    expect(highlightedFeatures(map)).toEqual([])
+    source.dispose()
   })
 
   test('a detail FlatGeobuf feature yields a hit with its properties', async () => {
@@ -253,6 +345,7 @@ describe('#createDatasetHits', () => {
     const layer = {
       ...stubLayer('gep-peat'),
       getVisible: vi.fn(() => true),
+      getSource: vi.fn(() => ({ bandCount: 2, hasAlpha: true })),
       getData: vi.fn(() => new Float32Array([7, 255]))
     }
     const map = createOlMap({ layers: [layer] })
@@ -268,11 +361,47 @@ describe('#createDatasetHits', () => {
     const layer = {
       ...stubLayer('gep-peat'),
       getVisible: vi.fn(() => true),
+      getSource: vi.fn(() => ({ bandCount: 2, hasAlpha: true })),
       getData: vi.fn(() => new Float32Array([7, 0]))
     }
     const map = createOlMap({ layers: [layer] })
 
     await expect(getHits(map)).resolves.toEqual([])
+  })
+
+  test('a zero in another data band does not mask a standalone COG hit', async () => {
+    const peat = datasets.find(dataset => dataset.id === 'peat')
+    const first = peat.source.styleConfig.themes[0]
+    const second = { ...first, label: 'Another soil measure', band: 2 }
+    const dataset = { ...peat, source: { ...peat.source, styleConfig: { themes: [first, second] } } }
+    const layer = {
+      ...stubLayer('gep-peat'),
+      getSource: () => ({ bandCount: 2, hasAlpha: false }),
+      getData: () => new Float32Array([7, 0])
+    }
+    const map = createOlMap({ layers: [layer] })
+
+    const hits = await createDatasetHits(map, [dataset], id => ({ id, ready: true })).getHits(COORDS, { signal: SIGNAL })
+
+    expect(hits).toHaveLength(1)
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ Classification: 'Up to 20cm' }])
+  })
+
+  test('a masked multi-band overview identifies the first theme', async () => {
+    const second = {
+      label: 'County',
+      type: 'match',
+      band: 2,
+      field: 'county',
+      classes: [{ bandValue: 1, fieldValues: ['LIN'], label: 'Lincolnshire', fill: [66, 135, 245, 1] }]
+    }
+    datasets.find(dataset => dataset.id === 'habitats').source.styleConfig = { themes: [MATCH_STYLE_CONFIG, second] }
+    const detail = stubDetailLayer()
+    const overview = stubCogOverviewLayer({ bands: new Float32Array([2, 1, 255]), bandCount: 3, hasAlpha: true })
+    const overviewHits = await getHits(createOlMap({ layers: [overview, detail] }))
+
+    expect(overviewHits).toHaveLength(1)
+    await expect(overviewHits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water' }])
   })
 
   test('a COG overview hit loads the FlatGeobuf feature and its attributes', async () => {
@@ -307,8 +436,10 @@ describe('#createDatasetHits', () => {
 
   test('a grouped match class reports its label when the FlatGeobuf lookup misses', async () => {
     datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = {
-      ...MATCH_STYLE_CONFIG,
-      classes: [{ bandValue: 2, fieldValues: ['Water', 'Canal'], label: 'Open water', fill: [190, 232, 255, 1] }]
+      themes: [{
+        ...MATCH_STYLE_CONFIG,
+        classes: [{ bandValue: 2, fieldValues: ['Water', 'Canal'], label: 'Open water', fill: [190, 232, 255, 1] }]
+      }]
     }
     const layers = [stubCogOverviewLayer(), stubDetailLayer()]
     const hits = await getHits(createOlMap({ layers, zoom: 2 }))
@@ -346,8 +477,10 @@ describe('#createDatasetHits', () => {
 
   test('visible false prevents a vector feature from yielding a hit', async () => {
     datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = {
-      ...MATCH_STYLE_CONFIG,
-      classes: [{ ...MATCH_STYLE_CONFIG.classes[0], visible: false }]
+      themes: [{
+        ...MATCH_STYLE_CONFIG,
+        classes: [{ ...MATCH_STYLE_CONFIG.classes[0], visible: false }]
+      }]
     }
     const detail = stubDetailLayer()
     const feature = stubFeature({ geometry: {}, A_pred: 'Water' })
@@ -360,8 +493,10 @@ describe('#createDatasetHits', () => {
 
   test('visible false prevents a COG overview class from yielding a hit', async () => {
     datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = {
-      ...MATCH_STYLE_CONFIG,
-      classes: [{ ...MATCH_STYLE_CONFIG.classes[0], visible: false }]
+      themes: [{
+        ...MATCH_STYLE_CONFIG,
+        classes: [{ ...MATCH_STYLE_CONFIG.classes[0], visible: false }]
+      }]
     }
     const layers = [stubCogOverviewLayer(), stubDetailLayer()]
 
@@ -447,6 +582,7 @@ describe('#createDatasetHits', () => {
     const layer = {
       ...stubLayer('gep-peat'),
       getVisible: vi.fn(() => true),
+      getSource: vi.fn(() => ({ bandCount: 2, hasAlpha: true })),
       getData: vi.fn(() => new Float32Array([7, 255]))
     }
     const map = createOlMap({ layers: [layer] })
@@ -503,7 +639,7 @@ describe('#createDatasetHits', () => {
     const feature = stubFeature({ geometry: {} })
     const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland') }] })
 
-    const source = createDatasetHits(map, datasets)
+    const source = createDatasetHits(map, datasets, id => ({ id, ready: true }))
     const hits = await source.getHits(COORDS, { signal: SIGNAL })
     hits[0].select()
     source.clearSelection()
@@ -524,7 +660,7 @@ describe('#createDatasetHits', () => {
 
   test('dispose clears and removes its highlight layer', () => {
     const map = createOlMap()
-    const source = createDatasetHits(map, datasets)
+    const source = createDatasetHits(map, datasets, id => ({ id, ready: true }))
     const highlightLayer = map.addLayer.mock.calls[0][0]
 
     source.dispose()
