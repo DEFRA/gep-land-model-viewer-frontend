@@ -41,6 +41,7 @@ const INSPECTION_STATUS = /** @type {const} */ ({
 /**
  * @typedef {object} LayersState
  * @property {string} query
+ * @property {string[]} expandedDatasetThemes
  * @property {LayerState[]} layers Top-most entry first
  * @property {{ id: string, colourKey?: string } | null} editingLayer
  * @property {InspectionState} inspection
@@ -56,6 +57,7 @@ const initialInspectionState = {
 /** @type {LayersState} */
 const initialState = {
   query: '',
+  expandedDatasetThemes: [],
   layers: [],
   editingLayer: null,
   inspection: initialInspectionState
@@ -86,6 +88,19 @@ const setQuery = (state, query) => ({
   ...state,
   query
 })
+
+const setDatasetThemeExpanded = (state, { datasetTheme, expanded }) => {
+  if (state.expandedDatasetThemes.includes(datasetTheme) === expanded) {
+    return state
+  }
+
+  return {
+    ...state,
+    expandedDatasetThemes: expanded
+      ? [...state.expandedDatasetThemes, datasetTheme]
+      : state.expandedDatasetThemes.filter(candidate => candidate !== datasetTheme)
+  }
+}
 
 const setEditingLayer = (state, editingLayer) => state.editingLayer === editingLayer ? state : { ...state, editingLayer }
 
@@ -397,6 +412,7 @@ export function inspectableLayers (datasets, state) {
 
 const actions = {
   SET_QUERY: setQuery,
+  SET_DATASET_THEME_EXPANDED: setDatasetThemeExpanded,
   SET_EDITING_LAYER: setEditingLayer,
   DATASET_LOADING: datasetLoading,
   DATASET_LOADED: datasetLoaded,

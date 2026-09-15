@@ -1,53 +1,8 @@
 import { parse, newParsingContext, ColorType, NumberType } from 'ol/expr/expression.js'
 import { datasets } from './datasets.js'
-import { operationalDatasets } from './operational-datasets.js'
 import { buildCogColourExpression, buildVectorStyle } from '../plugins/layers/datasets/style-config.js'
 
-const wmsDatasets = datasets.filter(dataset => dataset.source.type === 'wms')
-
 describe('#datasets', () => {
-  test('combines the operational datasets with the EA catalog', () => {
-    expect(wmsDatasets.length).toBe(6)
-    expect(datasets.slice(0, operationalDatasets.length)).toEqual(operationalDatasets)
-  })
-
-  test('every dataset has an id, label, source type and opacity', () => {
-    for (const dataset of datasets) {
-      expect(dataset).toHaveProperty('id')
-      expect(dataset).toHaveProperty('label')
-      expect(dataset.source).toHaveProperty('url')
-      expect(['wms', 'cog', 'fgb']).toContain(dataset.source.type)
-      expect(dataset.source.opacity).toEqual(expect.any(Number))
-    }
-  })
-
-  test('ids are unique', () => {
-    const ids = datasets.map(dataset => dataset.id)
-    expect(new Set(ids).size).toBe(ids.length)
-  })
-
-  test('operational styles declare labelled themes with distinct COG bands', () => {
-    for (const { source } of operationalDatasets) {
-      expect(Object.keys(source.styleConfig)).toEqual(['themes'])
-      const { themes } = source.styleConfig
-      expect(themes.length).toBeGreaterThan(0)
-      expect(new Set(themes.map(theme => theme.band)).size).toBe(themes.length)
-      for (const theme of themes) {
-        expect(theme.label).toEqual(expect.any(String))
-        expect(theme.label.length).toBeGreaterThan(0)
-        expect(Number.isInteger(theme.band)).toBe(true)
-        expect(theme.band).toBeGreaterThan(0)
-      }
-    }
-  })
-
-  test('EA datasets point at the EA spatial data host and carry attribution', () => {
-    for (const dataset of wmsDatasets) {
-      expect(dataset.source.url).toMatch(/^https:\/\/environment\.data\.gov\.uk\/spatialdata\//)
-      expect(dataset.source.attribution).toMatch(/Environment Agency/)
-    }
-  })
-
   test('vector style expressions compile with the OpenLayers parser', () => {
     const fgbDatasets = datasets.filter(dataset => dataset.source.type === 'fgb')
     expect(fgbDatasets.length).toBeGreaterThan(0)

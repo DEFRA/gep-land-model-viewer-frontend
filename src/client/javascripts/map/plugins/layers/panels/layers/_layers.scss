@@ -19,10 +19,6 @@
   overflow: hidden;
 }
 
-.app-map__layers-content > .app-map__layers-header {
-  padding: 0 12px;
-}
-
 // Everything below the fixed panel title scrolls together.
 .app-map__layers-scroll {
   flex: 1 1 auto;
@@ -36,15 +32,17 @@
   align-items: center;
   gap: 8px;
   margin: 0 0 16px;
-  padding-right: 32px;
+  padding: 0 12px;
   @include govuk-font-size($size: 24);
   font-weight: $govuk-font-weight-bold;
 }
 
 .app-map__layers-header-icon {
-  width: 24px;
-  height: 24px;
   flex-shrink: 0;
+}
+
+.app-map__layers-description {
+  color: govuk-functional-colour("secondary-text");
 }
 
 .app-map__layer-search {
@@ -52,62 +50,124 @@
 }
 
 .app-map__layer-search-row {
-  display: flex;
-  align-items: stretch;
-}
-
-.app-map__layer-search-row:focus-within {
-  outline: 3px solid govuk-colour("yellow");
-  outline-offset: 0;
+  position: relative;
 }
 
 .app-map__layer-search-input {
-  flex: 1;
-  min-width: 0;
-  margin-bottom: 0;
-  border-right: 0;
+  padding-right: 44px;
+  padding-left: 40px;
+
+  // The explicit clear button supplies the same control across browsers.
+  &::-webkit-search-cancel-button {
+    appearance: none;
+  }
 }
 
-.app-map__layer-search-input:focus {
-  outline: none;
-  border-right: 2px solid govuk-colour("black");
-  box-shadow: none;
-}
-
-.app-map__layer-search-button {
-  flex: 0 0 44px;
-  margin-bottom: 0;
-  padding: 0;
-  display: inline-flex;
+.app-map__layer-search-clear {
+  position: absolute;
+  // Leave room for the focus ring inside the input border.
+  inset: 6px 6px 6px auto;
+  width: 28px;
+  display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   border: 0;
-  box-shadow: none;
-}
+  background: transparent;
+  color: govuk-functional-colour("text");
+  cursor: pointer;
 
-// govuk-button shifts down 2px on :active to press into its box-shadow; ours has no shadow
-.app-map__layer-search-button:active {
-  top: 0;
-}
+  &:focus-visible {
+    outline: var(--focus-outline-width) solid var(--focus-outline-color);
+    outline-offset: 0;
+    box-shadow: inset 0 0 0 var(--focus-border-width) var(--focus-border-color);
 
-.app-map__layer-search-button:focus,
-.app-map__layer-search-button:focus:not(:active):not(:hover) {
-  outline: 2px solid govuk-colour("black");
-  outline-offset: -2px;
-  box-shadow: none;
-  background-color: govuk-colour("green");
-  color: govuk-colour("white");
+    @media screen and (forced-colors: active) {
+      outline: var(--focus-highlight-width) solid Highlight;
+    }
+  }
 }
 
 .app-map__layer-search-icon {
-  width: 20px;
-  height: 20px;
-  display: block;
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: govuk-functional-colour("secondary-text");
+  pointer-events: none;
 }
 
-.app-map [data-app-layer-list] {
+.app-map__dataset-list {
   margin-left: -10px;
   padding: 0 0 12px 10px;
+}
+
+.app-map__dataset-theme {
+  margin-bottom: 0;
+  border-bottom: 1px solid govuk-functional-colour("border");
+
+  &:first-of-type {
+    border-top: 1px solid govuk-functional-colour("border");
+  }
+
+  .govuk-details__summary {
+    display: flex;
+    align-items: center;
+    gap: govuk-spacing(2);
+    width: 100%;
+    padding: govuk-spacing(3) govuk-spacing(2);
+    color: govuk-functional-colour("text");
+    user-select: none;
+
+    &:hover {
+      color: govuk-functional-colour("link-hover");
+    }
+
+    // Use the Lucide chevron instead of GOV.UK's marker.
+    &::before {
+      content: none;
+    }
+  }
+
+  .govuk-details__summary-text {
+    flex: 1;
+    font-weight: $govuk-font-weight-bold;
+    text-decoration: none;
+  }
+
+  .govuk-details__text {
+    padding: 0;
+    border-left: 0;
+  }
+
+  // Exclude collapsed checkboxes from the map drawer's focus trap.
+  &:not([open]) > .govuk-details__text {
+    display: none;
+  }
+
+  &[open] .app-map__dataset-theme-chevron {
+    transform: rotate(90deg);
+  }
+}
+
+.app-map__dataset-theme-chevron {
+  flex: none;
+}
+
+.app-map__dataset-theme-count {
+  @include govuk-font-size($size: 16);
+  flex: none;
+  color: govuk-functional-colour("secondary-text");
+  white-space: nowrap;
+
+  .govuk-details__summary:focus & {
+    color: inherit;
+  }
+}
+
+.app-map__clear-layer-search {
+  padding-top: govuk-spacing(3);
+  border-top: 1px solid govuk-functional-colour("border");
 }
 
 .app-map__layers-label--hidden {
