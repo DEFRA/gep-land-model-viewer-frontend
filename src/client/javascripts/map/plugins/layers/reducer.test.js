@@ -88,6 +88,7 @@ describe('layers reducer', () => {
   test('starts with no layers or inspection result', () => {
     expect(initialState).toEqual({
       query: '',
+      expandedDatasetThemes: [],
       layers: [],
       editingLayer: null,
       inspection: { status: 'idle', hits: [], hit: null }

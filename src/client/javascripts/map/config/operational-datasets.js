@@ -12,7 +12,8 @@ const BASE_URL = 'https://gepcloudnativedata.blob.core.windows.net/gep/datasets/
 export const operationalDatasets = [
   {
     id: 'peaty-soil-depth-cog',
-    label: 'Peaty soil depth (COG)',
+    label: 'Peaty soil depth',
+    inspireTheme: 'Soil',
     source: {
       type: 'cog',
       url: `${BASE_URL}/england_peat_map/peaty_soil_depth_v1_download_cog.tif`,
@@ -26,7 +27,8 @@ export const operationalDatasets = [
   },
   {
     id: 'living-england-fgb',
-    label: 'Living England Habitat Map (FGB)',
+    label: 'Living England Habitat Map',
+    inspireTheme: 'Land cover',
     source: {
       type: 'fgb',
       url: `${BASE_URL}/living_england_habitat_map/livingeng.fgb`,
@@ -41,7 +43,8 @@ export const operationalDatasets = [
   },
   {
     id: 'ancient-woodland-fgb',
-    label: 'Ancient Woodland (FGB)',
+    label: 'Ancient Woodland',
+    inspireTheme: 'Habitats and biotopes',
     source: {
       type: 'fgb',
       url: `${BASE_URL}/ancient_woodland/ancient_woodland_england.fgb`,
@@ -55,18 +58,9 @@ export const operationalDatasets = [
     }
   },
   {
-    id: 'ancient-woodland-low-fgb',
-    label: 'Ancient Woodland low detail (FGB)',
-    source: {
-      type: 'fgb',
-      url: `${BASE_URL}/ancient_woodland/ancient_woodland_england_low.fgb`,
-      opacity: 0.5,
-      styleConfig: ancientWoodlandStyle
-    }
-  },
-  {
     id: 'sssi-fgb',
-    label: 'Sites of Special Scientific Interest (FGB)',
+    label: 'Sites of Special Scientific Interest',
+    inspireTheme: 'Protected sites',
     source: {
       type: 'fgb',
       url: `${BASE_URL}/protected_areas_sites_of_specific_interest/sssi.fgb`,
@@ -81,7 +75,8 @@ export const operationalDatasets = [
   },
   {
     id: 'agricultural-land-classification-fgb',
-    label: 'Agricultural Land Classification (FGB)',
+    label: 'Agricultural Land Classification',
+    inspireTheme: 'Soil',
     source: {
       type: 'fgb',
       url: `${BASE_URL}/agricultural_land_classification/prov_agg_land_class.fgb`,
@@ -96,7 +91,8 @@ export const operationalDatasets = [
   },
   {
     id: 'crop-map-of-england-fgb',
-    label: 'Crop Map of England (FGB)',
+    label: 'Crop Map of England',
+    inspireTheme: 'Land cover',
     source: {
       type: 'fgb',
       url: `${BASE_URL}/crop_map_of_england/crome.fgb`,
@@ -111,7 +107,8 @@ export const operationalDatasets = [
   },
   {
     id: 'flood-map-for-planning-fgb',
-    label: 'Flood Map for Planning, Flood Zones 2 and 3 (FGB)',
+    label: 'Flood Map for Planning, Flood Zones 2 and 3',
+    inspireTheme: 'Natural risk zones',
     source: {
       type: 'fgb',
       url: `${BASE_URL}/flood_map_for_planning_flood_zones/flood_map_for_planning.fgb`,
@@ -126,7 +123,8 @@ export const operationalDatasets = [
   },
   {
     id: 'risk-of-flooding-surface-water-fgb',
-    label: 'Risk of Flooding from Surface Water (FGB)',
+    label: 'Risk of Flooding from Surface Water',
+    inspireTheme: 'Natural risk zones',
     source: {
       type: 'fgb',
       url: `${BASE_URL}/risk_of_flooding_surface_water/rofsw.fgb`,

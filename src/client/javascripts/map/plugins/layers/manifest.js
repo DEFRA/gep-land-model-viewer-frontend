@@ -61,7 +61,7 @@ const sidePanel = {
   slot: 'side',
   open: false,
   modal: false,
-  width: '320px',
+  width: '360px',
   dismissible: true,
   showLabel: false
 }

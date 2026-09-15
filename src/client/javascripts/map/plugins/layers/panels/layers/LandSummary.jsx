@@ -32,7 +32,7 @@ export function LandSummary ({ layers, onChange }) {
   return (
     <div className='app-map__land-summary'>
       <h3 className='govuk-heading-s govuk-!-margin-bottom-2'>Land summary</h3>
-      <p className='govuk-body'>Inspect any point on the map to see its land cover, use, ownership, protected areas and soils.</p>
+      <p className='govuk-body-s app-map__layers-description govuk-!-margin-bottom-3'>Inspect any point on the map to see its land cover, use, ownership, protected areas and soils.</p>
       <fieldset className='govuk-fieldset govuk-!-margin-top-2'>
         <legend className='govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-2'>Summarise land by:</legend>
         <div className='govuk-checkboxes govuk-checkboxes--small'>
