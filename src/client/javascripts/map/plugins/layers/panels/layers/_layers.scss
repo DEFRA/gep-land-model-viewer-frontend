@@ -186,3 +186,45 @@
   padding: govuk-spacing(3);
   background-color: govuk-colour("black", $variant: "tint-95");
 }
+
+.app-map__summary-row {
+  display: flex;
+  align-items: center;
+
+  .govuk-checkboxes__item {
+    flex: 1;
+  }
+}
+
+.app-map .app-map__summary-info-button {
+  --button-background-color: transparent;
+  --button-hover-color: transparent;
+  --button-box-shadow: none;
+
+  position: relative;
+  flex: none;
+  padding: 0;
+  color: var(--secondary-text-color);
+
+  &:hover,
+  &[aria-expanded="true"] {
+    color: govuk-functional-colour("link");
+  }
+}
+
+.app-map__summary-info-positioner {
+  z-index: 9999;
+
+  &[data-anchor-hidden] {
+    visibility: hidden;
+  }
+}
+
+.app-map__summary-info-popup {
+  --tooltip-background-color: #{govuk-functional-colour("text")};
+
+  width: 240px;
+  max-width: var(--available-width);
+  max-height: var(--available-height);
+  overflow: auto;
+}
