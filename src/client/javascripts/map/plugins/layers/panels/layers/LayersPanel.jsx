@@ -52,7 +52,7 @@ export function LayersPanel ({ pluginConfig, pluginState, services }) {
         Layers
       </h2>
       <div className='app-map__layers-scroll'>
-        <LandSummary layers={layers} onChange={handleSummaryChange} />
+        <LandSummary layers={layers} onChange={handleSummaryChange} styleNonce={pluginConfig.styleNonce} />
 
         <h3 className='govuk-heading-s govuk-!-margin-bottom-2'>Datasets</h3>
         <p className='govuk-body-s app-map__layers-description govuk-!-margin-bottom-4'>Add datasets to the map.</p>

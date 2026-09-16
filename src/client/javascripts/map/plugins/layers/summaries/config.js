@@ -7,6 +7,7 @@ const FEATURE_STROKE_OPACITY = 0.6
 export const GRID_SUMMARY = {
   id: 'grid',
   label: 'Grid squares',
+  description: 'Uniform squares based on the British National Grid.',
   minZoom: GRID_VISIBLE_MIN_ZOOM,
   symbol: {
     type: 'line',
@@ -19,6 +20,7 @@ export const GRID_SUMMARY = {
 export const FEATURE_SUMMARY = {
   id: 'features',
   label: 'OS features',
+  description: 'Real-world boundaries derived from Ordnance Survey.',
   minZoom: FEATURE_VISIBLE_MIN_ZOOM,
   symbol: {
     type: 'line',

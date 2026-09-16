@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import '../contents/test-helpers/browser-mocks.js'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { useReducer } from 'react'
 import { act, fireEvent, render } from '@testing-library/preact'
@@ -209,6 +210,50 @@ describe('LayersPanel', () => {
     expect(view.container.querySelector('#summary-features').disabled).toBe(true)
     fireEvent.click(view.getByRole('checkbox', { name: 'Grid squares' }))
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_SUMMARY', payload: { id: 'grid', enabled: false } })
+  })
+
+  test('opens summary information on activation and dismisses it with Escape without closing the panel', async () => {
+    renderPanel()
+    const button = view.getByRole('button', { name: 'About Grid squares' })
+    const panelKeyDown = vi.fn()
+    view.container.addEventListener('keydown', panelKeyDown)
+
+    act(() => button.focus())
+    fireEvent.mouseEnter(button)
+    expect(view.queryByRole('dialog')).toBeNull()
+
+    fireEvent.click(button)
+    const popup = await view.findByRole('dialog', { name: 'About Grid squares' })
+    expect(popup.textContent).toBe('Uniform squares based on the British National Grid.')
+    expect(document.getElementById(popup.getAttribute('aria-describedby')).textContent).toBe(popup.textContent)
+    expect(popup.closest('.app-map__land-summary')).toBeTruthy()
+    await vi.waitFor(() => expect(document.activeElement).toBe(popup))
+
+    fireEvent.keyDown(popup, { key: 'Escape' })
+    await vi.waitFor(() => expect(view.queryByRole('dialog')).toBeNull())
+    expect(panelKeyDown).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(document.activeElement).toBe(button))
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_SUMMARY' }))
+  })
+
+  test('keeps both information buttons available and switches explanations without changing the active summary', async () => {
+    renderPanel({ layers: [{ id: 'grid', ready: true }] })
+    const gridInfo = view.getByRole('button', { name: 'About Grid squares' })
+    const featuresInfo = view.getByRole('button', { name: 'About OS features' })
+
+    fireEvent.click(featuresInfo)
+    expect((await view.findByRole('dialog', { name: 'About OS features' })).textContent)
+      .toBe('Real-world boundaries derived from Ordnance Survey.')
+
+    fireEvent.click(gridInfo)
+    await view.findByRole('dialog', { name: 'About Grid squares' })
+    expect(view.getAllByRole('dialog')).toHaveLength(1)
+    expect(featuresInfo.getAttribute('aria-expanded')).toBe('false')
+    expect(view.getByRole('checkbox', { name: 'Grid squares' }).checked).toBe(true)
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_SUMMARY' }))
+
+    fireEvent.click(gridInfo)
+    await vi.waitFor(() => expect(view.queryByRole('dialog')).toBeNull())
   })
 
   test('keeps hidden datasets checked and visually mutes their label', () => {
