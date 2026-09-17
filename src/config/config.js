@@ -84,6 +84,12 @@ export const config = convict({
     default: 'http://localhost:3000',
     env: 'APP_BASE_URL'
   },
+  findGeoDataUrl: {
+    doc: 'Find Geo Data frontend base URL for dataset details',
+    format: 'url',
+    default: 'https://gep-find-geo-data-frontend.dev.cdp-int.defra.cloud',
+    env: 'FIND_GEO_DATA_URL'
+  },
   log: {
     enabled: {
       doc: 'Is logging enabled',

@@ -1,6 +1,7 @@
 import { createServer } from '../server.js'
 import { statusCodes } from '../common/constants/status-codes.js'
 import { mockAuthCredentials } from '../common/test-helpers/auth.js'
+import { config } from '../../config/config.js'
 
 describe('#mapController', () => {
   let server
@@ -24,6 +25,7 @@ describe('#mapController', () => {
     expect(statusCode).toBe(statusCodes.ok)
     expect(result).toEqual(expect.stringContaining('Map |'))
     expect(result).toEqual(expect.stringContaining('id="land-map"'))
+    expect(result).toEqual(expect.stringContaining(`data-find-geo-data-url="${config.get('findGeoDataUrl')}"`))
   })
 
   test('applies map CSP for dataset hosts, blob workers and runtime styles', async () => {

@@ -7,8 +7,9 @@ import { LayersPanel } from './panels/layers/LayersPanel.jsx'
 import { KeyPanel } from './panels/key/KeyPanel.jsx'
 import { ContentsPanel } from './panels/contents/ContentsPanel.jsx'
 import { InfoPanel } from './panels/info/InfoPanel.jsx'
+import { DatasetInfoPanel } from './panels/dataset-info/DatasetInfoPanel.jsx'
 import { ZoomWarning } from './controls/ZoomWarning.jsx'
-import { CONTENTS_PANEL_ID, INFO_PANEL_ID } from './constants.js'
+import { CONTENTS_PANEL_ID, DATASET_INFO_PANEL_ID, INFO_PANEL_ID } from './constants.js'
 import { editableStyleEntries } from './datasets/style-config.js'
 import { getLayerStyle } from './datasets/layer-style.js'
 
@@ -101,6 +102,13 @@ const contentsPanel = {
   dismissible: true
 }
 
+const datasetInfoPanel = {
+  slot: 'middle',
+  modal: true,
+  dismissible: true,
+  width: '600px'
+}
+
 export const manifest = {
   InitComponent: LayersInit,
 
@@ -167,6 +175,14 @@ export const manifest = {
     tablet: drawerPanel,
     desktop: infoPanel,
     render: InfoPanel
+  }, {
+    id: DATASET_INFO_PANEL_ID,
+    label: ({ pluginConfig, appState }) => pluginConfig.datasets
+      .find(dataset => dataset.id === appState.openPanels[DATASET_INFO_PANEL_ID]?.props.datasetId)?.label ?? 'Dataset information',
+    mobile: drawerPanel,
+    tablet: datasetInfoPanel,
+    desktop: datasetInfoPanel,
+    render: DatasetInfoPanel
   }],
 
   controls: [{

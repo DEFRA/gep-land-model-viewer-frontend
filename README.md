@@ -90,9 +90,10 @@ npm ci
 
 ### Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OS_API_KEY` | Yes | OS Maps API key with premium access. Used by the `/os/vts`, `/os/ngd` and `/os/raster` proxies to authenticate tile, sprite and glyph requests. |
+| Variable            | Required | Description                                                                                                                                     |
+| ------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OS_API_KEY`        | Yes      | OS Maps API key with premium access. Used by the `/os/vts`, `/os/ngd` and `/os/raster` proxies to authenticate tile, sprite and glyph requests. |
+| `FIND_GEO_DATA_URL` | No       | Find Geo Data frontend base URL for dataset details links. Defaults to `https://gep-find-geo-data-frontend.dev.cdp-int.defra.cloud`.            |
 
 ### Development
 
@@ -192,7 +193,7 @@ AWS Cognito provides a short-lived federated token via `GetOpenIdTokenForDevelop
 Keycloak runs via Docker Compose as a local OIDC provider (port 8081). A mock credential provider signs JWTs locally instead of calling Cognito. The Keycloak realm is pre-configured with a test user:
 
 | Username | Password |
-|----------|----------|
+| -------- | -------- |
 | dev      | dev      |
 
 ## Docker
