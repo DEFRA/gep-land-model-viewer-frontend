@@ -3,6 +3,7 @@ import DoubleClickZoom from 'ol/interaction/DoubleClickZoom.js'
 import createOpenLayersProvider from '@defra/interactive-map/providers/openlayers'
 import mapStylesPlugin from '@defra/interactive-map/plugins/map-styles'
 import searchPlugin from '@defra/interactive-map/plugins/search'
+import scaleBarPlugin from '@defra/interactive-map/plugins/scale-bar'
 import { mapStyles } from './config/map-styles.js'
 import { datasets } from './config/datasets.js'
 import createLayersPlugin from './plugins/layers/index.js'
@@ -14,6 +15,7 @@ const DEFAULT_CENTER = [465000, 475000] // center of sample land model area
 const DEFAULT_ZOOM = 7
 const MIN_ZOOM = 0
 const MAX_ZOOM = 13
+const UK_EXTENT = [-100000, 0, 800000, 1250000]
 const mapElement = document.getElementById(MAP_ID)
 const { styleNonce, findGeoDataUrl } = mapElement?.closest('main')?.dataset ?? {}
 
@@ -70,13 +72,23 @@ const map = new InteractiveMap(MAP_ID, {
     }),
     createLayersPlugin({ datasets, styleNonce, findGeoDataUrl }),
     createNorthIndicatorPlugin(),
-    createInfoLinksPlugin()
+    createInfoLinksPlugin(),
+    scaleBarPlugin({ units: 'metric' })
   ]
 })
 
 map.on(EVENTS.MAP_READY, (/** @type {{ map: import('ol/Map').default }} */ { map: olMap }) => {
+  const view = olMap.getView()
+
+  view.setProperties({
+    extent: UK_EXTENT,
+    constrainOnlyCenter: false,
+    showFullExtent: true,
+    smoothExtentConstraint: true
+  })
+
   // Snap to whole zoom levels so tiles draw at their native resolution.
-  olMap.getView().setConstrainResolution(true)
+  view.setConstrainResolution(true)
 
   // The provider registers its interactions with double-click zoom off.
   olMap.addInteraction(new DoubleClickZoom())
