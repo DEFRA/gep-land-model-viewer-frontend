@@ -74,7 +74,8 @@ describe('map entry point', () => {
       'mapStyles',
       'gepLayers',
       'gepNorthIndicator',
-      'gepInfoLinks'
+      'gepInfoLinks',
+      'scaleBar'
     ])
     const layersPlugin = options.plugins.find(plugin => plugin.id === 'gepLayers')
     expect(layersPlugin.datasets).toBe(datasets)
@@ -93,7 +94,7 @@ describe('map entry point', () => {
     const DoubleClickZoom = (await import('ol/interaction/DoubleClickZoom.js')).default
     const setConstrainResolution = vi.fn()
     const olMap = {
-      getView: vi.fn(() => ({ setConstrainResolution })),
+      getView: vi.fn(() => ({ setProperties: vi.fn(), setConstrainResolution })),
       addInteraction: vi.fn()
     }
     await readyHandler({ map: olMap })
