@@ -136,7 +136,8 @@
   }
 
   .govuk-details__text {
-    padding: 0;
+    // Centre the 24px checkboxes beneath the 16px chevrons with their 10px inset.
+    padding: 0 0 0 6px;
     border-left: 0;
   }
 
@@ -187,7 +188,7 @@
   background-color: govuk-colour("black", $variant: "tint-95");
 }
 
-.app-map__summary-row {
+.app-map__layer-row {
   display: flex;
   align-items: center;
 
@@ -196,7 +197,7 @@
   }
 }
 
-.app-map .app-map__summary-info-button {
+.app-map .app-map__layer-info-button {
   --button-background-color: transparent;
   --button-hover-color: transparent;
   --button-box-shadow: none;
@@ -206,8 +207,7 @@
   padding: 0;
   color: var(--secondary-text-color);
 
-  &:hover,
-  &[aria-expanded="true"] {
+  &:hover {
     color: govuk-functional-colour("link");
   }
 }

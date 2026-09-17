@@ -1,3 +1,5 @@
+import { Info } from 'lucide-preact'
+
 function DatasetCheckbox ({ dataset, layer, onChange }) {
   const loading = Boolean(layer && !layer.ready)
 
@@ -25,18 +27,29 @@ function DatasetCheckbox ({ dataset, layer, onChange }) {
   )
 }
 
-export function DatasetList ({ datasets, layers, legend, onChange }) {
+export function DatasetList ({ datasets, layers, legend, onChange, onInfo }) {
   return (
     <fieldset className='govuk-fieldset'>
       <legend className='govuk-visually-hidden'>{legend}</legend>
       <div className='govuk-checkboxes govuk-checkboxes--small app-map__dataset-list'>
         {datasets.map(dataset => (
-          <DatasetCheckbox
-            key={dataset.id}
-            dataset={dataset}
-            layer={layers.find(layer => layer.id === dataset.id)}
-            onChange={event => onChange(dataset, event.currentTarget.checked)}
-          />
+          <div className='app-map__layer-row' key={dataset.id}>
+            <DatasetCheckbox
+              dataset={dataset}
+              layer={layers.find(layer => layer.id === dataset.id)}
+              onChange={event => onChange(dataset, event.currentTarget.checked)}
+            />
+            <button
+              type='button'
+              id={`dataset-info-${dataset.id}`}
+              className='im-c-map-button app-map__layer-info-button'
+              aria-label={`About ${dataset.label}`}
+              aria-haspopup='dialog'
+              onClick={event => onInfo(dataset, event.currentTarget)}
+            >
+              <Info size={24} aria-hidden='true' />
+            </button>
+          </div>
         ))}
       </div>
     </fieldset>

@@ -4,8 +4,9 @@ import { LinkButton } from '../../../../components/LinkButton.jsx'
 import { DatasetList } from './DatasetList.jsx'
 import { LandSummary } from './LandSummary.jsx'
 import { LayerSearch } from './LayerSearch.jsx'
+import { DATASET_INFO_PANEL_ID } from '../../constants.js'
 
-export function LayersPanel ({ pluginConfig, pluginState, services }) {
+export function LayersPanel ({ pluginConfig, pluginState, services, appState }) {
   const { datasets } = pluginConfig
   const { dispatch } = pluginState
   const { layers, query, expandedDatasetThemes } = /** @type {import('../../reducer.js').LayersState} */ (pluginState)
@@ -45,6 +46,16 @@ export function LayersPanel ({ pluginConfig, pluginState, services }) {
     })
   }
 
+  const handleDatasetInfo = (dataset, triggeringElement) => {
+    appState.dispatch({
+      type: 'OPEN_PANEL',
+      payload: {
+        panelId: DATASET_INFO_PANEL_ID,
+        props: { datasetId: dataset.id, triggeringElement }
+      }
+    })
+  }
+
   return (
     <div className='app-map__layers-content'>
       <h2 className='app-map__layers-header'>
@@ -71,7 +82,7 @@ export function LayersPanel ({ pluginConfig, pluginState, services }) {
 
           {term
             ? matching.length > 0 && (
-              <DatasetList datasets={matching} layers={layers} legend='Search results' onChange={handleDatasetChange} />
+              <DatasetList datasets={matching} layers={layers} legend='Search results' onChange={handleDatasetChange} onInfo={handleDatasetInfo} />
             )
             : datasetThemes.map(datasetTheme => {
               const themeDatasets = sorted.filter(dataset => dataset.inspireTheme === datasetTheme)
@@ -97,7 +108,7 @@ export function LayersPanel ({ pluginConfig, pluginState, services }) {
                     </span>
                   </summary>
                   <div className='govuk-details__text'>
-                    <DatasetList datasets={themeDatasets} layers={layers} legend={datasetTheme} onChange={handleDatasetChange} />
+                    <DatasetList datasets={themeDatasets} layers={layers} legend={datasetTheme} onChange={handleDatasetChange} onInfo={handleDatasetInfo} />
                   </div>
                 </details>
               )

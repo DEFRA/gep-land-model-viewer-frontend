@@ -8,7 +8,7 @@ function SummaryRow ({ summary, layer, activeId, onChange }) {
   const hidden = Boolean(layer?.hidden)
 
   return (
-    <div className='app-map__summary-row'>
+    <div className='app-map__layer-row'>
       <div className='govuk-checkboxes__item'>
         <input
           className='govuk-checkboxes__input'
@@ -25,7 +25,7 @@ function SummaryRow ({ summary, layer, activeId, onChange }) {
         </label>
       </div>
       <Popover.Trigger
-        className='im-c-map-button app-map__summary-info-button'
+        className='im-c-map-button app-map__layer-info-button'
         aria-label={`About ${summary.label}`}
         payload={summary.id}
       >

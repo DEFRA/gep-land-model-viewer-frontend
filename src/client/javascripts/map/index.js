@@ -15,7 +15,7 @@ const DEFAULT_ZOOM = 7
 const MIN_ZOOM = 0
 const MAX_ZOOM = 13
 const mapElement = document.getElementById(MAP_ID)
-const styleNonce = mapElement?.closest('main')?.dataset.styleNonce
+const { styleNonce, findGeoDataUrl } = mapElement?.closest('main')?.dataset ?? {}
 
 const map = new InteractiveMap(MAP_ID, {
   behaviour: 'inline',
@@ -68,7 +68,7 @@ const map = new InteractiveMap(MAP_ID, {
         }]
       }
     }),
-    createLayersPlugin({ datasets, styleNonce }),
+    createLayersPlugin({ datasets, styleNonce, findGeoDataUrl }),
     createNorthIndicatorPlugin(),
     createInfoLinksPlugin()
   ]

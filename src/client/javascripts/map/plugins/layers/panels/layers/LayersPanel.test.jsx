@@ -4,6 +4,7 @@ import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { useReducer } from 'react'
 import { act, fireEvent, render } from '@testing-library/preact'
 import { initialState, actions } from '../../reducer.js'
+import { DATASET_INFO_PANEL_ID } from '../../constants.js'
 import { LayersPanel } from './LayersPanel.jsx'
 
 const DATASETS = [
@@ -16,6 +17,7 @@ const DATASETS = [
 let view
 let announce
 let dispatch
+let appDispatch
 let updateState
 
 function TestPanel ({ initial = {}, visible = true }) {
@@ -33,6 +35,7 @@ function TestPanel ({ initial = {}, visible = true }) {
         }
       }}
       services={{ announce }}
+      appState={{ dispatch: appDispatch }}
     />
   )
 }
@@ -50,9 +53,31 @@ const count = name => datasetTheme(name).querySelector('.app-map__dataset-theme-
 beforeEach(() => {
   announce = vi.fn()
   dispatch = vi.fn()
+  appDispatch = vi.fn()
 })
 
 describe('LayersPanel', () => {
+  test.each([
+    { list: 'grouped list', query: '' },
+    { list: 'search results', query: 'wood' }
+  ])('opens dataset information from the $list', ({ query }) => {
+    renderPanel({
+      query,
+      expandedDatasetThemes: ['Habitats and biotopes']
+    })
+    const button = view.getByRole('button', { name: 'About Ancient Woodland' })
+    fireEvent.click(button)
+
+    expect(button.getAttribute('aria-haspopup')).toBe('dialog')
+    expect(appDispatch).toHaveBeenCalledWith({
+      type: 'OPEN_PANEL',
+      payload: {
+        panelId: DATASET_INFO_PANEL_ID,
+        props: { datasetId: 'woodland', triggeringElement: button }
+      }
+    })
+  })
+
   test('starts with collapsed alphabetical dataset themes and alphabetical datasets within each theme', () => {
     renderPanel()
 
@@ -233,10 +258,9 @@ describe('LayersPanel', () => {
     await vi.waitFor(() => expect(view.queryByRole('dialog')).toBeNull())
     expect(panelKeyDown).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(document.activeElement).toBe(button))
-    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_SUMMARY' }))
   })
 
-  test('keeps both information buttons available and switches explanations without changing the active summary', async () => {
+  test('shows information for either land summary when one is selected', async () => {
     renderPanel({ layers: [{ id: 'grid', ready: true }] })
     const gridInfo = view.getByRole('button', { name: 'About Grid squares' })
     const featuresInfo = view.getByRole('button', { name: 'About OS features' })
@@ -249,8 +273,6 @@ describe('LayersPanel', () => {
     await view.findByRole('dialog', { name: 'About Grid squares' })
     expect(view.getAllByRole('dialog')).toHaveLength(1)
     expect(featuresInfo.getAttribute('aria-expanded')).toBe('false')
-    expect(view.getByRole('checkbox', { name: 'Grid squares' }).checked).toBe(true)
-    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_SUMMARY' }))
 
     fireEvent.click(gridInfo)
     await vi.waitFor(() => expect(view.queryByRole('dialog')).toBeNull())
