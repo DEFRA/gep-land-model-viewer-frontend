@@ -31,9 +31,9 @@ export const config = convict({
     env: 'HOST'
   },
   port: {
-    doc: 'The port to bind.',
+    doc: 'The Hapi port to bind. In development, Webpack proxies requests to this port.',
     format: 'port',
-    default: 3000,
+    default: isDevelopment ? 3003 : 3000,
     env: 'PORT'
   },
   staticCacheTimeout: {
@@ -81,13 +81,13 @@ export const config = convict({
   appBaseUrl: {
     doc: 'Application base URL',
     format: String,
-    default: 'http://localhost:3000',
+    default: 'http://localhost:3002',
     env: 'APP_BASE_URL'
   },
   findGeoDataUrl: {
     doc: 'Find Geo Data frontend base URL for dataset details',
     format: 'url',
-    default: 'https://gep-find-geo-data-frontend.dev.cdp-int.defra.cloud',
+    default: 'http://localhost:3000',
     env: 'FIND_GEO_DATA_URL'
   },
   log: {
@@ -139,9 +139,9 @@ export const config = convict({
         env: 'SESSION_CACHE_ENGINE'
       },
       name: {
-        doc: 'server side session cache name',
+        doc: 'Server-side session cache name, also used for the Yar session cookie',
         format: String,
-        default: 'session',
+        default: isDevelopment ? 'landModelSessionCookie' : 'session',
         env: 'SESSION_CACHE_NAME'
       },
       ttl: {
@@ -158,6 +158,12 @@ export const config = convict({
       }
     },
     cookie: {
+      name: {
+        doc: 'Login cookie name. Use distinct names for apps sharing a hostname.',
+        format: String,
+        default: isDevelopment ? 'landModelUserSessionCookie' : 'userSessionCookie',
+        env: 'SESSION_COOKIE_NAME'
+      },
       ttl: {
         doc: 'Session cookie ttl',
         format: Number,
@@ -185,6 +191,12 @@ export const config = convict({
       format: String,
       default: '127.0.0.1',
       env: 'REDIS_HOST'
+    },
+    port: {
+      doc: 'Redis cache port',
+      format: 'port',
+      default: isDevelopment ? 6380 : 6379,
+      env: 'REDIS_PORT'
     },
     username: {
       doc: 'Redis cache username',
@@ -236,7 +248,8 @@ export const config = convict({
       doc: 'OIDC .well-known configuration URL',
       format: String,
       env: 'OIDC_WELL_KNOWN_CONFIGURATION_URL',
-      default: 'http://localhost:8081/realms/defra-local/.well-known/openid-configuration'
+      // A product-specific Keycloak path keeps its cookies separate from other local apps.
+      default: 'http://localhost:8082/land-model/realms/defra-local/.well-known/openid-configuration'
     },
   },
   cognito: {

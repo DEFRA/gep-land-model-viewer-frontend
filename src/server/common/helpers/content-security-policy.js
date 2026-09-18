@@ -14,6 +14,8 @@ const gtmConnectSrc = gtmContainerId
 const gtmImgSrc = gtmContainerId ? [GA_DOMAIN, GTM_DOMAIN] : []
 const gtmFrameSrc = gtmContainerId ? [GTM_DOMAIN] : []
 
+const devConnectSrc = config.get('isDevelopment') ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []
+
 /**
  * Manage content security policies.
  * @satisfies {import('@hapi/hapi').Plugin}
@@ -23,7 +25,7 @@ const contentSecurityPolicy = {
   options: {
     defaultSrc: ['self'],
     fontSrc: ['self'],
-    connectSrc: ['self', ...gtmConnectSrc],
+    connectSrc: ['self', ...gtmConnectSrc, ...devConnectSrc],
     mediaSrc: ['self'],
     styleSrc: ['self'],
     scriptSrc: ['self', ...gtmScriptSrc],
@@ -49,7 +51,7 @@ const OPERATIONAL_DATASET_HOST = 'https://gepcloudnativedata.blob.core.windows.n
 export const mapContentSecurityPolicy = {
   defaultSrc: ['self'],
   fontSrc: ['self'],
-  connectSrc: ['self', ...gtmConnectSrc, EA_DATA_HOST, OPERATIONAL_DATASET_HOST],
+  connectSrc: ['self', ...gtmConnectSrc, ...devConnectSrc, EA_DATA_HOST, OPERATIONAL_DATASET_HOST],
   mediaSrc: ['self'],
   styleSrc: ['self'],
   scriptSrc: ['self', ...gtmScriptSrc],

@@ -13,6 +13,7 @@ vi.mock('../../../../config/config.js', () => ({
     get: vi.fn((key) => {
       const values = {
         'session.cookie': {
+          name: 'userSessionCookie',
           password: 'the-password-must-be-at-least-32-characters-long',
           secure: false,
           ttl: 14400000

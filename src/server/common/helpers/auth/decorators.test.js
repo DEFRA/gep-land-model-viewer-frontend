@@ -1,5 +1,9 @@
 import { getUserSession } from './decorators.js'
 
+vi.mock('../../../../config/config.js', () => ({
+  config: { get: vi.fn(() => 'userSessionCookie') }
+}))
+
 describe('#getUserSession', () => {
   test('returns session from cache when sessionId is in cookie', async () => {
     const mockSession = { id: 'user-1', isAuthenticated: true }

@@ -7,6 +7,10 @@ import {
   refreshTokenIfExpired
 } from './user-session.js'
 
+vi.mock('../../../../config/config.js', () => ({
+  config: { get: vi.fn(() => 'userSessionCookie') }
+}))
+
 describe('#createUserSession', () => {
   beforeAll(() => {
     vi.useFakeTimers()

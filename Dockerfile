@@ -8,10 +8,13 @@ LABEL uk.gov.defra.ffc.parent-image=defradigital/node-development:${PARENT_VERSI
 
 ENV TZ="Europe/London"
 
-ARG PORT
-ARG PORT_DEBUG
-ENV PORT=${PORT}
+ARG PORT=3002
+ARG PORT_DEBUG=9230
+ARG HAPI_PORT=3003
 EXPOSE ${PORT} ${PORT_DEBUG}
+ENV APP_BASE_URL=http://localhost:${PORT}
+ENV PORT=${HAPI_PORT}
+ENV INSPECT_PORT=${PORT_DEBUG}
 
 COPY --chown=node:node --chmod=755 package*.json ./
 RUN npm install

@@ -1,4 +1,6 @@
 import { vi } from 'vitest'
+import Hapi from '@hapi/hapi'
+import Scooter from '@hapi/scooter'
 import { createServer } from '../../server.js'
 
 describe('#contentSecurityPolicy', () => {
@@ -109,5 +111,47 @@ describe('#contentSecurityPolicy with GTM', () => {
 
     const csp = resp.headers['content-security-policy']
     expect(csp).toMatch(/frame-src 'self' https:\/\/www\.googletagmanager\.com/)
+  })
+})
+
+describe.each(['development', 'production'])('#contentSecurityPolicy in %s', (nodeEnv) => {
+  let server
+
+  beforeAll(async () => {
+    vi.stubEnv('NODE_ENV', nodeEnv)
+    vi.resetModules()
+
+    const { contentSecurityPolicy, mapContentSecurityPolicy } = await import('./content-security-policy.js')
+    server = Hapi.server()
+    await server.register([Scooter, contentSecurityPolicy])
+    server.route([
+      { method: 'GET', path: '/plain', handler: () => 'Page' },
+      {
+        method: 'GET',
+        path: '/map',
+        options: { plugins: { blankie: mapContentSecurityPolicy } },
+        handler: () => 'Map'
+      }
+    ])
+    await server.initialize()
+  })
+
+  afterAll(async () => {
+    await server.stop({ timeout: 0 })
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
+  test.each(['/plain', '/map'])('only allows local WebSockets on %s in development', async (url) => {
+    const { headers } = await server.inject(url)
+    const csp = headers['content-security-policy']
+    const connectSrc = csp.split(';').find(directive => directive.trim().startsWith('connect-src '))
+
+    if (nodeEnv === 'development') {
+      expect(connectSrc).toContain('ws://localhost:*')
+      expect(connectSrc).toContain('ws://127.0.0.1:*')
+    } else {
+      expect(connectSrc).not.toMatch(/wss?:/)
+    }
   })
 })
