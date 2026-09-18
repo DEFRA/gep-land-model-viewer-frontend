@@ -90,10 +90,12 @@ npm ci
 
 ### Environment variables
 
+Copy [`.env.example`](./.env.example) to `.env` and set `OS_API_KEY`.
+
 | Variable            | Required | Description                                                                                                                                     |
 | ------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OS_API_KEY`        | Yes      | OS Maps API key with premium access. Used by the `/os/vts`, `/os/ngd` and `/os/raster` proxies to authenticate tile, sprite and glyph requests. |
-| `FIND_GEO_DATA_URL` | No       | Find Geo Data frontend base URL for dataset details links. Defaults to `https://gep-find-geo-data-frontend.dev.cdp-int.defra.cloud`.            |
+| `FIND_GEO_DATA_URL` | No       | Find Geo Data frontend base URL for dataset details links. Defaults to `http://localhost:3000`.            |
 
 ### Development
 
@@ -190,7 +192,7 @@ AWS Cognito provides a short-lived federated token via `GetOpenIdTokenForDevelop
 
 ### Local development
 
-Keycloak runs via Docker Compose as a local OIDC provider (port 8081). A mock credential provider signs JWTs locally instead of calling Cognito. The Keycloak realm is pre-configured with a test user:
+Keycloak runs via Docker Compose as a local OIDC provider at `http://localhost:8082/land-model`. A mock credential provider signs JWTs locally instead of calling Cognito. The Keycloak realm is pre-configured with a test user:
 
 | Username | Password |
 | -------- | -------- |
@@ -210,11 +212,20 @@ Build:
 docker build --target development --no-cache --tag gep-land-model-viewer-frontend:development .
 ```
 
-Run:
+Run with host networking so Redis and Keycloak remain reachable on `localhost`:
 
 ```bash
-docker run -p 3000:3000 gep-land-model-viewer-frontend:development
+docker compose up -d
+docker run --rm --network host \
+  -v "$PWD:/home/node" \
+  -v /home/node/node_modules \
+  -v /home/node/.public \
+  gep-land-model-viewer-frontend:development
 ```
+
+Mounting the project folder lets code changes reload automatically. The extra volumes keep the image's dependencies and generated assets separate from the host folders so the container can write to them. Rebuild the image and recreate the container after dependency or Dockerfile changes.
+
+On Docker Desktop 4.34+, enable [host networking](https://docs.docker.com/engine/network/drivers/host/#docker-desktop) first.
 
 ### Production image
 
@@ -234,8 +245,8 @@ docker run -p 3000:3000 gep-land-model-viewer-frontend
 
 A local environment with:
 
-- Redis (session cache)
-- Keycloak (OIDC provider, port 8081)
+- Redis (session cache, host port 6380)
+- Keycloak (OIDC provider, host port 8082)
 
 ```bash
 docker compose up --build -d

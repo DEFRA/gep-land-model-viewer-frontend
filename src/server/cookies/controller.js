@@ -25,6 +25,8 @@ const cookiesGetController = {
       currentAnalytics,
       hideCookieBanner: true,
       gtmContainerId,
+      sessionCookieName: config.get('session.cookie.name'),
+      temporarySessionCookieName: config.get('session.cache.name'),
       breadcrumbs: [{ text: 'Home', href: '/' }, { text: 'Cookies' }]
     })
   }

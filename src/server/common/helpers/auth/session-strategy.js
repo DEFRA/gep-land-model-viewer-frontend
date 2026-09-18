@@ -12,7 +12,7 @@ const sessionStrategy = {
 
       server.auth.strategy('session', 'cookie', {
         cookie: {
-          name: 'userSessionCookie',
+          name: sessionCookieConfig.name,
           path: '/',
           password: sessionCookieConfig.password,
           isSecure: sessionCookieConfig.secure,

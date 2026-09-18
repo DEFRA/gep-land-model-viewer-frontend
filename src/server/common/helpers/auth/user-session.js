@@ -1,4 +1,7 @@
 import { addSeconds, isPast, parseISO } from 'date-fns'
+import { config } from '../../../../config/config.js'
+
+const sessionCookieName = config.get('session.cookie.name')
 
 /**
  * @typedef {object} UserSession
@@ -39,7 +42,7 @@ import { addSeconds, isPast, parseISO } from 'date-fns'
 /**
  * @typedef {object} SessionRequest
  * @property {{ session: SessionCache }} server
- * @property {{ userSessionCookie?: { sessionId?: string } }} [state]
+ * @property {Record<string, { sessionId?: string }>} [state]
  * @property {{ isAuthenticated: boolean, credentials: AuthCredentials }} [auth]
  * @property {{ info: (message: string) => void }} [logger]
  * @property {{ clear: () => void, h?: { unstate: (name: string) => void } }} [sessionCookie]
@@ -50,14 +53,14 @@ import { addSeconds, isPast, parseISO } from 'date-fns'
  * @param {SessionRequest} request
  */
 async function clearUserSession (request) {
-  const sessionId = request.state?.userSessionCookie?.sessionId
+  const sessionId = request.state?.[sessionCookieName]?.sessionId
   if (sessionId && request.server.session.drop) {
     await request.server.session.drop(sessionId)
   }
 
   if (request.sessionCookie?.h) {
     request.sessionCookie.clear()
-    request.sessionCookie.h.unstate('userSessionCookie')
+    request.sessionCookie.h.unstate(sessionCookieName)
   }
 }
 
@@ -115,7 +118,7 @@ async function updateUserSession (request, refreshTokenResponse, previousSession
     expiresAt
   }
 
-  const sessionId = request.state?.userSessionCookie?.sessionId
+  const sessionId = request.state?.[sessionCookieName]?.sessionId
   await request.server.session.set(sessionId, session)
 
   request.logger.info(

@@ -29,7 +29,7 @@ describe('#mockClientAssertion', () => {
 
     expect(payload.iss).toBe('d02ee02c-b8da-483d-8a4e-29de7db48b03')
     expect(payload.sub).toBe('d02ee02c-b8da-483d-8a4e-29de7db48b03')
-    expect(payload.aud).toBe('http://localhost:8081/realms/defra-local')
+    expect(payload.aud).toBe('http://localhost:8082/land-model/realms/defra-local')
     expect(payload.jti).toBeDefined()
     expect(payload.exp).toBeGreaterThan(Math.floor(Date.now() / 1000))
   })

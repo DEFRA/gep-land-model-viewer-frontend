@@ -1,11 +1,27 @@
+import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import CopyPlugin from 'copy-webpack-plugin'
 import TerserPlugin from 'terser-webpack-plugin'
 import { WebpackAssetsManifest } from 'webpack-assets-manifest'
+import PreactRefreshPlugin from '@prefresh/webpack'
 
 const { NODE_ENV = 'development' } = process.env
+const isDevelopment = NODE_ENV === 'development'
+
+if (isDevelopment && existsSync('.env')) {
+  process.loadEnvFile('.env')
+}
+
+const appBaseUrl = new URL(process.env.APP_BASE_URL ?? 'http://localhost:3002')
+const defaultDevPort = appBaseUrl.protocol === 'https:' ? '443' : '80'
+const devPort = Number.parseInt(appBaseUrl.port || defaultDevPort, 10)
+const backendPort = Number.parseInt(process.env.PORT ?? '3003', 10)
+
+if (isDevelopment && devPort === backendPort) {
+  throw new Error('APP_BASE_URL and PORT must use different ports: Webpack and Hapi run as separate development servers.')
+}
 
 const require = createRequire(import.meta.url)
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -40,6 +56,32 @@ export default {
   watchOptions: {
     aggregateTimeout: 200,
     poll: 1000
+  },
+  devServer: {
+    host: '0.0.0.0',
+    port: devPort,
+    server: appBaseUrl.protocol === 'https:' ? 'https' : 'http',
+    allowedHosts: [appBaseUrl.hostname],
+    hot: true,
+    static: false,
+    devMiddleware: {
+      index: false,
+      // Hapi reads the asset manifest from disk when rendering templates.
+      writeToDisk: (filePath) => filePath.endsWith('assets-manifest.json')
+    },
+    proxy: [
+      {
+        context: () => true,
+        target: `http://127.0.0.1:${backendPort}`
+      }
+    ],
+    watchFiles: {
+      paths: ['src/server/**/*.njk'],
+      options: {
+        usePolling: true,
+        interval: 1000
+      }
+    }
   },
   output: {
     filename:
@@ -76,13 +118,18 @@ export default {
       },
       {
         test: /\.jsx?$/,
+        // Prefresh injects module.hot into ESM. Production keeps strict ESM parsing;
+        // missing exports are errors in both modes despite this parser difference.
+        type: isDevelopment ? 'javascript/auto' : undefined,
+        parser: { exportsPresence: 'error' },
         loader: 'babel-loader',
         exclude: /node_modules/,
         options: {
           browserslistEnv: 'javascripts',
           cacheDirectory: true,
           extends: path.join(dirname, 'babel.config.cjs'),
-          presets: [['@babel/preset-env']]
+          presets: [['@babel/preset-env']],
+          plugins: isDevelopment ? ['@prefresh/babel-plugin'] : []
         },
 
         // Flag loaded modules as side effect free
@@ -174,6 +221,7 @@ export default {
     usedExports: true
   },
   plugins: [
+    ...(isDevelopment ? [new PreactRefreshPlugin()] : []),
     new WebpackAssetsManifest(),
     new CopyPlugin({
       patterns: [

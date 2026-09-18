@@ -3,17 +3,18 @@ services:
   redis:
     image: redis:7.2.3-alpine3.18
     ports:
-      - '6379:6379'
+      - '6380:6379'
     restart: always
     networks:
       - cdp-tenant
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.2
-    command: start-dev --import-realm --http-port=8081
+    command: start-dev --import-realm --http-port=8081 --http-relative-path=/land-model
     ports:
-      - '8081:8081'
+      - '8082:8081'
     environment:
+      KC_HOSTNAME: http://localhost:8082/land-model
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     volumes:
