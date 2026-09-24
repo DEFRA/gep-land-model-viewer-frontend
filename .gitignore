@@ -10,3 +10,6 @@ coverage
 .envrc
 tsconfig.tsbuildinfo
 .env
+
+compose/garage/data/**/*.tif*
+compose/garage/data/**/*.fgb
