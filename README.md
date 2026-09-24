@@ -69,7 +69,7 @@ return await fetch(url, {
     keepAliveTimeout: 10,
     keepAliveMaxTimeout: 10
   })
-})
+})Z
 ```
 
 ## Local Development
@@ -88,14 +88,36 @@ Install dependencies:
 npm ci
 ```
 
+If developing GeoNetwork/operational dataset functionality you will need GeoNetwork running, a dockerised version with the custom plugins is available
+in [https://dev.azure.com/defragovuk/DEFRA-GEP/_git/DEFRA-GEP-metadata-management](DEFRA-GEP-metadata-management) for use with
+this project and the `gep-find-geo-data-frontend`.
+
+### Local operational datasets
+
+Docker Compose starts Garage and uploads `compose/garage/data/` to the private `datasets` bucket. The backend serves files through `/api/datasets/<uuid>/assets/<filename>`.
+
+COGs and FGBs are in the .gitignore to avoid them being committed, there
+exists style configs for each of the test datasets matching what is populated
+in the `DEFRA-GEP-metadata-management` GeoNetwork docker compose.
+
+You can download cog/fgbs for testing locally and place them in the relevant
+folder, to upload changed files again:
+
+```bash
+docker compose run --rm garage-import-test-data
+```
+
+Start the shared GeoNetwork from `DEFRA-GEP-metadata-management` and import its test data separately (see its README.md). The map reads catalogue metadata from `http://localhost:8080/geonetwork/srv/api` by default.
+
 ### Environment variables
 
 Copy [`.env.example`](./.env.example) to `.env` and set `OS_API_KEY`.
 
-| Variable            | Required | Description                                                                                                                                     |
-| ------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OS_API_KEY`        | Yes      | OS Maps API key with premium access. Used by the `/os/vts`, `/os/ngd` and `/os/raster` proxies to authenticate tile, sprite and glyph requests. |
-| `FIND_GEO_DATA_URL` | No       | Find Geo Data frontend base URL for dataset details links. Defaults to `http://localhost:3000`.            |
+| Variable             | Required | Description                                                                                                                                     |
+| -------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OS_API_KEY`         | Yes      | OS Maps API key with premium access. Used by the `/os/vts`, `/os/ngd` and `/os/raster` proxies to authenticate tile, sprite and glyph requests. |
+| `FIND_GEO_DATA_URL`  | No       | Find Geo Data frontend base URL for dataset details links. Defaults to `http://localhost:3000`.                                                 |
+| `GEONETWORK_API_URL` | No       | GeoNetwork API base URL. Defaults to `http://localhost:8080/geonetwork/srv/api`.                                                                |
 
 ### Development
 
@@ -247,6 +269,7 @@ A local environment with:
 
 - Redis (session cache, host port 6380)
 - Keycloak (OIDC provider, host port 8082)
+- Garage (private S3 bucket on port 3900)
 
 ```bash
 docker compose up --build -d

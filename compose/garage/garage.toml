@@ -1,0 +1,11 @@
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+replication_factor = 1
+
+rpc_bind_addr = "0.0.0.0:3901"
+# Garage requires an RPC secret even with a single node.
+rpc_secret = "1111111111111111111111111111111111111111111111111111111111111111"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "0.0.0.0:3900"

@@ -296,6 +296,47 @@ export const config = convict({
       env: 'TRACING_HEADER'
     }
   },
+  geonetwork: {
+    apiUrl: {
+      doc: 'GeoNetwork REST API base URL',
+      format: 'url',
+      default: 'http://localhost:8080/geonetwork/srv/api',
+      env: 'GEONETWORK_API_URL'
+    }
+  },
+  datasets: {
+    bucket: {
+      doc: 'S3 bucket containing dataset UUID directories',
+      format: String,
+      default: 'datasets',
+      env: 'DATASETS_BUCKET'
+    },
+    endpoint: {
+      doc: 'S3 endpoint',
+      format: String,
+      default: isDevelopment ? 'http://localhost:3900' : '',
+      env: 'S3_ENDPOINT'
+    },
+    region: {
+      doc: 'Dataset bucket region',
+      format: String,
+      default: isDevelopment ? 'garage' : 'eu-west-2',
+      env: 'AWS_REGION'
+    },
+    accessKeyId: {
+      doc: 'S3 access key ID',
+      format: String,
+      nullable: true,
+      default: isDevelopment ? 'garage-access-key-id' : null
+    },
+    secretAccessKey: {
+      doc: 'S3 secret key',
+      format: String,
+      nullable: true,
+      sensitive: true,
+      default: isDevelopment ? 'garage-secret-access-key' : null
+    }
+  },
   map: {
     osApiKey: {
       doc: 'Ordnance Survey Maps API key',
