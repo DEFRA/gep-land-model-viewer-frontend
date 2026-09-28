@@ -2,8 +2,7 @@ import { describe, test, expect } from 'vitest'
 import {
   initialState,
   actions,
-  inspectableLayers,
-  isLayerVisible
+  inspectableLayers
 } from './reducer.js'
 
 const hit = (label = 'Grid square', id = 0) => ({ id, label, panelTitle: label })
@@ -87,8 +86,7 @@ describe('layers reducer', () => {
 
   test('starts with no layers or inspection result', () => {
     expect(initialState).toEqual({
-      query: '',
-      expandedDatasetThemes: [],
+      catalogue: { query: '', expandedThemes: [], results: [], total: 0, attempt: 0, status: 'loading' },
       layers: [],
       editingLayer: null,
       inspection: { status: 'idle', hits: [], hit: null }
@@ -102,10 +100,12 @@ describe('layers reducer', () => {
     expect(actions.REMOVE_LAYER(state, { id: 'peat' }).editingLayer).toBeNull()
   })
 
-  test('updates the Layers panel search query', () => {
-    const state = actions.SET_QUERY(initialState, 'wood')
+  test('updates the Layers panel search query and restarts the results', () => {
+    const expanded = actions.SET_DATASET_THEME_EXPANDED(initialState, { datasetTheme: 'Soil', expanded: true })
+    const loaded = actions.CATALOGUE_LOADED(expanded, { query: '', total: 1, results: [{ id: 'peat', title: 'Peat', inspireTheme: 'Soil' }] })
+    const state = actions.SET_QUERY(loaded, 'wood')
 
-    expect(state.query).toBe('wood')
+    expect(state.catalogue).toEqual({ query: 'wood', expandedThemes: ['Soil'], results: [], total: 0, attempt: 0, status: 'loading' })
     expect(state.layers).toBe(initialState.layers)
     expect(state.inspection).toBe(initialState.inspection)
   })
@@ -114,6 +114,41 @@ describe('layers reducer', () => {
     const state = actions.DATASET_LOADING(initialState, { id: 'peat' })
 
     expect(state.layers).toEqual([{ id: 'peat', ready: false }])
+  })
+
+  test('adds a dataset with its catalogue title and clears its previous error', () => {
+    const catalogue = { ...initialState.catalogue, results: [{ id: 'peat', title: 'Peat', inspireTheme: 'Soil', error: 'Dataset request failed (502)' }] }
+    const state = actions.DATASET_LOADING({ ...initialState, catalogue }, { id: 'peat', title: 'Peat' })
+
+    expect(state.layers).toEqual([{ id: 'peat', title: 'Peat', ready: false }])
+    expect(state.catalogue.results[0]).toEqual({ id: 'peat', title: 'Peat', inspireTheme: 'Soil' })
+  })
+
+  test('commits the loaded source with the layer metadata', () => {
+    const loading = actions.DATASET_LOADING(initialState, { id: 'peat', title: 'Peat' })
+    const source = { type: 'cog', styleConfig: { themes: [] } }
+    const state = actions.DATASET_LOADED(loading, { id: 'peat', source, minZoom: 8 })
+
+    expect(state.layers).toEqual([{ id: 'peat', title: 'Peat', ready: true, source, minZoom: 8 }])
+  })
+
+  test('a failed dataset leaves the map and records its error on the result', () => {
+    const error = 'Missing style config'
+    const catalogue = { ...initialState.catalogue, results: [{ id: 'peat', title: 'Peat', inspireTheme: 'Soil' }] }
+    const loading = actions.DATASET_LOADING({ ...initialState, catalogue, editingLayer: { id: 'peat' } }, { id: 'peat', title: 'Peat' })
+    const state = actions.DATASET_FAILED(loading, { id: 'peat', error })
+
+    expect(state.layers).toEqual([])
+    expect(state.editingLayer).toBeNull()
+    expect(state.catalogue.results[0]).toEqual({ id: 'peat', title: 'Peat', inspireTheme: 'Soil', error })
+  })
+
+  test('a failure for a dataset outside the current results only removes its layer', () => {
+    const loading = actions.DATASET_LOADING(initialState, { id: 'peat', title: 'Peat' })
+    const state = actions.DATASET_FAILED(loading, { id: 'peat', error: 'Dataset request failed (502)' })
+
+    expect(state.layers).toEqual([])
+    expect(state.catalogue.results).toEqual([])
   })
 
   test('adding an existing dataset is an identity operation', () => {
@@ -218,7 +253,7 @@ describe('layers reducer', () => {
     expect(actions.SET_LAYER_ORDER(state, { order: ['first', 'second', 'third'] })).toBe(state)
   })
 
-  test('derives visible and inspectable layers from reducer state', () => {
+  test('derives inspectable layers from reducer state', () => {
     const state = {
       ...initialState,
       layers: [
@@ -229,14 +264,10 @@ describe('layers reducer', () => {
       ]
     }
 
-    expect(isLayerVisible(state, 'ready')).toBe(true)
-    expect(isLayerVisible(state, 'hidden')).toBe(false)
-    expect(isLayerVisible(state, 'loading')).toBe(false)
-    expect(inspectableLayers([
-      { id: 'ready', source: {} },
-      { id: 'hidden', source: {} },
-      { id: 'loading', source: {} }
-    ], state)).toEqual([{ id: 'grid' }, { id: 'ready', themeBand: undefined }])
+    expect(inspectableLayers({
+      ...state,
+      layers: state.layers.map(entry => entry.id === 'grid' ? entry : { ...entry, source: {} })
+    })).toEqual([{ id: 'grid' }, { id: 'ready', themeBand: undefined }])
   })
 
   test('starts a new inspection and clears the previous result', () => {
@@ -298,5 +329,35 @@ describe('layers reducer', () => {
 
     expect(state.inspection).toBe(initialState.inspection)
     expect(state.layers).toBe(layers)
+  })
+})
+
+describe('catalogue state', () => {
+  test('replaces results for each search without touching layers on the map', () => {
+    const initial = { ...initialState, layers: [{ id: 'peat', title: 'Peat', ready: true, opacity: 0.3 }] }
+    const first = actions.CATALOGUE_LOADED(initial, { query: '', total: 2, results: [{ id: 'peat', title: 'Peat' }, { id: 'trees', title: 'Trees' }] })
+    const searched = actions.SET_QUERY(first, 'tree')
+    const second = actions.CATALOGUE_LOADED(searched, { query: 'tree', total: 1, results: [{ id: 'trees', title: 'Trees' }] })
+
+    expect(first.catalogue.results.map(result => result.id)).toEqual(['peat', 'trees'])
+    expect(second.catalogue).toMatchObject({ query: 'tree', results: [{ id: 'trees', title: 'Trees' }], total: 1, status: 'ready' })
+    expect(second.layers).toBe(initial.layers)
+  })
+
+  test('ignores responses for an older search', () => {
+    const state = actions.SET_QUERY(initialState, 'peat')
+    const previous = { query: 'trees' }
+
+    expect(actions.CATALOGUE_LOADED(state, { ...previous, results: [], total: 0 })).toBe(state)
+    expect(actions.CATALOGUE_FAILED(state, previous)).toBe(state)
+    expect(actions.CATALOGUE_FAILED(state, { query: 'peat' }).catalogue.status).toBe('error')
+  })
+
+  test('keeps results when only search whitespace changes', () => {
+    const query = ' tree '
+    const loaded = actions.CATALOGUE_LOADED(actions.SET_QUERY(initialState, 'tree'), { query: 'tree', total: 1, results: [{ id: 'trees', title: 'Trees' }] })
+    const state = actions.SET_QUERY(loaded, query)
+
+    expect(state.catalogue).toMatchObject({ query, results: loaded.catalogue.results, total: 1, status: 'ready' })
   })
 })

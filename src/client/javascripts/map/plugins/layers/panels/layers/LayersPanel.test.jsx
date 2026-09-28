@@ -8,10 +8,10 @@ import { DATASET_INFO_PANEL_ID } from '../../constants.js'
 import { LayersPanel } from './LayersPanel.jsx'
 
 const DATASETS = [
-  { id: 'peat', label: 'Peaty Soils', inspireTheme: 'Soil' },
-  { id: 'habitats', label: 'Meadow habitats', inspireTheme: 'Habitats and biotopes' },
-  { id: 'woodland', label: 'Ancient Woodland', inspireTheme: 'Habitats and biotopes' },
-  { id: 'flood', label: 'Flood Zones', inspireTheme: 'Natural risk zones' }
+  { id: 'peat', title: 'Peaty Soils', inspireTheme: 'Soil' },
+  { id: 'habitats', title: 'Meadow habitats', inspireTheme: 'Habitats and biotopes' },
+  { id: 'woodland', title: 'Ancient Woodland', inspireTheme: 'Habitats and biotopes' },
+  { id: 'flood', title: 'Flood Zones', inspireTheme: 'Natural risk zones' }
 ]
 
 let view
@@ -19,14 +19,21 @@ let announce
 let dispatch
 let appDispatch
 let updateState
+let currentQuery
 
 function TestPanel ({ initial = {}, visible = true }) {
-  const [state, reduce] = useReducer((state, { type, payload }) => actions[type](state, payload), { ...initialState, ...initial })
+  const { query = '', expandedThemes = [], results = DATASETS, ...rest } = initial
+  const [state, reduce] = useReducer((state, { type, payload }) => actions[type](state, payload), {
+    ...initialState,
+    ...rest,
+    catalogue: { ...initialState.catalogue, query, expandedThemes, results, total: results.length, status: 'ready' }
+  })
   updateState = reduce
+  currentQuery = state.catalogue.query
 
   return visible && (
     <LayersPanel
-      pluginConfig={{ datasets: DATASETS }}
+      pluginConfig={{}}
       pluginState={{
         ...state,
         dispatch: action => {
@@ -43,6 +50,10 @@ function TestPanel ({ initial = {}, visible = true }) {
 function renderPanel (state = {}) {
   view = render(<TestPanel initial={state} />)
   return view
+}
+
+function receiveResults (results = DATASETS) {
+  act(() => updateState({ type: 'CATALOGUE_LOADED', payload: { results, total: results.length, query: currentQuery } }))
 }
 
 const labels = () => [...view.container.querySelectorAll('.govuk-checkboxes__label')]
@@ -63,7 +74,7 @@ describe('LayersPanel', () => {
   ])('opens dataset information from the $list', ({ query }) => {
     renderPanel({
       query,
-      expandedDatasetThemes: ['Habitats and biotopes']
+      expandedThemes: ['Habitats and biotopes']
     })
     const button = view.getByRole('button', { name: 'About Ancient Woodland' })
     fireEvent.click(button)
@@ -73,12 +84,12 @@ describe('LayersPanel', () => {
       type: 'OPEN_PANEL',
       payload: {
         panelId: DATASET_INFO_PANEL_ID,
-        props: { datasetId: 'woodland', triggeringElement: button }
+        props: { datasetId: 'woodland', title: 'Ancient Woodland', triggeringElement: button }
       }
     })
   })
 
-  test('starts with collapsed alphabetical dataset themes and alphabetical datasets within each theme', () => {
+  test('starts with collapsed alphabetical dataset themes, keeping catalogue order within each theme', () => {
     renderPanel()
 
     const groups = [...view.container.querySelectorAll('details')]
@@ -88,7 +99,7 @@ describe('LayersPanel', () => {
     expect(groups.every(group => !group.open)).toBe(true)
     expect(count('Habitats and biotopes')).toBe('2 datasets')
     expect(count('Soil')).toBe('1 dataset')
-    expect(labels()).toEqual(['Grid squares', 'OS features', 'Ancient Woodland', 'Meadow habitats', 'Flood Zones', 'Peaty Soils'])
+    expect(labels()).toEqual(['Grid squares', 'OS features', 'Meadow habitats', 'Ancient Woodland', 'Flood Zones', 'Peaty Soils'])
     expect(view.queryByRole('button', { name: 'Clear search' })).toBeNull()
   })
 
@@ -103,6 +114,7 @@ describe('LayersPanel', () => {
     fireEvent.input(view.getByRole('searchbox'), { target: { value: 'flood' } })
     expect(view.container.querySelector('details')).toBeNull()
     fireEvent.click(view.getByText('Clear search', { selector: 'button' }))
+    receiveResults()
     expect(datasetTheme('Habitats and biotopes').open).toBe(true)
     expect(datasetTheme('Soil').open).toBe(true)
     expect(datasetTheme('Natural risk zones').open).toBe(false)
@@ -120,14 +132,15 @@ describe('LayersPanel', () => {
     expect(datasetTheme('Habitats and biotopes').open).toBe(true)
   })
 
-  test('filters dataset names as text is entered, ignoring case and surrounding whitespace', () => {
+  test('displays catalogue search results without filtering their labels again', () => {
     renderPanel()
-    fireEvent.input(view.getByRole('searchbox'), { target: { value: '  FLOOD ' } })
+    fireEvent.input(view.getByRole('searchbox'), { target: { value: '  water ' } })
+    receiveResults([DATASETS[3]])
 
     expect(labels()).toEqual(['Grid squares', 'OS features', 'Flood Zones'])
     expect(view.container.querySelector('details')).toBeNull()
     expect(view.container.querySelector('[data-app-layer-empty]').hidden).toBe(true)
-    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_QUERY', payload: '  FLOOD ' })
+    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_QUERY', payload: '  water ' })
   })
 
   test('shows grouped dataset themes for whitespace-only input', () => {
@@ -137,8 +150,8 @@ describe('LayersPanel', () => {
     expect(view.container.querySelector('[data-app-layer-empty]').hidden).toBe(true)
   })
 
-  test('shows and announces no matches when the query matches only a dataset theme name', () => {
-    renderPanel({ query: '  Natural risk  ' })
+  test('shows and announces an empty catalogue search', () => {
+    renderPanel({ query: '  Natural risk  ', results: [] })
 
     const empty = view.container.querySelector('[data-app-layer-empty]')
     expect(empty.hidden).toBe(false)
@@ -148,6 +161,7 @@ describe('LayersPanel', () => {
     expect(view.container.querySelector('details')).toBeNull()
 
     fireEvent.input(view.getByRole('searchbox'), { target: { value: 'Unknown' } })
+    receiveResults([])
     expect(empty.textContent.trim()).toBe('No datasets match "Unknown"')
     expect(announce).toHaveBeenLastCalledWith('No datasets match "Unknown"')
   })
@@ -161,6 +175,7 @@ describe('LayersPanel', () => {
 
     clear.focus()
     fireEvent.click(clear)
+    receiveResults()
 
     expect(input.value).toBe('')
     expect(view.getByRole('searchbox')).toBe(input)
@@ -172,6 +187,7 @@ describe('LayersPanel', () => {
   test('clearing by deleting the input text restores grouped dataset themes', () => {
     renderPanel({ query: 'wood' })
     fireEvent.input(view.getByRole('searchbox'), { target: { value: '' } })
+    receiveResults()
 
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_QUERY', payload: '' })
     expect(view.container.querySelectorAll('details')).toHaveLength(3)
@@ -181,14 +197,15 @@ describe('LayersPanel', () => {
     renderPanel({ query: 'wood' })
     fireEvent.click(view.getByRole('checkbox', { name: 'Ancient Woodland' }))
 
-    expect(dispatch).toHaveBeenCalledWith({ type: 'DATASET_LOADING', payload: { id: 'woodland' } })
+    expect(dispatch).toHaveBeenCalledWith({ type: 'DATASET_LOADING', payload: { id: 'woodland', title: 'Ancient Woodland' } })
     fireEvent.click(view.getByText('Clear search', { selector: 'button' }))
+    receiveResults()
     expect(count('Habitats and biotopes')).toBe('1 of 2 selected')
     expect(view.container.querySelector('#layer-woodland').checked).toBe(true)
   })
 
   test('keeps focus during loading, prevents repeat activation and allows removal when ready', () => {
-    renderPanel({ expandedDatasetThemes: ['Habitats and biotopes'] })
+    renderPanel({ expandedThemes: ['Habitats and biotopes'] })
     const input = view.getByRole('checkbox', { name: 'Ancient Woodland' })
     input.focus()
     fireEvent.click(input)
@@ -211,7 +228,27 @@ describe('LayersPanel', () => {
     expect(count('Habitats and biotopes')).toBe('2 datasets')
   })
 
-  test('counts loading and hidden datasets, excludes summaries and updates when a failed layer is removed', () => {
+  test('displays a message when the catalogue has more datasets than the result limit', () => {
+    renderPanel()
+    expect(view.container.querySelector('[data-app-layer-limit]')).toBeNull()
+
+    act(() => updateState({ type: 'CATALOGUE_LOADED', payload: { results: DATASETS, total: 600, query: '' } }))
+
+    expect(view.getByText('Showing 4 of 600 datasets. Search to find others.')).toBeTruthy()
+  })
+
+  test('shows a catalogue failure and retries the search', () => {
+    renderPanel()
+    act(() => updateState({ type: 'CATALOGUE_FAILED', payload: { query: '' } }))
+
+    expect(view.getByRole('alert').textContent).toContain('Datasets could not be loaded.')
+    fireEvent.click(view.getByRole('button', { name: 'Try again' }))
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'RETRY_CATALOGUE' })
+    expect(view.getByRole('status').parentElement.className).toContain('govuk-hint')
+  })
+
+  test('shows a failed dataset visibly, clears it on retry, and updates selected counts', () => {
     renderPanel({
       layers: [{ id: 'woodland', ready: false }, { id: 'habitats', ready: true, hidden: true }, { id: 'grid', ready: true }]
     })
@@ -223,9 +260,28 @@ describe('LayersPanel', () => {
     expect(input.getAttribute('aria-disabled')).toBe('true')
     expect(input.closest('.govuk-checkboxes__item').getAttribute('aria-busy')).toBe('true')
 
-    act(() => updateState({ type: 'REMOVE_LAYER', payload: { id: 'woodland' } }))
+    act(() => updateState({ type: 'DATASET_FAILED', payload: { id: 'woodland', error: 'This dataset could not be added. Try again later.' } }))
     expect(count('Habitats and biotopes')).toBe('1 of 2 selected')
-    expect(view.container.querySelector('#layer-woodland').checked).toBe(false)
+    const failed = view.container.querySelector('#layer-woodland')
+    expect(failed.checked).toBe(false)
+    expect(failed.getAttribute('aria-describedby')).toBe('layer-woodland-error')
+    const error = view.container.querySelector('#layer-woodland-error')
+    expect(error.className).toContain('govuk-error-message')
+    expect(error.textContent).toBe('Error: This dataset could not be added. Try again later.')
+
+    fireEvent.click(view.getByRole('checkbox', { name: 'Ancient Woodland' }))
+    expect(view.container.querySelector('#layer-woodland-error')).toBeNull()
+    expect(view.container.querySelector('#layer-woodland').hasAttribute('aria-describedby')).toBe(false)
+  })
+
+  test('clears dataset errors when a new search replaces the results', () => {
+    renderPanel({ layers: [{ id: 'woodland', title: 'Ancient Woodland', ready: false }] })
+    act(() => updateState({ type: 'DATASET_FAILED', payload: { id: 'woodland', error: 'This dataset could not be added. Try again later.' } }))
+
+    fireEvent.input(view.getByRole('searchbox'), { target: { value: 'wood' } })
+    receiveResults([DATASETS[2]])
+
+    expect(view.container.querySelector('#layer-woodland-error')).toBeNull()
   })
 
   test('land summaries delegate enabled state and remain mutually exclusive', () => {

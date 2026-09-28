@@ -18,10 +18,21 @@ describe('DatasetAttributes', () => {
     expect(values()).toEqual(['Wood A', 'Wood B'])
   })
 
-  test('says so when the click found no attributes', () => {
-    view = render(<DatasetAttributes label='Ancient Woodland' features={[]} />)
+  test.each([
+    { case: 'no features', features: [] },
+    { case: 'only blank values', features: [{ name: null, code: '' }, {}] }
+  ])('says so when the click found $case', ({ features }) => {
+    view = render(<DatasetAttributes label='Ancient Woodland' features={features} />)
 
     expect(view.container.textContent).toContain('No attributes found at this location.')
+    expect(view.container.querySelectorAll('.app-map__info-attributes')).toHaveLength(0)
+  })
+
+  test('skips features with only blank values alongside ones that have attributes', () => {
+    view = render(<DatasetAttributes label='SSSI' features={[{ name: null }, { name: 'Site' }]} />)
+
+    expect(view.container.querySelectorAll('.app-map__info-attributes')).toHaveLength(1)
+    expect(values()).toEqual(['Site'])
   })
 
   test('drops missing and empty values', () => {

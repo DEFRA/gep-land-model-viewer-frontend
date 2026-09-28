@@ -7,11 +7,14 @@ import { createInspection } from './inspection/index.js'
 import { getAttribution } from './datasets/attribution.js'
 import { createLayerController } from './layer-controller.js'
 import { inspectableLayers } from './reducer.js'
+import { useCatalogue } from './datasets/use-catalogue.js'
+import { loadDataset } from './datasets/api.js'
 
 const ATTRIBUTIONS_SELECTOR = '.im-c-attributions'
+const DATASET_FAILED_MESSAGE = 'This dataset could not be added. Try again later.'
 
-export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, appState, services }) {
-  const { datasets } = pluginConfig
+export function LayersInit ({ mapState, mapProvider, pluginState, appState, services }) {
+  useCatalogue(pluginState)
   const layerControllerRef = useRef(null)
   const layersRef = useRef(pluginState.layers)
   layersRef.current = pluginState.layers
@@ -19,8 +22,8 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
   inspectionStateRef.current = pluginState.inspection
 
   const inspectionRef = pluginState.useRef('inspection')
-  const inspectableLayersKey = JSON.stringify(inspectableLayers(datasets, pluginState))
-  const attribution = getAttribution(datasets, pluginState, mapState.mapStyle?.attribution)
+  const inspectableLayersKey = JSON.stringify(inspectableLayers(pluginState))
+  const attribution = getAttribution(pluginState, mapState.mapStyle?.attribution)
 
   useEffect(() => {
     if (!mapState.isMapReady) {
@@ -31,7 +34,7 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     const grid = createGridSummary(services.eventBus, map)
     const features = createFeatureSummary(map)
     const summaries = { grid, features }
-    const datasetHits = createDatasetHits(map, datasets, id => layersRef.current.find(layer => layer.id === id))
+    const datasetHits = createDatasetHits(map, () => layersRef.current)
     const inspection = createInspection({
       map,
       eventBus: services.eventBus,
@@ -43,16 +46,17 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     })
     const layerController = createLayerController({
       map,
-      datasets,
       summaries,
+      loadDataset,
       onDatasetLoaded: (id, metadata) => pluginState.dispatch({
         type: 'DATASET_LOADED',
         payload: { id, ...metadata }
       }),
-      onDatasetFailed: id => pluginState.dispatch({
-        type: 'REMOVE_LAYER',
-        payload: { id }
-      })
+      onDatasetFailed: (id) => {
+        const title = layersRef.current.find(layer => layer.id === id)?.title
+        pluginState.dispatch({ type: 'DATASET_FAILED', payload: { id, error: DATASET_FAILED_MESSAGE } })
+        services.announce(`${title} could not be added. Try again later.`)
+      }
     })
 
     layerControllerRef.current = layerController

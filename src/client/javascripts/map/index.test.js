@@ -29,10 +29,6 @@ vi.mock('./config/map-styles.js', () => ({
   mapStyles: [{ id: 'outdoor', label: 'Outdoor', url: '/style.json' }]
 }))
 
-vi.mock('./config/datasets.js', () => ({
-  datasets: [{ id: 'woodland', label: 'Ancient Woodland' }]
-}))
-
 describe('map entry point', () => {
   afterEach(() => {
     vi.clearAllMocks()
@@ -47,7 +43,6 @@ describe('map entry point', () => {
       </main>
     `
     const InteractiveMap = (await import('@defra/interactive-map')).default
-    const { datasets } = await import('./config/datasets.js')
     const createOpenLayersProvider = (await import('@defra/interactive-map/providers/openlayers')).default
     const mapStylesPlugin = (await import('@defra/interactive-map/plugins/map-styles')).default
     const searchPlugin = (await import('@defra/interactive-map/plugins/search')).default
@@ -78,7 +73,6 @@ describe('map entry point', () => {
       'scaleBar'
     ])
     const layersPlugin = options.plugins.find(plugin => plugin.id === 'gepLayers')
-    expect(layersPlugin.datasets).toBe(datasets)
     expect(layersPlugin.styleNonce).toBe('test-style-nonce')
     expect(layersPlugin.infoPanel).toBeUndefined()
   })

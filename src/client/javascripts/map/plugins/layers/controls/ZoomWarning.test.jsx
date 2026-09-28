@@ -1,20 +1,20 @@
 // @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach } from 'vitest'
-import { render } from '@testing-library/preact'
+import { fireEvent, render } from '@testing-library/preact'
 import { ZoomWarning } from './ZoomWarning.jsx'
-
-const DATASETS = [{ id: 'woodland', label: 'Ancient Woodland' }]
 
 let view
 let services
+let olView
+let mapProvider
 
 function renderWarning (props = {}) {
   const pluginState = { layers: [], ...props.pluginState }
   view = render(
     <ZoomWarning
       mapState={{ zoom: props.zoom ?? 8 }}
-      pluginConfig={{ datasets: DATASETS }}
       pluginState={pluginState}
+      mapProvider={mapProvider}
       services={services}
     />
   )
@@ -23,6 +23,8 @@ function renderWarning (props = {}) {
 
 beforeEach(() => {
   services = { announce: vi.fn() }
+  olView = { animate: vi.fn() }
+  mapProvider = { map: { getView: () => olView } }
 })
 
 describe('ZoomWarning', () => {
@@ -36,7 +38,7 @@ describe('ZoomWarning', () => {
   test('warns about a dataset that has a zoom floor', () => {
     renderWarning({
       pluginState: {
-        layers: [{ id: 'woodland', ready: true, minZoom: 10 }]
+        layers: [{ id: 'woodland', title: 'Ancient Woodland', ready: true, minZoom: 10 }]
       }
     })
 
@@ -48,13 +50,29 @@ describe('ZoomWarning', () => {
       pluginState: {
         layers: [
           { id: 'grid', ready: true },
-          { id: 'woodland', ready: true, minZoom: 10 }
+          { id: 'woodland', title: 'Ancient Woodland', ready: true, minZoom: 10 }
         ]
       }
     })
 
     expect(view.container.querySelector('.app-map__zoom-warning').textContent).toBe('Zoom in to see the selected data layers')
     expect(services.announce).toHaveBeenCalledWith('Zoom in to see the selected data layers')
+  })
+
+  test('zooms to the level where every warned layer is drawn', () => {
+    renderWarning({
+      pluginState: {
+        layers: [
+          { id: 'grid', ready: true },
+          { id: 'woodland', title: 'Ancient Woodland', ready: true, minZoom: 12 },
+          { id: 'peat', title: 'Peat', ready: true, minZoom: 7 }
+        ]
+      }
+    })
+
+    fireEvent.click(view.getByRole('button', { name: 'Zoom in' }))
+
+    expect(olView.animate).toHaveBeenCalledWith({ zoom: 12, duration: 300 })
   })
 
   test('does not warn about a loading dataset retaining its previous zoom floor', () => {

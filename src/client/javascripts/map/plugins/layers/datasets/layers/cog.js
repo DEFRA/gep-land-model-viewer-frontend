@@ -59,11 +59,11 @@ function waitForMetadata (source) {
  * @returns Dataset layer with raster styling and opacity controls
  */
 export async function createCogLayer (dataset, layerId, { styleConfig, opacity }) {
-  const { url, normalize, interpolate } = dataset.source
+  const { url } = dataset.source
 
   return createCogDatasetLayer({
     properties: { id: layerId },
-    source: new GeoTIFF({ sources: [{ url }], normalize, interpolate }),
+    source: new GeoTIFF({ sources: [{ url }], normalize: false, interpolate: false }),
     opacity
   }, styleConfig)
 }

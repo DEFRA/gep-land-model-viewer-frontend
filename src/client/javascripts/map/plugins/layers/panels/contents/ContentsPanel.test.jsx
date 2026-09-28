@@ -7,13 +7,13 @@ import { ContentsPanelContent } from './ContentsPanelContent.jsx'
 import { useReducer } from 'react'
 import { actions, initialState } from '../../reducer.js'
 import { KeyPanel } from '../key/KeyPanel.jsx'
-import sssiStyle from '../../../../../../data/styles/sssi.json'
+import sssiStyle from '../../datasets/test-helpers/sssi.json'
 import { blurInput } from './test-helpers/preact.js'
 import { THEMED_DATASET } from '../../datasets/test-helpers/themed-dataset.js'
 
 const STYLED_DATASET = {
   id: 'styled',
-  label: 'Styled layer',
+  title: 'Styled layer',
   source: {
     type: 'fgb',
     opacity: 0.7,
@@ -33,28 +33,28 @@ const STYLED_DATASET = {
   }
 }
 
-const SSSI_DATASET = { id: 'sssi', label: 'SSSI', source: { type: 'fgb', opacity: 0.5, styleConfig: sssiStyle } }
+const SSSI_DATASET = { id: 'sssi', title: 'SSSI', source: { type: 'fgb', opacity: 0.5, styleConfig: sssiStyle } }
 
 const DATASETS = [{
   id: 'woodland',
-  label: 'Ancient Woodland',
+  title: 'Ancient Woodland',
   source: { type: 'wms', opacity: 0.5 }
 }, {
   id: 'flood',
-  label: 'Flood Zones',
+  title: 'Flood Zones',
   source: { type: 'wms', opacity: 0.5 }
 }]
 
 let announce
 let dispatch
 
-function contentsState (overrides = {}) {
+function contentsState ({ layers, ...overrides } = {}) {
   return {
-    layers: [
+    layers: (layers ?? [
       { id: 'grid', ready: true },
       { id: 'flood', ready: true },
       { id: 'woodland', ready: true, hidden: true }
-    ],
+    ]).map(layer => ({ ...DATASETS.find(dataset => dataset.id === layer.id), ...layer })),
     ...overrides,
     dispatch
   }
@@ -62,7 +62,7 @@ function contentsState (overrides = {}) {
 
 function panelProps (pluginState = contentsState()) {
   return {
-    pluginConfig: { datasets: DATASETS, styleNonce: 'test-style-nonce' },
+    pluginConfig: { styleNonce: 'test-style-nonce' },
     pluginState,
     appState: { breakpoint: 'desktop' },
     services: { announce }
@@ -242,12 +242,12 @@ function StatefulContents ({ dataset = STYLED_DATASET, open = true, breakpoint =
   const [state, reduce] = useReducer((state, action) => {
     dispatch(action)
     return actions[action.type](state, action.payload)
-  }, { ...initialState, layers: [{ id: dataset.id, ready: true }] })
+  }, { ...initialState, layers: [{ ...dataset, ready: true }] })
   if (stateRef) {
     stateRef.current = { state, dispatch: reduce }
   }
   const props = {
-    pluginConfig: { datasets: [dataset], styleNonce: 'test-style-nonce' },
+    pluginConfig: { styleNonce: 'test-style-nonce' },
     pluginState: { ...state, dispatch: reduce },
     appState: { breakpoint },
     services: { announce }
@@ -262,7 +262,7 @@ function StatefulContents ({ dataset = STYLED_DATASET, open = true, breakpoint =
 
 function openEditor (dataset = STYLED_DATASET, breakpoint = 'desktop', stateRef) {
   const view = render(<StatefulContents dataset={dataset} breakpoint={breakpoint} stateRef={stateRef} />)
-  fireEvent.click(view.getByRole('button', { name: `Layer actions for ${dataset.label}` }))
+  fireEvent.click(view.getByRole('button', { name: `Layer actions for ${dataset.title}` }))
   fireEvent.click(view.getByRole('menuitem', { name: 'Edit layer' }))
   return view
 }

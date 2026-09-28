@@ -9,43 +9,41 @@ import { getLayerStyle } from '../../datasets/layer-style.js'
  */
 
 /** @returns {KeyEntry | null} */
-function wmsEntry (dataset, layer) {
+function wmsEntry (layer) {
   const layerNames = layer.wmsLayerNames
-  if (dataset.source.type !== 'wms' || !layerNames?.length || !dataset.source.url) {
+  if (layer.source.type !== 'wms' || !layerNames?.length || !layer.source.url) {
     return null
   }
 
   return {
     type: 'wms',
-    id: dataset.id,
-    label: dataset.label,
-    baseUrl: dataset.source.url,
+    id: layer.id,
+    label: layer.title,
+    baseUrl: layer.source.url,
     layerNames
   }
 }
 
 /**
- * @param {object[]} datasets
  * @param {import('../../reducer.js').LayersState} pluginState
  */
-export function getKeyEntries (datasets, pluginState) {
+export function getKeyEntries (pluginState) {
   /** @type {KeyEntry[]} */
   const entries = []
 
   for (const layer of pluginState.layers) {
-    const dataset = datasets.find(candidate => candidate.id === layer.id)
-    if (!dataset || layer.hidden || !layer.ready) {
+    if (!layer.source || layer.hidden || !layer.ready) {
       continue
     }
 
-    const { styleConfig } = getLayerStyle(dataset, layer)
+    const { styleConfig } = getLayerStyle(layer)
     if (styleConfig) {
       const styles = visibleStyleDefinitions(styleConfig)
       if (styles.length) {
-        entries.push({ type: 'style', id: layer.id, label: dataset.label, styles })
+        entries.push({ type: 'style', id: layer.id, label: layer.title, styles })
       }
     } else {
-      const entry = wmsEntry(dataset, layer)
+      const entry = wmsEntry(layer)
       if (entry) {
         entries.push(entry)
       }

@@ -6,18 +6,34 @@ import { LandSummary } from './LandSummary.jsx'
 import { LayerSearch } from './LayerSearch.jsx'
 import { DATASET_INFO_PANEL_ID } from '../../constants.js'
 
+function noMatchMessageFor ({ status, results, query }) {
+  if (status !== 'ready' || results.length) {
+    return ''
+  }
+
+  const term = query.trim()
+  return term ? `No datasets match "${term}"` : 'No datasets are available.'
+}
+
+function themeCount (selected, total) {
+  if (selected) {
+    return `${selected} of ${total} selected`
+  }
+
+  const noun = total === 1 ? 'dataset' : 'datasets'
+  return <>{total}<span className='govuk-visually-hidden'> {noun}</span></>
+}
+
 export function LayersPanel ({ pluginConfig, pluginState, services, appState }) {
-  const { datasets } = pluginConfig
   const { dispatch } = pluginState
-  const { layers, query, expandedDatasetThemes } = /** @type {import('../../reducer.js').LayersState} */ (pluginState)
+  const { catalogue, layers } = /** @type {import('../../reducer.js').LayersState} */ (pluginState)
+  const { query, results, expandedThemes } = catalogue
   const { announce } = services
   const searchInputRef = useRef(null)
-  const sorted = [...datasets].sort((a, b) => a.label.localeCompare(b.label))
-  const datasetThemes = [...new Set(sorted.map(dataset => dataset.inspireTheme))].sort((a, b) => a.localeCompare(b))
+  const datasetThemes = [...new Set(results.map(dataset => dataset.inspireTheme))].sort((a, b) => a.localeCompare(b))
 
-  const term = query.trim().toLowerCase()
-  const matching = term ? sorted.filter(dataset => dataset.label.toLowerCase().includes(term)) : sorted
-  const noMatchMessage = term && matching.length === 0 ? `No datasets match "${query.trim()}"` : ''
+  const term = query.trim()
+  const noMatchMessage = noMatchMessageFor(catalogue)
 
   useEffect(() => {
     if (noMatchMessage) {
@@ -36,7 +52,7 @@ export function LayersPanel ({ pluginConfig, pluginState, services, appState }) 
       return
     }
 
-    dispatch({ type: 'DATASET_LOADING', payload: { id: dataset.id } })
+    dispatch({ type: 'DATASET_LOADING', payload: { id: dataset.id, title: dataset.title } })
   }
 
   const handleSummaryChange = (id, enabled) => {
@@ -51,7 +67,7 @@ export function LayersPanel ({ pluginConfig, pluginState, services, appState }) 
       type: 'OPEN_PANEL',
       payload: {
         panelId: DATASET_INFO_PANEL_ID,
-        props: { datasetId: dataset.id, triggeringElement }
+        props: { datasetId: dataset.id, title: dataset.title, triggeringElement }
       }
     })
   }
@@ -75,24 +91,31 @@ export function LayersPanel ({ pluginConfig, pluginState, services, appState }) 
           inputRef={searchInputRef}
         />
 
-        <div id='layers-list' data-app-layer-list>
+        <div id='layers-list' data-app-layer-list aria-busy={catalogue.status === 'loading'}>
+          {catalogue.status === 'loading' && <p className='govuk-body govuk-hint govuk-!-margin-bottom-4'><output>Loading datasets…</output></p>}
+          {catalogue.status === 'error' && (
+            <p className='govuk-body govuk-!-margin-bottom-4' role='alert'>
+              Datasets could not be loaded.{' '}
+              <LinkButton onClick={() => dispatch({ type: 'RETRY_CATALOGUE' })}>Try again</LinkButton>
+            </p>
+          )}
           <p data-app-layer-empty className='govuk-body govuk-hint govuk-!-margin-bottom-4' hidden={!noMatchMessage}>
             {noMatchMessage}
           </p>
 
           {term
-            ? matching.length > 0 && (
-              <DatasetList datasets={matching} layers={layers} legend='Search results' onChange={handleDatasetChange} onInfo={handleDatasetInfo} />
+            ? results.length > 0 && (
+              <DatasetList datasets={results} layers={layers} legend='Search results' onChange={handleDatasetChange} onInfo={handleDatasetInfo} />
             )
             : datasetThemes.map(datasetTheme => {
-              const themeDatasets = sorted.filter(dataset => dataset.inspireTheme === datasetTheme)
+              const themeDatasets = results.filter(dataset => dataset.inspireTheme === datasetTheme)
               const selectedCount = themeDatasets.filter(dataset => layers.some(layer => layer.id === dataset.id)).length
 
               return (
                 <details
                   key={datasetTheme}
                   className='govuk-details app-map__dataset-theme'
-                  open={expandedDatasetThemes.includes(datasetTheme)}
+                  open={expandedThemes.includes(datasetTheme)}
                   onToggle={event => dispatch({
                     type: 'SET_DATASET_THEME_EXPANDED',
                     payload: { datasetTheme, expanded: event.currentTarget.open }
@@ -102,9 +125,7 @@ export function LayersPanel ({ pluginConfig, pluginState, services, appState }) 
                     <ChevronRight className='app-map__dataset-theme-chevron' size={16} aria-hidden='true' />
                     <span className='govuk-details__summary-text'>{datasetTheme}</span>
                     <span className='app-map__dataset-theme-count'>
-                      {selectedCount
-                        ? `${selectedCount} of ${themeDatasets.length} selected`
-                        : <>{themeDatasets.length}<span className='govuk-visually-hidden'> {themeDatasets.length === 1 ? 'dataset' : 'datasets'}</span></>}
+                      {themeCount(selectedCount, themeDatasets.length)}
                     </span>
                   </summary>
                   <div className='govuk-details__text'>
@@ -113,6 +134,12 @@ export function LayersPanel ({ pluginConfig, pluginState, services, appState }) 
                 </details>
               )
             })}
+
+          {catalogue.status === 'ready' && results.length < catalogue.total && (
+            <p className='govuk-body-s govuk-hint govuk-!-margin-top-2' data-app-layer-limit>
+              Showing {results.length} of {catalogue.total} datasets. Search to find others.
+            </p>
+          )}
         </div>
 
         {term && (

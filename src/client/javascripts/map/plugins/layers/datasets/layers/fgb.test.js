@@ -2,7 +2,7 @@ import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { bbox } from 'ol/loadingstrategy.js'
 import { getLayerStyle } from '../layer-style.js'
 import { THEMED_DATASET } from '../test-helpers/themed-dataset.js'
-import cromeStyle from '../../../../../../data/styles/crop-map-of-england.json'
+import cromeStyle from '../test-helpers/crop-map-of-england.json'
 
 function stubLayer (opts) {
   const properties = opts?.properties || {}
@@ -53,14 +53,6 @@ vi.mock('./fgb-loader.js', () => ({
   }))
 }))
 
-vi.mock('./pmtiles.js', () => ({
-  createPmtilesLayer: vi.fn(async (url, layerId, options) => {
-    const layer = {}
-    stubLayer.call(layer, { properties: { id: layerId }, opacity: options.opacity })
-    return { layers: [layer], applyStyle: vi.fn(), setOpacity: vi.fn() }
-  })
-}))
-
 vi.mock('./cog.js', () => ({
   createCogOverviewLayer: vi.fn(async (overview, layerId, { className, styleConfig }) => {
     const layer = {}
@@ -72,12 +64,11 @@ vi.mock('./cog.js', () => ({
 const { default: WebGLVectorLayer } = await import('ol/layer/WebGLVector.js')
 const { default: VectorSource } = await import('ol/source/Vector.js')
 const { createFgbLoadController } = await import('./fgb-loader.js')
-const { createPmtilesLayer } = await import('./pmtiles.js')
 const { createCogOverviewLayer } = await import('./cog.js')
 const { createFlatGeobufLayer } = await import('./fgb.js')
 
 function createLayerForTest (dataset, layerId, map, layerState) {
-  return createFlatGeobufLayer(dataset, layerId, map, getLayerStyle(dataset, layerState))
+  return createFlatGeobufLayer(dataset, layerId, map, getLayerStyle({ ...dataset, ...layerState }))
 }
 
 const MATCH_STYLE_CONFIG = {
@@ -132,22 +123,21 @@ function latestLoadController () {
 }
 
 describe('#createFlatGeobufLayer', () => {
-  test.each(['cog', 'pmtiles'])('switches vector fields and the %s overview while retaining the data source', async (type) => {
+  test('switches vector fields and the COG overview while retaining the data source', async () => {
     const { default: ActualWebGLVectorLayer } = await vi.importActual('ol/layer/WebGLVector.js')
     const { default: ActualVectorSource } = await vi.importActual('ol/source/Vector.js')
     WebGLVectorLayer.mockImplementationOnce(function (options) { return new ActualWebGLVectorLayer(options) })
     VectorSource.mockImplementationOnce(function (options) { return new ActualVectorSource(options) })
     const dataset = {
       ...THEMED_DATASET,
-      source: { ...THEMED_DATASET.source, overview: { type, url: '/overview', maxZoom: 4 } }
+      source: { ...THEMED_DATASET.source, overview: { type: 'cog', url: '/overview' } }
     }
     const datasetLayer = await createLayerForTest(dataset, 'gep-themed', mapHarness().map)
     const detail = datasetLayer.layers.find(layer => layer.get('id') === 'gep-themed')
     const source = detail.getSource()
     const originalRenderer = detail.getRenderer()
     const setStyle = vi.spyOn(detail, 'setStyle')
-    const factory = type === 'cog' ? createCogOverviewLayer : createPmtilesLayer
-    const overview = await factory.mock.results[0].value
+    const overview = await createCogOverviewLayer.mock.results[0].value
     const county = dataset.source.styleConfig.themes[1]
 
     try {
@@ -158,7 +148,8 @@ describe('#createFlatGeobufLayer', () => {
       expect(countyRenderer).not.toBe(originalRenderer)
       expect(detail.getSource()).toBe(source)
 
-      const edited = getLayerStyle(dataset, {
+      const edited = getLayerStyle({
+        ...dataset,
         themeBand: 2,
         styleOverridesByTheme: { 2: { classes: [{ fill: [0, 128, 0, 1] }] } }
       }).styleConfig
@@ -200,7 +191,7 @@ describe('#createFlatGeobufLayer', () => {
     expect(layerOptions.className).toBeUndefined()
   })
 
-  test.each(['cog', 'pmtiles'])('shares the first theme between detail and its %s overview', async (type) => {
+  test('shares the first theme between detail and its COG overview', async () => {
     const second = {
       label: 'County',
       type: 'match',
@@ -210,15 +201,14 @@ describe('#createFlatGeobufLayer', () => {
     }
     const dataset = fgbDataset({
       styleConfig: { themes: [MATCH_STYLE_CONFIG, second] },
-      overview: { type, url: '/overview', maxZoom: 4 }
+      overview: { type: 'cog', url: '/overview' }
     })
 
     await createLayerForTest(dataset, 'gep-test-fgb', mapHarness().map)
 
     const [detailOptions] = WebGLVectorLayer.mock.calls[0]
     expect(detailOptions.style['fill-color'][1]).toEqual(['get', 'category'])
-    const factory = type === 'cog' ? createCogOverviewLayer : createPmtilesLayer
-    expect(factory.mock.calls[0][2].styleConfig).toBe(MATCH_STYLE_CONFIG)
+    expect(createCogOverviewLayer.mock.calls[0][2].styleConfig).toBe(MATCH_STYLE_CONFIG)
   })
 
   test('retries a failed visible viewport once the user finishes moving', async () => {
@@ -258,52 +248,15 @@ describe('#createFlatGeobufLayer', () => {
     expect(layerOptions.minZoom).toBe(6)
   })
 
-  test('a pmtiles overview takes the zooms below its max', async () => {
-    const dataset = fgbDataset({
-      overview: { type: 'pmtiles', url: '/land-model/tiles/with-overview.pmtiles', maxZoom: 4 }
-    })
-
-    const { layers } = await createLayerForTest(dataset, 'gep-test-fgb', mapHarness().map)
-
-    expect(layers.map(layer => layer.get('id'))).toEqual([
-      'gep-test-fgb',
-      'gep-test-fgb-overview'
-    ])
-    const [detailOptions] = WebGLVectorLayer.mock.calls[0]
-    expect(detailOptions.minZoom).toBe(4)
-    expect(createPmtilesLayer).toHaveBeenCalledWith(
-      '/land-model/tiles/with-overview.pmtiles',
-      'gep-test-fgb-overview',
-      {
-        styleConfig: MATCH_STYLE_CONFIG,
-        maxZoom: 4,
-        opacity: 0.7
-      }
-    )
-  })
-
-  test.each([
-    ['COG', { type: 'cog', url: '/land-model/raster/broken.tif' }, createCogOverviewLayer],
-    ['PMTiles', { type: 'pmtiles', url: '/land-model/tiles/broken.pmtiles', maxZoom: 4 }, createPmtilesLayer]
-  ])('a failed %s overview does not leave load recovery registered', async (_type, overview, createOverview) => {
-    createOverview.mockRejectedValueOnce(new Error('overview failed'))
+  test('a failed COG overview does not leave load recovery registered', async () => {
+    createCogOverviewLayer.mockRejectedValueOnce(new Error('overview failed'))
+    const overview = { type: 'cog', url: '/land-model/raster/broken.tif' }
     const { map } = mapHarness()
 
     await expect(createLayerForTest(fgbDataset({ overview }), 'gep-test-fgb', map)).rejects.toThrow('overview failed')
 
     expect(createFgbLoadController).not.toHaveBeenCalled()
     expect(map.on).not.toHaveBeenCalled()
-  })
-
-  test('an unsupported overview type throws before any layer is built', async () => {
-    const dataset = fgbDataset({
-      overview: { type: 'wmts', url: '/land-model/tiles/bad-overview', maxZoom: 4 }
-    })
-
-    await expect(createLayerForTest(dataset, 'gep-test-fgb', mapHarness().map)).rejects.toThrow(
-      'Dataset test-fgb has unsupported overview type "wmts", only pmtiles and cog are supported'
-    )
-    expect(WebGLVectorLayer).not.toHaveBeenCalled()
   })
 
   test('a cog overview remains under detail with opacity on their shared canvas', async () => {
@@ -362,7 +315,6 @@ describe('#createFlatGeobufLayer', () => {
 
   test.each([
     ['no overview', undefined],
-    ['a PMTiles overview', 'pmtiles'],
     ['a COG overview', 'cog']
   ])('applies fill, outline and opacity changes with %s', async (_description, overviewType) => {
     const dataset = fgbDataset({
@@ -374,11 +326,12 @@ describe('#createFlatGeobufLayer', () => {
           classes: [{ bandValue: 1, fill: [10, 20, 30, 0.6], stroke: { color: [40, 50, 60, 0.8], width: 1.25 } }]
         }]
       },
-      overview: overviewType && { type: overviewType, url: '/overview', maxZoom: 4 }
+      overview: overviewType && { type: overviewType, url: '/overview' }
     })
     const datasetLayer = await createLayerForTest(dataset, 'gep-test-fgb', mapHarness().map)
     const detail = WebGLVectorLayer.mock.instances[0]
-    const { styleConfig: updatedStyle } = getLayerStyle(dataset, {
+    const { styleConfig: updatedStyle } = getLayerStyle({
+      ...dataset,
       styleOverridesByTheme: { 1: { classes: [{ fill: [255, 0, 0, 0.6], stroke: { color: [0, 0, 0, 0.8] } }] } }
     })
 
@@ -393,11 +346,6 @@ describe('#createFlatGeobufLayer', () => {
       expect(detail.setOpacity).not.toHaveBeenCalled()
     } else {
       expect(detail.setOpacity).toHaveBeenCalledWith(0.4)
-      if (overviewType === 'pmtiles') {
-        const overviewLayer = await createPmtilesLayer.mock.results[0].value
-        expect(overviewLayer.applyStyle).toHaveBeenCalledWith(updatedStyle)
-        expect(overviewLayer.setOpacity).toHaveBeenCalledWith(0.4)
-      }
     }
   })
 
@@ -413,7 +361,7 @@ describe('#createFlatGeobufLayer', () => {
     const source = detail.getSource()
 
     try {
-      datasetLayer.applyStyle(getLayerStyle(dataset, { styleOverridesByTheme: { 1: { classes: [{ fill: [255, 0, 0, 1] }] } } }).styleConfig)
+      datasetLayer.applyStyle(getLayerStyle({ ...dataset, styleOverridesByTheme: { 1: { classes: [{ fill: [255, 0, 0, 1] }] } } }).styleConfig)
       expect(detail.getRenderer()).toBe(renderer)
       expect(detail.getSource()).toBe(source)
 

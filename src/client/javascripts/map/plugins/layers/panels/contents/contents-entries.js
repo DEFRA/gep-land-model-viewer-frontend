@@ -20,24 +20,24 @@ import { swatchColours, visibleStyleDefinitions } from '../shared/swatch-helpers
  */
 
 /** @returns {ContentsEntry} */
-function datasetEntry (dataset, layer) {
-  const { styleConfig } = getLayerStyle(dataset, layer)
+function datasetEntry (layer) {
+  const { styleConfig } = getLayerStyle(layer)
   const definitions = visibleStyleDefinitions(styleConfig)
   /** @type {ContentsSwatch} */
   let swatch
 
   if (definitions.length === 1) {
     swatch = { type: 'style', definition: definitions[0] }
-  } else if (styleConfig) {
+  } else if (styleConfig || !layer.source) {
     swatch = { type: 'colours', colours: swatchColours(definitions) }
   } else {
     swatch = { type: 'wms' }
   }
 
   return {
-    id: dataset.id,
+    id: layer.id,
     kind: 'dataset',
-    label: dataset.label,
+    label: layer.title,
     hidden: Boolean(layer.hidden),
     loading: !layer.ready,
     swatch
@@ -57,25 +57,12 @@ function summaryEntry (summary, layer) {
 }
 
 /**
- * @param {object[]} datasets
  * @param {import('../../reducer.js').LayersState} pluginState
  * @returns {ContentsEntry[]}
  */
-export function getContentsEntries (datasets, pluginState) {
-  const entries = []
-
-  for (const layer of pluginState.layers) {
-    const dataset = datasets.find(candidate => candidate.id === layer.id)
-    if (dataset) {
-      entries.push(datasetEntry(dataset, layer))
-      continue
-    }
-
+export function getContentsEntries (pluginState) {
+  return pluginState.layers.map(layer => {
     const summary = SUMMARIES.find(candidate => candidate.id === layer.id)
-    if (summary) {
-      entries.push(summaryEntry(summary, layer))
-    }
-  }
-
-  return entries
+    return summary ? summaryEntry(summary, layer) : datasetEntry(layer)
+  })
 }

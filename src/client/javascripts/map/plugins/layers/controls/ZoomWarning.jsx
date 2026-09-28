@@ -2,8 +2,9 @@ import { useEffect } from 'react'
 import { ZoomIn } from 'lucide-preact'
 import { SUMMARIES } from '../summaries/config.js'
 
-function zoomWarningMessage (entries, zoom) {
-  const belowZoom = entries.filter(entry => zoom < entry.minZoom)
+const ZOOM_IN_DURATION = 300
+
+function zoomWarningMessage (belowZoom) {
   if (!belowZoom.length) {
     return ''
   }
@@ -15,7 +16,7 @@ function zoomWarningMessage (entries, zoom) {
   return 'Zoom in to see the selected data layers'
 }
 
-function warningEntries (datasets, pluginState) {
+function warningEntries (pluginState) {
   const entries = []
 
   for (const layer of pluginState.layers) {
@@ -24,24 +25,18 @@ function warningEntries (datasets, pluginState) {
     }
 
     const summary = SUMMARIES.find(candidate => candidate.id === layer.id)
-    if (summary) {
-      entries.push({ label: summary.label, minZoom: summary.minZoom })
-    } else {
-      const dataset = datasets.find(candidate => candidate.id === layer.id)
-      if (dataset && layer.minZoom !== undefined) {
-        entries.push({ label: dataset.label, minZoom: layer.minZoom })
-      }
+    const entry = summary ? { label: summary.label, minZoom: summary.minZoom } : { label: layer.title, minZoom: layer.minZoom }
+    if (entry.minZoom !== undefined) {
+      entries.push(entry)
     }
   }
 
   return entries
 }
 
-export function ZoomWarning ({ mapState, pluginConfig, pluginState, services }) {
-  const zoomMessage = zoomWarningMessage(
-    warningEntries(pluginConfig.datasets, pluginState),
-    mapState.zoom
-  )
+export function ZoomWarning ({ mapState, pluginState, mapProvider, services }) {
+  const belowZoom = warningEntries(pluginState).filter(entry => mapState.zoom < entry.minZoom)
+  const zoomMessage = zoomWarningMessage(belowZoom)
 
   useEffect(() => {
     if (zoomMessage) {
@@ -55,7 +50,14 @@ export function ZoomWarning ({ mapState, pluginConfig, pluginState, services }) 
 
   return (
     <div className='app-map__zoom-warning'>
-      <ZoomIn className='app-map__zoom-warning-icon' />
+      <button
+        type='button'
+        className='app-map__zoom-warning-button'
+        aria-label='Zoom in'
+        onClick={() => mapProvider.map.getView().animate({ zoom: Math.max(...belowZoom.map(entry => entry.minZoom)), duration: ZOOM_IN_DURATION })}
+      >
+        <ZoomIn className='app-map__zoom-warning-icon' aria-hidden='true' />
+      </button>
       <span>{zoomMessage}</span>
     </div>
   )

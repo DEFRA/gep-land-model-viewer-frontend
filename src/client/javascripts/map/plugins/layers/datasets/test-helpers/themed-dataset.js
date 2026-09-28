@@ -1,6 +1,6 @@
 export const THEMED_DATASET = {
   id: 'themed',
-  label: 'Crop map',
+  title: 'Crop map',
   source: {
     type: 'fgb',
     url: '/themed.fgb',

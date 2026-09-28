@@ -23,6 +23,8 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @typedef {object} LayerState
  * @property {string} id
  * @property {boolean} ready
+ * @property {string} [title] Dataset title, copied from its catalogue result
+ * @property {import('./datasets/source.js').DatasetSource} [source] Dataset map source, set once loaded
  * @property {number} [minZoom]
  * @property {string[]} [wmsLayerNames]
  * @property {boolean} [hidden]
@@ -38,10 +40,21 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @property {import('./inspection/index.js').Hit | null} hit
  */
 
+/** @typedef {import('./datasets/api.js').DatasetSummary & { error?: string }} CatalogueResult */
+
+/**
+ * @typedef {object} CatalogueState
+ * @property {string} query
+ * @property {string[]} expandedThemes
+ * @property {CatalogueResult[]} results
+ * @property {number} total
+ * @property {number} attempt
+ * @property {'loading' | 'ready' | 'error'} status
+ */
+
 /**
  * @typedef {object} LayersState
- * @property {string} query
- * @property {string[]} expandedDatasetThemes
+ * @property {CatalogueState} catalogue
  * @property {LayerState[]} layers Top-most entry first
  * @property {{ id: string, colourKey?: string } | null} editingLayer
  * @property {InspectionState} inspection
@@ -56,8 +69,7 @@ const initialInspectionState = {
 
 /** @type {LayersState} */
 const initialState = {
-  query: '',
-  expandedDatasetThemes: [],
+  catalogue: { query: '', expandedThemes: [], results: [], total: 0, attempt: 0, status: 'loading' },
   layers: [],
   editingLayer: null,
   inspection: initialInspectionState
@@ -84,34 +96,75 @@ function updateLayer (state, id, getUpdatedLayer) {
   }
 }
 
-const setQuery = (state, query) => ({
-  ...state,
-  query
-})
+function setQuery (state, query) {
+  if (isCurrentSearch(state, { query })) {
+    return { ...state, catalogue: { ...state.catalogue, query } }
+  }
+
+  return { ...state, catalogue: { ...state.catalogue, query, results: [], total: 0, status: 'loading' } }
+}
+
+function isCurrentSearch (state, { query }) {
+  return state.catalogue.query.trim() === query.trim()
+}
+
+function catalogueFailed (state, request) {
+  return isCurrentSearch(state, request) ? { ...state, catalogue: { ...state.catalogue, status: 'error' } } : state
+}
+
+const catalogueLoaded = (state, { results, total, query }) => {
+  if (!isCurrentSearch(state, { query })) {
+    return state
+  }
+
+  return { ...state, catalogue: { ...state.catalogue, results, total, status: 'ready' } }
+}
 
 const setDatasetThemeExpanded = (state, { datasetTheme, expanded }) => {
-  if (state.expandedDatasetThemes.includes(datasetTheme) === expanded) {
+  const { expandedThemes } = state.catalogue
+  if (expandedThemes.includes(datasetTheme) === expanded) {
     return state
   }
 
   return {
     ...state,
-    expandedDatasetThemes: expanded
-      ? [...state.expandedDatasetThemes, datasetTheme]
-      : state.expandedDatasetThemes.filter(candidate => candidate !== datasetTheme)
+    catalogue: {
+      ...state.catalogue,
+      expandedThemes: expanded
+        ? [...expandedThemes, datasetTheme]
+        : expandedThemes.filter(candidate => candidate !== datasetTheme)
+    }
   }
+}
+
+function setResultError (state, id, error) {
+  if (!state.catalogue.results.some(result => result.id === id && result.error !== error)) {
+    return state
+  }
+
+  const results = state.catalogue.results.map(result => {
+    if (result.id !== id || result.error === error) {
+      return result
+    }
+
+    const rest = { ...result }
+    delete rest.error
+    return error ? { ...rest, error } : rest
+  })
+
+  return { ...state, catalogue: { ...state.catalogue, results } }
 }
 
 const setEditingLayer = (state, editingLayer) => state.editingLayer === editingLayer ? state : { ...state, editingLayer }
 
-const datasetLoading = (state, { id }) => {
+const datasetLoading = (state, { id, title }) => {
   if (state.layers.some(layer => layer.id === id)) {
     return state
   }
 
   return {
-    ...state,
-    layers: [{ id, ready: false }, ...state.layers]
+    ...setResultError(state, id, undefined),
+    layers: [{ id, title, ready: false }, ...state.layers]
   }
 }
 
@@ -139,6 +192,8 @@ const removeLayer = (state, { id }) => {
     editingLayer: state.editingLayer?.id === id ? null : state.editingLayer
   }
 }
+
+const datasetFailed = (state, { id, error }) => setResultError(removeLayer(state, { id }), id, error)
 
 const setSummary = (state, { id, enabled }) => {
   if (!enabled) {
@@ -391,31 +446,23 @@ export function isLayerStateVisible (layerState) {
   return Boolean(layerState?.ready && !layerState.hidden)
 }
 
-export function isLayerVisible (state, id) {
-  const layer = state.layers.find(candidate => candidate.id === id)
-  return isLayerStateVisible(layer)
-}
-
-export function inspectableLayers (datasets, state) {
-  return [
-    ...SUMMARIES
-      .filter(summary => isLayerVisible(state, summary.id))
-      .map(summary => ({ id: summary.id })),
-    ...datasets
-      .filter(dataset => isLayerVisible(state, dataset.id))
-      .map(dataset => ({
-        id: dataset.id,
-        themeBand: getLayerTheme(dataset, state.layers.find(layer => layer.id === dataset.id))?.band
-      }))
-  ].sort((a, b) => a.id.localeCompare(b.id))
+export function inspectableLayers (state) {
+  return state.layers
+    .filter(isLayerStateVisible)
+    .map(layer => layer.source ? { id: layer.id, themeBand: getLayerTheme(layer)?.band } : { id: layer.id })
+    .sort((a, b) => a.id.localeCompare(b.id))
 }
 
 const actions = {
   SET_QUERY: setQuery,
+  CATALOGUE_LOADED: catalogueLoaded,
+  CATALOGUE_FAILED: catalogueFailed,
+  RETRY_CATALOGUE: state => ({ ...state, catalogue: { ...state.catalogue, attempt: state.catalogue.attempt + 1, status: 'loading' } }),
   SET_DATASET_THEME_EXPANDED: setDatasetThemeExpanded,
   SET_EDITING_LAYER: setEditingLayer,
   DATASET_LOADING: datasetLoading,
   DATASET_LOADED: datasetLoaded,
+  DATASET_FAILED: datasetFailed,
   REMOVE_LAYER: removeLayer,
   SET_SUMMARY: setSummary,
   SET_LAYER_HIDDEN: setLayerHidden,

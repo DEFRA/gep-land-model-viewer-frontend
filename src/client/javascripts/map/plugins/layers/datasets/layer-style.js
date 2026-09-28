@@ -1,3 +1,5 @@
+import { DEFAULT_OPACITY } from './source.js'
+
 export function coloursEqual (a, b) {
   return a === b || (a?.length === b?.length && a?.every((value, index) => value === b[index]))
 }
@@ -32,28 +34,26 @@ function mergeThemeOverrides (theme, overrides) {
 
 /**
  * Resolves the selected theme, falling back to the first configured theme.
- * @param {object} dataset
  * @param {import('../reducer.js').LayerState} [layer]
  */
-export function getLayerTheme (dataset, layer) {
-  const themes = dataset.source.styleConfig?.themes
-  return themes?.find(theme => theme.band === layer?.themeBand) ?? themes?.[0]
+export function getLayerTheme (layer) {
+  const themes = layer?.source?.styleConfig?.themes
+  return themes?.find(theme => theme.band === layer.themeBand) ?? themes?.[0]
 }
 
 /**
- * Derives presentation from immutable dataset config and page-local layer state.
+ * Derives presentation from the layer's source and its user overrides.
  * The original theme and its overrides retain their identity for renderer updates.
- * @param {object} dataset
  * @param {import('../reducer.js').LayerState} [layer]
  */
-export function getLayerStyle (dataset, layer) {
-  const theme = getLayerTheme(dataset, layer)
+export function getLayerStyle (layer) {
+  const theme = getLayerTheme(layer)
   const overrides = layer?.styleOverridesByTheme?.[theme?.band]
 
   return {
     theme,
     overrides,
     styleConfig: mergeThemeOverrides(theme, overrides),
-    opacity: layer?.opacity ?? dataset.source.opacity
+    opacity: layer?.opacity ?? layer?.source?.opacity ?? DEFAULT_OPACITY
   }
 }

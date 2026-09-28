@@ -15,27 +15,26 @@ const STYLE_CONFIG = {
 
 const DATASETS = [{
   id: 'flood',
-  label: 'Flood Zones',
+  title: 'Flood Zones',
   source: { type: 'wms', url: '/wms' }
 }, {
   id: 'habitats',
-  label: 'Habitats',
+  title: 'Habitats',
   source: { type: 'fgb', styleConfig: { themes: [{ label: 'Habitat', band: 1, ...STYLE_CONFIG }] } }
 }]
 
-function createPluginState (overrides = {}) {
+function createPluginState ({ layers } = {}) {
   return {
-    layers: [
+    layers: (layers ?? [
       { id: 'habitats', ready: true },
       { id: 'flood', ready: true, wmsLayerNames: ['zone_2', 'zone_3'] }
-    ],
-    ...overrides
+    ]).map(layer => ({ ...DATASETS.find(dataset => dataset.id === layer.id), ...layer }))
   }
 }
 
 describe('getKeyEntries', () => {
   test('follows Contents order across WMS and styled datasets', () => {
-    expect(getKeyEntries(DATASETS, createPluginState())).toEqual([{
+    expect(getKeyEntries(createPluginState())).toEqual([{
       type: 'style',
       id: 'habitats',
       label: 'Habitats',
@@ -50,7 +49,7 @@ describe('getKeyEntries', () => {
   })
 
   test('excludes hidden and loading layers', () => {
-    expect(getKeyEntries(DATASETS, createPluginState({
+    expect(getKeyEntries(createPluginState({
       layers: [
         { id: 'flood', ready: false },
         { id: 'habitats', ready: true, hidden: true }
@@ -59,7 +58,7 @@ describe('getKeyEntries', () => {
   })
 
   test('omits a WMS entry whose loading result has no layer names', () => {
-    expect(getKeyEntries(DATASETS, createPluginState({
+    expect(getKeyEntries(createPluginState({
       layers: [{ id: 'flood', ready: true }]
     }))).toEqual([])
   })

@@ -8,23 +8,20 @@ vi.mock('@defra/interactive-map', () => ({
 const createPlugin = (await import('./index.js')).default
 const { manifest } = await import('./manifest.js')
 
-const DATASETS = [{ id: 'woodland', label: 'Ancient Woodland' }]
-
 describe('layers plugin', () => {
-  test('registers under a fixed id and passes its datasets through as config', () => {
-    const plugin = createPlugin({ id: 'something-else', datasets: DATASETS })
+  test('registers under a fixed id and passes its options through', () => {
+    const plugin = createPlugin({ id: 'something-else', styleNonce: 'nonce' })
 
     expect(plugin.id).toBe('gepLayers')
-    expect(plugin.datasets).toBe(DATASETS)
-    expect(createPlugin().datasets).toEqual([])
+    expect(plugin.styleNonce).toBe('nonce')
   })
 
   test('loads its manifest', async () => {
-    await expect(createPlugin({ datasets: DATASETS }).load()).resolves.toBe(manifest)
+    await expect(createPlugin().load()).resolves.toBe(manifest)
   })
 
   test('the layers button steps aside while its panel is open', async () => {
-    const manifest = await createPlugin({ datasets: DATASETS }).load()
+    const manifest = await createPlugin().load()
     const [layersButton, keyButton] = manifest.buttons
 
     expect(layersButton.hiddenWhen({ appState: { openPanels: { gepLayers: {} } } })).toBe(true)
