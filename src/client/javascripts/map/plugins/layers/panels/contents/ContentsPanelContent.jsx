@@ -36,15 +36,14 @@ const configureDragDropPlugins = styleNonce => [
 ]
 
 export function ContentsPanelContent ({ pluginConfig, pluginState, appState, services }) {
-  const { datasets, styleNonce } = pluginConfig
+  const { styleNonce } = pluginConfig
   const { dispatch, layers, editingLayer } = pluginState
   const { announce } = services
   const panelRef = useRef(null)
   const editorTriggerRef = useRef(null)
-  const editedDataset = datasets.find(dataset => dataset.id === editingLayer?.id)
   const editedLayer = layers.find(layer => layer.id === editingLayer?.id)
-  const editorOpen = Boolean(editedDataset && editedLayer?.ready)
-  const entries = getContentsEntries(datasets, pluginState)
+  const editorOpen = Boolean(editedLayer?.ready && editedLayer.source)
+  const entries = getContentsEntries(pluginState)
   const layerIds = layers.map(layer => layer.id)
   const dndPlugins = useMemo(() => configureDragDropPlugins(styleNonce), [styleNonce])
 
@@ -125,8 +124,7 @@ export function ContentsPanelContent ({ pluginConfig, pluginState, appState, ser
         </div>
         {editorOpen && (
           <EditLayerForm
-            key={`${editedDataset.id}:${getLayerTheme(editedDataset, editedLayer)?.band}`}
-            dataset={editedDataset}
+            key={`${editedLayer.id}:${getLayerTheme(editedLayer)?.band}`}
             layer={editedLayer}
             mobile={appState.breakpoint === 'mobile'}
             colourKey={editingLayer.colourKey}

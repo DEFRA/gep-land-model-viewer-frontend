@@ -175,6 +175,16 @@
   color: var(--secondary-text-color);
 }
 
+// Match GOV.UK's disabled checkbox; aria-disabled keeps focus on the checkbox while it loads.
+.app-map__dataset-list .govuk-checkboxes__input[aria-disabled="true"] {
+  cursor: not-allowed;
+
+  + .govuk-checkboxes__label {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
 // Ensure the hidden attribute works despite GOV.UK styles.
 .app-map [data-app-layer-empty][hidden] {
   display: none;

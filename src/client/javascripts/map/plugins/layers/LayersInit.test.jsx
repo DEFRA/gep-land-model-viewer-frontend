@@ -12,6 +12,8 @@ vi.mock('./summaries/feature/index.jsx', () => ({ createFeatureSummary: vi.fn() 
 vi.mock('./datasets/hits.jsx', () => ({ createDatasetHits: vi.fn() }))
 vi.mock('./inspection/index.js', () => ({ createInspection: vi.fn() }))
 vi.mock('./datasets/attribution.js', () => ({ getAttribution: vi.fn(() => '© Ordnance Survey | Natural England') }))
+vi.mock('./datasets/use-catalogue.js', () => ({ useCatalogue: vi.fn() }))
+
 vi.mock('./layer-controller.js', () => ({ createLayerController: vi.fn() }))
 
 const { EVENTS } = await import('@defra/interactive-map')
@@ -21,9 +23,10 @@ const { createDatasetHits } = await import('./datasets/hits.jsx')
 const { createInspection } = await import('./inspection/index.js')
 const { getAttribution } = await import('./datasets/attribution.js')
 const { createLayerController } = await import('./layer-controller.js')
+const { useCatalogue } = await import('./datasets/use-catalogue.js')
 const { LayersInit } = await import('./LayersInit.jsx')
 
-const DATASETS = [{ ...THEMED_DATASET, id: 'woodland', label: 'Ancient Woodland' }]
+const WOODLAND = { ...THEMED_DATASET, id: 'woodland', title: 'Ancient Woodland' }
 const MAP_STYLE = { id: 'os-outdoor-ngd', attribution: '© Ordnance Survey' }
 
 let view
@@ -41,7 +44,7 @@ let dispatch
 
 function pluginState (overrides = {}) {
   return {
-    query: '',
+    catalogue: { query: '', expandedThemes: [], results: [], total: 0, attempt: 0, status: 'ready' },
     layers: [],
     inspection: { status: 'idle', hits: [], hit: null },
     ...overrides,
@@ -58,7 +61,6 @@ function props (overrides = {}) {
   return {
     mapState: { isMapReady: true, zoom: 8, mapStyle: MAP_STYLE, ...overrides.mapState },
     mapProvider: { map: olMap },
-    pluginConfig: { datasets: DATASETS },
     pluginState: overrides.pluginState ?? pluginState(),
     appState: { dispatch: vi.fn(), ...overrides.appState },
     services
@@ -113,22 +115,22 @@ afterEach(() => {
 
 describe('LayersInit', () => {
   test('identify reads current layer state and reconciles on theme changes without recreating sources', () => {
-    const initial = { id: 'woodland', ready: true }
+    const initial = { ...WOODLAND, ready: true }
     renderInit({ pluginState: pluginState({ layers: [initial] }) })
-    const getLayerState = createDatasetHits.mock.calls[0][2]
-    expect(getLayerState('woodland')).toBe(initial)
+    const getLayers = createDatasetHits.mock.calls[0][1]
+    expect(getLayers()).toEqual([initial])
     inspection.reconcile.mockClear()
 
     const switched = { ...initial, themeBand: 2 }
     view.rerender(<LayersInit {...props({ pluginState: pluginState({ layers: [switched] }) })} />)
-    expect(getLayerState('woodland')).toBe(switched)
+    expect(getLayers()).toEqual([switched])
     expect(inspection.reconcile).toHaveBeenCalledOnce()
     expect(createDatasetHits).toHaveBeenCalledOnce()
 
     inspection.reconcile.mockClear()
     const edited = { ...switched, styleOverridesByTheme: { 2: { classes: [{ fill: [255, 0, 0, 1] }] } } }
     view.rerender(<LayersInit {...props({ pluginState: pluginState({ layers: [edited] }) })} />)
-    expect(getLayerState('woodland')).toBe(edited)
+    expect(getLayers()).toEqual([edited])
     expect(inspection.reconcile).not.toHaveBeenCalled()
   })
 
@@ -146,28 +148,36 @@ describe('LayersInit', () => {
     })
     expect(createGridSummary).toHaveBeenCalledWith(services.eventBus, olMap)
     expect(createFeatureSummary).toHaveBeenCalledWith(olMap)
-    expect(createDatasetHits).toHaveBeenCalledWith(olMap, DATASETS, expect.any(Function))
+    expect(createDatasetHits).toHaveBeenCalledWith(olMap, expect.any(Function))
     expect(createLayerController).toHaveBeenCalledWith({
       map: olMap,
-      datasets: DATASETS,
       summaries: { grid, features },
+      loadDataset: expect.any(Function),
       onDatasetLoaded: expect.any(Function),
       onDatasetFailed: expect.any(Function)
     })
     expect(refs.inspection.current).toBe(inspection)
   })
 
-  test('commits dataset loading outcomes from the layer controller', () => {
-    renderInit()
+  test('commits dataset loading outcomes and announces failures', () => {
+    renderInit({ pluginState: pluginState({ layers: [{ id: 'woodland', title: 'Ancient Woodland', ready: false }] }) })
     const { onDatasetLoaded, onDatasetFailed } = createLayerController.mock.calls[0][0]
 
-    onDatasetLoaded('woodland', { minZoom: 9 })
+    onDatasetLoaded('woodland', { source: WOODLAND.source, minZoom: 9 })
     onDatasetFailed('woodland')
 
     expect(dispatch.mock.calls).toEqual([
-      [{ type: 'DATASET_LOADED', payload: { id: 'woodland', minZoom: 9 } }],
-      [{ type: 'REMOVE_LAYER', payload: { id: 'woodland' } }]
+      [{ type: 'DATASET_LOADED', payload: { id: 'woodland', source: WOODLAND.source, minZoom: 9 } }],
+      [{ type: 'DATASET_FAILED', payload: { id: 'woodland', error: 'This dataset could not be added. Try again later.' } }]
     ])
+    expect(services.announce).toHaveBeenCalledWith('Ancient Woodland could not be added. Try again later.')
+  })
+
+  test('loads the catalogue without waiting for the map', () => {
+    const state = pluginState()
+    renderInit({ mapState: { isMapReady: false }, pluginState: state })
+
+    expect(useCatalogue).toHaveBeenCalledWith(state)
   })
 
   test('waits for the map before creating inspection sources', () => {
@@ -190,13 +200,13 @@ describe('LayersInit', () => {
     const state = pluginState()
     renderInit({ pluginState: state })
 
-    expect(getAttribution).toHaveBeenCalledWith(DATASETS, state, '© Ordnance Survey')
+    expect(getAttribution).toHaveBeenCalledWith(state, '© Ordnance Survey')
     expect(attributions.textContent).toBe('© Ordnance Survey | Natural England')
   })
 
   test('preserves inspection on reorder and updates it when a layer is hidden', () => {
     const state = pluginState({
-      layers: [{ id: 'grid', ready: true }, { id: 'woodland', ready: true }]
+      layers: [{ id: 'grid', ready: true }, { ...WOODLAND, ready: true }]
     })
     renderInit({ pluginState: state })
 
@@ -206,7 +216,7 @@ describe('LayersInit', () => {
     layerController.sync.mockClear()
     inspection.reconcile.mockClear()
     const reordered = pluginState({
-      layers: [{ id: 'woodland', ready: true }, { id: 'grid', ready: true }]
+      layers: [{ ...WOODLAND, ready: true }, { id: 'grid', ready: true }]
     })
     view.rerender(<LayersInit {...props({ pluginState: reordered })} />)
 
@@ -214,7 +224,7 @@ describe('LayersInit', () => {
     expect(inspection.reconcile).not.toHaveBeenCalled()
 
     const hidden = pluginState({
-      layers: [{ id: 'woodland', ready: true, hidden: true }, { id: 'grid', ready: true }]
+      layers: [{ ...WOODLAND, ready: true, hidden: true }, { id: 'grid', ready: true }]
     })
     view.rerender(<LayersInit {...props({ pluginState: hidden })} />)
 

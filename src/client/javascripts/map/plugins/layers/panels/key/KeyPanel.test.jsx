@@ -31,7 +31,6 @@ const ENTRIES = [{
     stroke: { color: [40, 50, 60, 1], width: 0 }
   }]
 }]
-const DATASETS = [{ id: 'flood', label: 'Flood Zones' }]
 const EMPTY_PLUGIN_STATE = { layers: [] }
 
 let view
@@ -40,7 +39,6 @@ function renderPanel (entries) {
   vi.mocked(getKeyEntries).mockReturnValue(entries)
   view = render(
     <KeyPanel
-      pluginConfig={{ datasets: DATASETS }}
       pluginState={EMPTY_PLUGIN_STATE}
     />
   )
@@ -52,7 +50,7 @@ describe('KeyPanel', () => {
 
     expect(view.container.textContent).toBe('Enable data layers to view the key.')
     expect(view.container.querySelector('.app-map__key-grid')).toBeNull()
-    expect(getKeyEntries).toHaveBeenCalledWith(DATASETS, EMPTY_PLUGIN_STATE)
+    expect(getKeyEntries).toHaveBeenCalledWith(EMPTY_PLUGIN_STATE)
   })
 
   test('shows one legend image per WMS layer, titled by dataset', () => {

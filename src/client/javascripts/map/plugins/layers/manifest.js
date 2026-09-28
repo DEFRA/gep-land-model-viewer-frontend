@@ -13,20 +13,19 @@ import { CONTENTS_PANEL_ID, DATASET_INFO_PANEL_ID, INFO_PANEL_ID } from './const
 import { editableStyleEntries } from './datasets/style-config.js'
 import { getLayerStyle } from './datasets/layer-style.js'
 
-function contentsPanelTitle ({ pluginState, pluginConfig, appState }) {
+function contentsPanelTitle ({ pluginState, appState }) {
   const { editingLayer, layers } = pluginState
   if (!editingLayer) {
     return 'Contents'
   }
 
-  const dataset = pluginConfig.datasets.find(candidate => candidate.id === editingLayer.id)
   const layer = layers.find(candidate => candidate.id === editingLayer.id)
-  if (!dataset || !layer?.ready) {
+  if (!layer?.ready || !layer.source) {
     return 'Contents'
   }
 
   if (appState.breakpoint === 'mobile' && editingLayer.colourKey) {
-    return editableStyleEntries(getLayerStyle(dataset, layer).styleConfig)
+    return editableStyleEntries(getLayerStyle(layer).styleConfig)
       .find(entry => entry.key === editingLayer.colourKey)?.definition.label ?? 'Edit layer'
   }
 
@@ -177,8 +176,7 @@ export const manifest = {
     render: InfoPanel
   }, {
     id: DATASET_INFO_PANEL_ID,
-    label: ({ pluginConfig, appState }) => pluginConfig.datasets
-      .find(dataset => dataset.id === appState.openPanels[DATASET_INFO_PANEL_ID]?.props.datasetId)?.label ?? 'Dataset information',
+    label: ({ appState }) => appState.openPanels[DATASET_INFO_PANEL_ID]?.props.title ?? 'Dataset information',
     mobile: drawerPanel,
     tablet: datasetInfoPanel,
     desktop: datasetInfoPanel,

@@ -63,14 +63,14 @@ describe('#createCogLayer', () => {
       source: { ...THEMED_DATASET.source, type: 'cog', url: '/multi-band.tif', normalize: false, interpolate: false }
     }
 
-    const datasetLayer = await createCogLayer(dataset, 'gep-multi-band', getLayerStyle(dataset, { themeBand: 2 }))
+    const datasetLayer = await createCogLayer(dataset, 'gep-multi-band', getLayerStyle({ ...dataset, themeBand: 2 }))
     const [layer] = datasetLayer.layers
 
     expect(GeoTIFF.mock.calls[0][0].sources).toEqual([{ url: '/multi-band.tif' }])
     expect(layer._opts.style.color).toEqual([
       'case', ['==', ['band', 2], 1], [66, 135, 245, 1], [0, 0, 0, 0]
     ])
-    datasetLayer.applyStyle(getLayerStyle(dataset, { themeBand: 1 }).styleConfig)
+    datasetLayer.applyStyle(getLayerStyle({ ...dataset, themeBand: 1 }).styleConfig)
     expect(layer.setStyle).toHaveBeenLastCalledWith({
       color: ['case', ['==', ['band', 1], 1], [112, 38, 1, 1], [0, 0, 0, 0]]
     })

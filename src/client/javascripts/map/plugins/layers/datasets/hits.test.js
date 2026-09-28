@@ -4,82 +4,74 @@ import Polygon from 'ol/geom/Polygon.js'
 import { render } from '@testing-library/preact'
 import { THEMED_DATASET } from './test-helpers/themed-dataset.js'
 
-vi.mock('../../../config/datasets.js', () => ({
-  datasets: [
-    {
-      id: 'woodland',
-      label: 'Ancient Woodland',
-      source: {
-        type: 'fgb',
-        url: '/vector/woodland.fgb',
-        styleConfig: {
-          themes: [{
-            label: 'Woodland',
-            type: 'uniform',
-            band: 1,
-            classes: [{ bandValue: 1, label: 'Ancient Woodland', fill: [59, 104, 0, 1] }]
-          }]
-        }
-      }
-    },
-    {
-      id: 'peat',
-      label: 'Peaty Soils',
-      source: {
-        type: 'cog',
-        url: '/raster/peat.tif',
-        styleConfig: {
-          themes: [{
-            label: 'Soil depth',
-            type: 'range',
-            band: 1,
-            minValue: 0,
-            classes: [
-              { maxValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] }
-            ],
-            default: { label: 'Over 20cm', fill: [0, 0, 224, 1] }
-          }]
-        }
-      }
-    },
-    { id: 'flood', label: 'Flood Zones', source: { type: 'wms', url: 'https://example.com/wms' } },
-    {
-      id: 'habitats',
-      label: 'Living England',
-      source: {
-        type: 'fgb',
-        url: '/vector/habitats.fgb',
-        minZoom: 5,
-        styleConfig: {
-          themes: [{
-            label: 'Habitat',
-            type: 'match',
-            band: 1,
-            field: 'A_pred',
-            classes: [{ bandValue: 2, fieldValues: ['Water'], label: 'Water', fill: [190, 232, 255, 1] }]
-          }]
-        },
-        overview: { type: 'cog', url: '/raster/habitats.tif' }
+const datasets = [
+  {
+    id: 'woodland',
+    title: 'Ancient Woodland',
+    source: {
+      type: 'fgb',
+      url: '/vector/woodland.fgb',
+      styleConfig: {
+        themes: [{
+          label: 'Woodland',
+          type: 'uniform',
+          band: 1,
+          classes: [{ bandValue: 1, label: 'Ancient Woodland', fill: [59, 104, 0, 1] }]
+        }]
       }
     }
-  ]
-}))
+  },
+  {
+    id: 'peat',
+    title: 'Peaty Soils',
+    source: {
+      type: 'cog',
+      url: '/raster/peat.tif',
+      styleConfig: {
+        themes: [{
+          label: 'Soil depth',
+          type: 'range',
+          band: 1,
+          minValue: 0,
+          classes: [
+            { maxValue: 20, label: 'Up to 20cm', fill: [204, 204, 255, 1] }
+          ],
+          default: { label: 'Over 20cm', fill: [0, 0, 224, 1] }
+        }]
+      }
+    }
+  },
+  { id: 'flood', title: 'Flood Zones', source: { type: 'wms', url: 'https://example.com/wms' } },
+  {
+    id: 'habitats',
+    title: 'Living England',
+    source: {
+      type: 'fgb',
+      url: '/vector/habitats.fgb',
+      minZoom: 5,
+      styleConfig: {
+        themes: [{
+          label: 'Habitat',
+          type: 'match',
+          band: 1,
+          field: 'A_pred',
+          classes: [{ bandValue: 2, fieldValues: ['Water'], label: 'Water', fill: [190, 232, 255, 1] }]
+        }]
+      },
+      overview: { type: 'cog', url: '/raster/habitats.tif' }
+    }
+  }
+]
 
 vi.mock('./layers/wms.js', () => ({
   getVisibleWmsLayers: vi.fn(() => []),
   getSourceUrl: vi.fn(() => 'https://example.com/wms')
 }))
 
-vi.mock('../../../pointer.js', () => ({
-  isCoarsePointer: vi.fn(() => false)
-}))
-
 vi.mock('./layers/fgb-lookup.js', () => ({
   queryFgbNearPoint: vi.fn(async () => null)
 }))
 
-const { isCoarsePointer } = await import('../../../pointer.js')
-const { datasets } = await import('../../../config/datasets.js')
 const { getVisibleWmsLayers } = await import('./layers/wms.js')
 const { queryFgbNearPoint } = await import('./layers/fgb-lookup.js')
 const { createDatasetHits } = await import('./hits.jsx')
@@ -153,7 +145,7 @@ function createOlMap ({ vectorHits = [], layers = [], zoom = 2 } = {}) {
 }
 
 function getHits (map) {
-  return createDatasetHits(map, datasets, id => ({ id, ready: true })).getHits(COORDS, { signal: SIGNAL })
+  return createDatasetHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true }))).getHits(COORDS, { signal: SIGNAL })
 }
 
 function highlightedFeatures (map) {
@@ -163,8 +155,6 @@ function highlightedFeatures (map) {
 describe('#createDatasetHits', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
-    isCoarsePointer.mockReset()
-    isCoarsePointer.mockReturnValue(false)
     getVisibleWmsLayers.mockReset()
     getVisibleWmsLayers.mockReturnValue([])
     queryFgbNearPoint.mockReset()
@@ -192,7 +182,7 @@ describe('#createDatasetHits', () => {
     }
     const map = createOlMap({ layers: type === 'cog' ? [raster] : [raster, stubLayer('gep-themed')] })
     let state = { id: dataset.id, ready: true, themeBand: 1 }
-    const source = createDatasetHits(map, [dataset], () => state)
+    const source = createDatasetHits(map, () => [{ ...dataset, ...state }])
     const [cropHit] = await source.getHits(COORDS, { signal: SIGNAL })
     await expect(cropHit.loadDetails({ signal: SIGNAL })).resolves.toEqual([{ lucode: 'AC44' }])
 
@@ -217,7 +207,7 @@ describe('#createDatasetHits', () => {
       ]
     })
     let state = { id: 'themed', ready: true, themeBand: 1 }
-    const source = createDatasetHits(map, [THEMED_DATASET], () => state)
+    const source = createDatasetHits(map, () => [{ ...THEMED_DATASET, ...state }])
     const [cropHit] = await source.getHits(COORDS, { signal: SIGNAL })
     await expect(cropHit.loadDetails({ signal: SIGNAL })).resolves.toEqual([potato])
 
@@ -240,7 +230,7 @@ describe('#createDatasetHits', () => {
     }
     const map = createOlMap({ layers: [raster, stubLayer('gep-themed')] })
     let state = { id: 'themed', ready: true, themeBand: 1 }
-    const source = createDatasetHits(map, [dataset], () => state)
+    const source = createDatasetHits(map, () => [{ ...dataset, ...state }])
     const [hit] = await source.getHits(COORDS, { signal: SIGNAL })
     const lookup = Promise.withResolvers()
     queryFgbNearPoint.mockReturnValueOnce(lookup.promise)
@@ -267,47 +257,6 @@ describe('#createDatasetHits', () => {
     expect(queryFgbNearPoint).not.toHaveBeenCalled()
   })
 
-  test('an overview feature loads the real attributes from the FlatGeobuf', async () => {
-    queryFgbNearPoint.mockResolvedValue({ properties: { A_pred: 'Bog' } })
-    const feature = stubFeature({ A_pred: 'generalised' }, null)
-    const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland-overview') }] })
-
-    const hits = await getHits(map)
-    const details = await hits[0].loadDetails({ signal: SIGNAL })
-
-    expect(queryFgbNearPoint).toHaveBeenCalledWith('/vector/woodland.fgb', COORDS, 50, { signal: SIGNAL })
-    expect(details).toEqual([{ A_pred: 'Bog' }])
-  })
-
-  test('overview picking allows a near-miss of a few pixels, detail picking is exact', async () => {
-    const map = createOlMap()
-
-    await getHits(map)
-
-    const [detailPass, overviewPass] = map.forEachFeatureAtPixel.mock.calls
-    expect(detailPass[2].hitTolerance).toBeUndefined()
-    expect(overviewPass[2].hitTolerance).toBe(3)
-  })
-
-  test('overview picking gives touch input a wider near-miss', async () => {
-    isCoarsePointer.mockReturnValueOnce(true)
-    const map = createOlMap()
-
-    await getHits(map)
-
-    expect(map.forEachFeatureAtPixel.mock.calls[1][2].hitTolerance).toBe(12)
-  })
-
-  test('an overview click with no FlatGeobuf match loads empty details', async () => {
-    queryFgbNearPoint.mockResolvedValue(null)
-    const feature = stubFeature({}, null)
-    const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland-overview') }] })
-
-    const hits = await getHits(map)
-
-    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([])
-  })
-
   test('stacked features from the same dataset yield one hit with every record', async () => {
     const layer = stubLayer('gep-woodland')
     const map = createOlMap({
@@ -324,21 +273,6 @@ describe('#createDatasetHits', () => {
 
     hits[0].select()
     expect(highlightedFeatures(map)).toHaveLength(2)
-  })
-
-  test('a detail feature is preferred when the overview layer also hits', async () => {
-    const map = createOlMap({
-      vectorHits: [
-        { feature: stubFeature({ A_pred: 'generalised' }, null), layer: stubLayer('gep-woodland-overview') },
-        { feature: stubFeature({ geometry: {}, A_pred: 'Bog' }), layer: stubLayer('gep-woodland') }
-      ]
-    })
-
-    const hits = await getHits(map)
-
-    expect(hits).toHaveLength(1)
-    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Bog' }])
-    expect(queryFgbNearPoint).not.toHaveBeenCalled()
   })
 
   test('a standalone source-value COG classifies its pixel and reports the class label', async () => {
@@ -381,7 +315,7 @@ describe('#createDatasetHits', () => {
     }
     const map = createOlMap({ layers: [layer] })
 
-    const hits = await createDatasetHits(map, [dataset], id => ({ id, ready: true })).getHits(COORDS, { signal: SIGNAL })
+    const hits = await createDatasetHits(map, () => [{ ...dataset, ready: true }]).getHits(COORDS, { signal: SIGNAL })
 
     expect(hits).toHaveLength(1)
     await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ Classification: 'Up to 20cm' }])
@@ -404,17 +338,19 @@ describe('#createDatasetHits', () => {
     await expect(overviewHits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water' }])
   })
 
-  test('a COG overview hit loads the FlatGeobuf feature and its attributes', async () => {
+  test('a COG overview pixel remains identifiable below FlatGeobuf zoom', async () => {
     queryFgbNearPoint.mockResolvedValue({
       geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 0]]] },
       properties: { A_pred: 'Water', area: 3 }
     })
-    const map = createOlMap({ layers: [stubCogOverviewLayer(), stubDetailLayer()], zoom: 2 })
+    const overview = stubCogOverviewLayer()
+    const map = createOlMap({ layers: [overview, stubDetailLayer()], zoom: 2 })
 
     const hits = await getHits(map)
 
     expect(hits).toHaveLength(1)
     expect(hits[0].label).toBe('Living England')
+    expect(overview.getData).toHaveBeenCalledWith([100, 200])
 
     hits[0].select()
     expect(highlightedFeatures(map)).toHaveLength(0)
@@ -596,23 +532,6 @@ describe('#createDatasetHits', () => {
     expect(feature.getStyle().getImage()).toBeTruthy()
   })
 
-  test('an overview hit highlights the geometry fetched from the FlatGeobuf', async () => {
-    queryFgbNearPoint.mockResolvedValue({
-      geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 0]]] },
-      properties: { A_pred: 'Bog' }
-    })
-    const feature = stubFeature({}, null)
-    const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland-overview') }] })
-
-    const hits = await getHits(map)
-    hits[0].select()
-    expect(highlightedFeatures(map)).toHaveLength(0)
-
-    await hits[0].loadDetails({ signal: SIGNAL })
-
-    expect(highlightedFeatures(map)).toHaveLength(1)
-  })
-
   test('selecting a WMS hit highlights the geometries GetFeatureInfo returned', async () => {
     const wmsLayer = {
       ...stubLayer('gep-flood'),
@@ -639,7 +558,7 @@ describe('#createDatasetHits', () => {
     const feature = stubFeature({ geometry: {} })
     const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland') }] })
 
-    const source = createDatasetHits(map, datasets, id => ({ id, ready: true }))
+    const source = createDatasetHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true })))
     const hits = await source.getHits(COORDS, { signal: SIGNAL })
     hits[0].select()
     source.clearSelection()
@@ -660,7 +579,7 @@ describe('#createDatasetHits', () => {
 
   test('dispose clears and removes its highlight layer', () => {
     const map = createOlMap()
-    const source = createDatasetHits(map, datasets, id => ({ id, ready: true }))
+    const source = createDatasetHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true })))
     const highlightLayer = map.addLayer.mock.calls[0][0]
 
     source.dispose()
@@ -669,10 +588,9 @@ describe('#createDatasetHits', () => {
     expect(map.removeLayer).toHaveBeenCalledWith(highlightLayer)
   })
 
-  test('a hit with no attributes renders an empty message', async () => {
-    queryFgbNearPoint.mockResolvedValue(null)
-    const feature = stubFeature({}, null)
-    const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland-overview') }] })
+  test('a feature with only blank attributes renders an empty message', async () => {
+    const feature = stubFeature({ geometry: {}, A_pred: null, area: '' })
+    const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland') }] })
 
     const hits = await getHits(map)
     const view = render(hits[0].render(await hits[0].loadDetails({ signal: SIGNAL })))

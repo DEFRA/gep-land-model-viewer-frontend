@@ -2,7 +2,6 @@ import { manifest } from './manifest.js'
 
 /**
  * @typedef {Record<string, unknown> & {
- *   datasets?: Array<object>
  *   styleNonce?: string
  *   findGeoDataUrl?: string
  * }} LayersPluginOptions
@@ -11,10 +10,9 @@ import { manifest } from './manifest.js'
 /**
  * @param {LayersPluginOptions} [options]
  */
-export default function createPlugin ({ datasets = [], ...options } = {}) {
+export default function createPlugin (options = {}) {
   return {
     ...options,
-    datasets,
     id: 'gepLayers',
     load: async () => manifest
   }

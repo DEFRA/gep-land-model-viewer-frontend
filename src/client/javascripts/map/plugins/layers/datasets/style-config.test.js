@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import { parseLiteralStyle } from 'ol/render/webgl/style.js'
-import sssiStyle from '../../../../../data/styles/sssi.json'
+import sssiStyle from './test-helpers/sssi.json'
 import {
   classForCogValue,
   buildCogColourExpression,

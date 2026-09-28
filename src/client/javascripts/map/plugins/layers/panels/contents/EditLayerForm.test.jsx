@@ -6,12 +6,12 @@ import { fireEvent, render } from '@testing-library/preact'
 import { useReducer } from 'react'
 import { actions, initialState } from '../../reducer.js'
 import { EditLayerForm } from './EditLayerForm.jsx'
-import sssiStyle from '../../../../../../data/styles/sssi.json'
+import sssiStyle from '../../datasets/test-helpers/sssi.json'
 import { blurInput } from './test-helpers/preact.js'
 
 const STYLED_DATASET = {
   id: 'styled',
-  label: 'Styled layer',
+  title: 'Styled layer',
   source: {
     type: 'fgb',
     opacity: 0.7,
@@ -31,7 +31,7 @@ const STYLED_DATASET = {
   }
 }
 
-const SSSI_DATASET = { id: 'sssi', label: 'SSSI', source: { type: 'fgb', opacity: 0.5, styleConfig: sssiStyle } }
+const SSSI_DATASET = { id: 'sssi', title: 'SSSI', source: { type: 'fgb', opacity: 0.5, styleConfig: sssiStyle } }
 
 let dispatch
 
@@ -39,10 +39,10 @@ function StatefulForm ({ dataset }) {
   const [state, reduce] = useReducer((state, action) => {
     dispatch(action)
     return actions[action.type](state, action.payload)
-  }, { ...initialState, layers: [{ id: dataset.id, ready: true }] })
+  }, { ...initialState, layers: [{ ...dataset, ready: true }] })
 
   return (
-    <EditLayerForm dataset={dataset} layer={state.layers[0]} dispatch={reduce} onBack={vi.fn()} />
+    <EditLayerForm layer={state.layers[0]} dispatch={reduce} onBack={vi.fn()} />
   )
 }
 

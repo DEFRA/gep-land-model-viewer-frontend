@@ -9,8 +9,28 @@
   border-bottom: 4px solid govuk-colour("yellow");
   background-color: govuk-colour("black");
   color: govuk-colour("white");
-  pointer-events: none; // purely informational, map interactions pass through
+  pointer-events: none; // map interactions pass through everything but the button
   @include govuk-font($size: 16);
+}
+
+.app-map__zoom-warning-button {
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+
+  &:focus-visible {
+    outline: var(--focus-outline-width) solid var(--focus-outline-color);
+    outline-offset: 0;
+    box-shadow: inset 0 0 0 var(--focus-border-width) var(--focus-border-color);
+
+    @media screen and (forced-colors: active) {
+      outline: var(--focus-highlight-width) solid Highlight;
+    }
+  }
 }
 
 .app-map__zoom-warning-icon {

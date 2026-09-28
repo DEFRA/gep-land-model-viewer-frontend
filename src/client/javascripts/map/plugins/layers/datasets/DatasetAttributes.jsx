@@ -8,18 +8,24 @@ function attributeText (value) {
   return String(value)
 }
 
+function attributeRows (properties) {
+  return Object.entries(properties)
+    .filter(([, value]) => value != null && value !== '')
+    .map(([name, value]) => ({ label: name, value: attributeText(value) }))
+}
+
 export function DatasetAttributes ({ label, features }) {
+  const rowsByFeature = features.map(attributeRows).filter((rows) => rows.length)
+
   return (
     <div className='app-map__info-content'>
       <h3 className='govuk-heading-s'>{label}</h3>
-      {features.length
-        ? features.map((properties, index) => (
+      {rowsByFeature.length
+        ? rowsByFeature.map((rows, index) => (
           <SummaryList
             className='app-map__info-attributes'
             noBorder={false}
-            rows={Object.entries(properties)
-              .filter(([, value]) => value != null && value !== '')
-              .map(([name, value]) => ({ label: name, value: attributeText(value) }))}
+            rows={rows}
             key={index}
           />
         ))

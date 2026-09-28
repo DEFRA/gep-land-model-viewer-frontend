@@ -17,14 +17,14 @@ describe('layer styles', () => {
     const dataset = THEMED_DATASET
     const before = structuredClone(dataset)
     const [crop, county] = dataset.source.styleConfig.themes
-    let state = { ...initialState, layers: [{ id: dataset.id, ready: true }] }
+    let state = { ...initialState, layers: [{ ...dataset, ready: true }] }
     const dispatch = (type, payload) => { state = actions[type](state, { id: dataset.id, ...payload }) }
     const expectPresentation = (theme, fill) => {
-      const resolved = getLayerStyle(dataset, state.layers[0])
+      const resolved = getLayerStyle(state.layers[0])
       expect(resolved.theme).toBe(theme)
       expect(resolved.styleConfig.classes[0].fill).toEqual(fill)
-      expect(getKeyEntries([dataset], state)[0].styles[0].fill).toEqual(fill)
-      expect(getContentsEntries([dataset], state)[0].swatch.definition.fill).toEqual(fill)
+      expect(getKeyEntries(state)[0].styles[0].fill).toEqual(fill)
+      expect(getContentsEntries(state)[0].swatch.definition.fill).toEqual(fill)
     }
 
     expectPresentation(crop, crop.classes[0].fill)
@@ -39,10 +39,10 @@ describe('layer styles', () => {
 
     dispatch('SET_LAYER_THEME', { themeBand: 1 })
     expectPresentation(crop, [255, 0, 0, 1])
-    expect(getLayerStyle(dataset, state.layers[0]).opacity).toBe(0.4)
+    expect(getLayerStyle(state.layers[0]).opacity).toBe(0.4)
     dispatch('RESET_LAYER_STYLE', { themeBand: 1 })
     expectPresentation(crop, crop.classes[0].fill)
-    expect(getLayerStyle(dataset, state.layers[0]).opacity).toBe(dataset.source.opacity)
+    expect(getLayerStyle(state.layers[0]).opacity).toBe(dataset.source.opacity)
 
     dispatch('SET_LAYER_THEME', { themeBand: 2 })
     expectPresentation(county, [0, 128, 0, 1])
@@ -51,7 +51,7 @@ describe('layer styles', () => {
 
   test('uses configured opacity and supports datasets without styles', () => {
     expect(getLayerStyle(dataset)).toEqual({ theme: defaults, overrides: undefined, opacity: 0.7, styleConfig: defaults })
-    expect(getLayerStyle(dataset, { id: 'test', ready: true, opacity: 0.4 })).toEqual({ theme: defaults, overrides: undefined, opacity: 0.4, styleConfig: defaults })
+    expect(getLayerStyle({ ...dataset, id: 'test', ready: true, opacity: 0.4 })).toEqual({ theme: defaults, overrides: undefined, opacity: 0.4, styleConfig: defaults })
     expect(getLayerStyle({ source: { type: 'wms', opacity: 0.5 } })).toEqual({ theme: undefined, overrides: undefined, opacity: 0.5, styleConfig: undefined })
   })
 
@@ -66,7 +66,8 @@ describe('layer styles', () => {
 
   test('merges sparse class and default overrides, preserving other style properties', () => {
     const before = structuredClone(defaults)
-    const result = getLayerStyle(dataset, {
+    const result = getLayerStyle({
+      ...dataset,
       id: 'test',
       ready: true,
       styleOverridesByTheme: {
@@ -87,7 +88,8 @@ describe('layer styles', () => {
   test('merges fill and outline overrides independently for classes and drawable defaults', () => {
     const styled = { ...defaults, default: fill }
     const before = structuredClone(styled)
-    const result = getLayerStyle({ source: { ...dataset.source, styleConfig: { themes: [styled] } } }, {
+    const result = getLayerStyle({
+      source: { ...dataset.source, styleConfig: { themes: [styled] } },
       id: 'test',
       ready: true,
       styleOverridesByTheme: {
@@ -103,8 +105,11 @@ describe('layer styles', () => {
     expect(result.styleConfig.classes[3]).toEqual(fill)
     expect(styled).toEqual(before)
 
-    const outlineOnly = getLayerStyle(dataset, {
-      id: 'test', ready: true, styleOverridesByTheme: { 1: { classes: [{ stroke: { color: [0, 255, 0, 1] } }] } }
+    const outlineOnly = getLayerStyle({
+      ...dataset,
+      id: 'test',
+      ready: true,
+      styleOverridesByTheme: { 1: { classes: [{ stroke: { color: [0, 255, 0, 1] } }] } }
     })
     expect(outlineOnly.styleConfig.classes[0].fill).toEqual(fill.fill)
     expect(outlineOnly.styleConfig.classes[0].stroke.color).toEqual([0, 255, 0, 1])

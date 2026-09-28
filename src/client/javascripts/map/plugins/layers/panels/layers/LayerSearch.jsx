@@ -1,5 +1,7 @@
 import { Search, X } from 'lucide-preact'
 
+const MAX_QUERY_LENGTH = 200
+
 export function LayerSearch ({ query, onSearch, onClear, inputRef }) {
   return (
     <div className='govuk-form-group app-map__layer-search'>
@@ -11,6 +13,7 @@ export function LayerSearch ({ query, onSearch, onClear, inputRef }) {
           className='govuk-input app-map__layer-search-input'
           id='layers-search'
           type='search'
+          maxLength={MAX_QUERY_LENGTH}
           placeholder='Find datasets'
           autoComplete='off'
           aria-controls='layers-list'

@@ -2,6 +2,7 @@ import { Info } from 'lucide-preact'
 
 function DatasetCheckbox ({ dataset, layer, onChange }) {
   const loading = Boolean(layer && !layer.ready)
+  const errorId = dataset.error ? `layer-${dataset.id}-error` : undefined
 
   return (
     <div className='govuk-checkboxes__item' aria-busy={loading ? 'true' : undefined}>
@@ -11,8 +12,9 @@ function DatasetCheckbox ({ dataset, layer, onChange }) {
         type='checkbox'
         value={dataset.id}
         checked={Boolean(layer)}
+        aria-describedby={errorId}
         aria-disabled={loading ? 'true' : undefined}
-        aria-label={layer?.hidden ? `${dataset.label}, hidden` : undefined}
+        aria-label={layer?.hidden ? `${dataset.title}, hidden` : undefined}
         onClick={event => {
           if (loading) {
             event.preventDefault()
@@ -21,8 +23,13 @@ function DatasetCheckbox ({ dataset, layer, onChange }) {
         onChange={onChange}
       />
       <label className='govuk-label govuk-checkboxes__label' htmlFor={`layer-${dataset.id}`}>
-        <span className={layer?.hidden ? 'app-map__layers-label--hidden' : undefined}>{dataset.label}</span>
+        <span className={layer?.hidden ? 'app-map__layers-label--hidden' : undefined}>{dataset.title}</span>
       </label>
+      {errorId && (
+        <p id={errorId} className='govuk-error-message govuk-checkboxes__hint govuk-!-font-size-16'>
+          <span className='govuk-visually-hidden'>Error:</span> {dataset.error}
+        </p>
+      )}
     </div>
   )
 }
@@ -43,7 +50,7 @@ export function DatasetList ({ datasets, layers, legend, onChange, onInfo }) {
               type='button'
               id={`dataset-info-${dataset.id}`}
               className='im-c-map-button app-map__layer-info-button'
-              aria-label={`About ${dataset.label}`}
+              aria-label={`About ${dataset.title}`}
               aria-haspopup='dialog'
               onClick={event => onInfo(dataset, event.currentTarget)}
             >

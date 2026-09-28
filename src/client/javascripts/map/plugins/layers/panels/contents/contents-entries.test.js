@@ -3,7 +3,7 @@ import { getContentsEntries } from './contents-entries.js'
 
 const DATASETS = [{
   id: 'woodland',
-  label: 'Ancient Woodland',
+  title: 'Ancient Woodland',
   source: {
     type: 'fgb',
     styleConfig: {
@@ -17,24 +17,23 @@ const DATASETS = [{
   }
 }, {
   id: 'flood',
-  label: 'Flood Zones',
+  title: 'Flood Zones',
   source: { type: 'wms' }
 }]
 
-function createPluginState (overrides = {}) {
+function createPluginState ({ layers } = {}, datasets = DATASETS) {
   return {
-    layers: [
+    layers: (layers ?? [
       { id: 'grid', ready: true },
       { id: 'flood', ready: false },
       { id: 'woodland', ready: true, hidden: true }
-    ],
-    ...overrides
+    ]).map(layer => ({ ...datasets.find(dataset => dataset.id === layer.id), ...layer }))
   }
 }
 
 describe('Contents entries', () => {
   test('combines added datasets and summaries in display order', () => {
-    const entries = getContentsEntries(DATASETS, createPluginState())
+    const entries = getContentsEntries(createPluginState())
 
     expect(entries.map(({ id, kind, hidden, loading }) => ({ id, kind, hidden, loading }))).toEqual([
       { id: 'grid', kind: 'summary', hidden: false, loading: false },
@@ -58,21 +57,23 @@ describe('Contents entries', () => {
     }
     const datasets = [{
       id: 'single',
-      label: 'Single style',
+      title: 'Single style',
       source: {
         type: 'fgb',
         styleConfig: { themes: [{ label: 'Single style', band: 1, classes: [], default: style }] }
       }
     }]
 
-    expect(getContentsEntries(datasets, createPluginState({
+    expect(getContentsEntries(createPluginState({
       layers: [{ id: 'single', ready: true }]
-    }))[0].swatch).toEqual({ type: 'style', definition: style })
+    }, datasets))[0].swatch).toEqual({ type: 'style', definition: style })
   })
 
-  test('ignores layer ids that have no configured dataset or summary', () => {
-    expect(getContentsEntries(DATASETS, createPluginState({
-      layers: [{ id: 'unknown', ready: true }]
-    }))).toEqual([])
+  test('shows an empty swatch while a dataset source is loading', () => {
+    expect(getContentsEntries({ layers: [{ id: 'new', title: 'New dataset', ready: false }] })[0]).toMatchObject({
+      label: 'New dataset',
+      loading: true,
+      swatch: { type: 'colours', colours: [] }
+    })
   })
 })

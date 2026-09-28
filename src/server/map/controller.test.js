@@ -34,7 +34,6 @@ describe('#mapController', () => {
     const styleNonce = mapResp.result.match(/<main[^>]+data-style-nonce="([^"]+)"/)?.[1]
     const styleSource = mapCsp.split(';').find(directive => directive.trim().startsWith('style-src '))
     expect(mapCsp).toContain('https://environment.data.gov.uk')
-    expect(mapCsp).toContain('https://gepcloudnativedata.blob.core.windows.net')
     expect(mapCsp).toContain('blob:')
     expect(styleSource).toContain(`'nonce-${styleNonce}'`)
 

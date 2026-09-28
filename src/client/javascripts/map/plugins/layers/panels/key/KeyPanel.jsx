@@ -23,8 +23,8 @@ function StyleLegend ({ definition }) {
   )
 }
 
-export function KeyPanel ({ pluginConfig, pluginState }) {
-  const keyEntries = getKeyEntries(pluginConfig.datasets, pluginState)
+export function KeyPanel ({ pluginState }) {
+  const keyEntries = getKeyEntries(pluginState)
 
   return (
     <div className='app-map__key-panel'>

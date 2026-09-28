@@ -49,7 +49,7 @@ async function createDatasetLayer (dataset, map, style) {
 }
 
 function metadataFor (dataset, layers) {
-  const metadata = { minZoom: datasetZoomFloor(layers, layerIdFor(dataset)) }
+  const metadata = { source: dataset.source, minZoom: datasetZoomFloor(layers, layerIdFor(dataset)) }
   const layerNames = wmsLayerNames(dataset, layers)
 
   return layerNames ? { ...metadata, wmsLayerNames: layerNames } : metadata
@@ -71,7 +71,7 @@ function syncDatasetLayers (layers, layerState, zIndex) {
 
 function syncDatasetStyle (loadedDataset, layerState) {
   const { dataset, applyStyle, setOpacity } = loadedDataset
-  const { theme, overrides, styleConfig, opacity } = getLayerStyle(dataset, layerState)
+  const { theme, overrides, styleConfig, opacity } = getLayerStyle({ ...layerState, source: dataset.source })
 
   if (theme && (theme !== loadedDataset.theme || overrides !== loadedDataset.overrides)) {
     applyStyle(styleConfig)
@@ -86,13 +86,13 @@ function syncDatasetStyle (loadedDataset, layerState) {
   loadedDataset.opacity = opacity
 }
 
-export function createLayerController ({ map, datasets, summaries, onDatasetLoaded, onDatasetFailed }) {
-  const datasetsById = new Map(datasets.map(dataset => [dataset.id, dataset]))
+export function createLayerController ({ map, summaries, loadDataset, onDatasetLoaded, onDatasetFailed }) {
   const loadedDatasetsById = new Map()
   const loadingDatasetIds = new Set()
   let layerStatesById = new Map()
   let zIndexesById = new Map()
   let disposed = false
+  const controller = new AbortController()
 
   function removeDatasetLayers (layers) {
     for (const layer of layers) {
@@ -117,7 +117,7 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
     onDatasetFailed(id)
   }
 
-  async function ensureDatasetLoaded (id, dataset) {
+  async function ensureDatasetLoaded (id) {
     if (loadedDatasetsById.has(id) || loadingDatasetIds.has(id)) {
       return
     }
@@ -125,7 +125,12 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
     loadingDatasetIds.add(id)
 
     try {
-      const style = getLayerStyle(dataset, layerStatesById.get(id))
+      const dataset = await loadDataset(id, controller.signal)
+      if (disposed) {
+        return
+      }
+
+      const style = getLayerStyle({ ...layerStatesById.get(id), source: dataset.source })
       const datasetLayer = await createDatasetLayer(dataset, map, style)
       if (!datasetLayer?.layers.length) {
         throw new Error('No OpenLayers layers were created')
@@ -195,9 +200,8 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
     }
 
     for (const { id } of layerStates) {
-      const dataset = datasetsById.get(id)
-      if (dataset) {
-        ensureDatasetLoaded(id, dataset)
+      if (!Object.hasOwn(summaries, id)) {
+        ensureDatasetLoaded(id)
       }
     }
   }
@@ -208,6 +212,7 @@ export function createLayerController ({ map, datasets, summaries, onDatasetLoad
     }
 
     disposed = true
+    controller.abort()
     for (const { layers } of loadedDatasetsById.values()) {
       removeDatasetLayers(layers)
     }

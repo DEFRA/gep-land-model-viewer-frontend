@@ -9,11 +9,11 @@ import { StyleSwatch } from '../shared/StyleSwatch.jsx'
 import { ColourPicker } from './ColourPicker.jsx'
 import { OpacityInput } from './OpacityInput.jsx'
 
-export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, dispatch }) {
+export function EditLayerForm ({ layer, mobile, colourKey, onBack, dispatch }) {
   const [opacityKey, setOpacityKey] = useState(0)
   const editorRef = useRef(null)
   const id = useId()
-  const { theme, opacity, styleConfig } = getLayerStyle(dataset, layer)
+  const { theme, opacity, styleConfig } = getLayerStyle(layer)
   const entries = editableStyleEntries(styleConfig)
   const selectedColour = entries.find(entry => entry.key === colourKey)
   const drawerColourOpen = mobile && Boolean(selectedColour)
@@ -26,7 +26,7 @@ export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, disp
     dispatch({
       type: 'SET_LAYER_COLOUR',
       payload: {
-        id: dataset.id,
+        id: layer.id,
         themeBand: theme.band,
         classIndex,
         part,
@@ -36,7 +36,7 @@ export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, disp
   }
 
   const reset = () => {
-    dispatch({ type: 'RESET_LAYER_STYLE', payload: { id: dataset.id, themeBand: theme?.band } })
+    dispatch({ type: 'RESET_LAYER_STYLE', payload: { id: layer.id, themeBand: theme?.band } })
     setOpacityKey(key => key + 1) // Reset the OpacityInput
   }
 
@@ -46,7 +46,7 @@ export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, disp
         <div className='app-map__edit-layer-view' ref={editorRef}>
           <LinkButton
             className='app-map__editor-back'
-            onClick={drawerColourOpen ? () => dispatch({ type: 'SET_EDITING_LAYER', payload: { id: dataset.id } }) : onBack}
+            onClick={drawerColourOpen ? () => dispatch({ type: 'SET_EDITING_LAYER', payload: { id: layer.id } }) : onBack}
           >
             <ChevronLeft aria-hidden='true' />
             {drawerColourOpen ? 'Back to Edit layer' : 'Back to Contents'}
@@ -60,7 +60,7 @@ export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, disp
                     <ColourButton
                       type='button'
                       payload={mobile ? undefined : key}
-                      onClick={mobile ? () => dispatch({ type: 'SET_EDITING_LAYER', payload: { id: dataset.id, colourKey: key } }) : undefined}
+                      onClick={mobile ? () => dispatch({ type: 'SET_EDITING_LAYER', payload: { id: layer.id, colourKey: key } }) : undefined}
                       className='app-map__edit-colour-button'
                       aria-label={`Edit colour for ${definition.label}`}
                     >
@@ -77,7 +77,7 @@ export function EditLayerForm ({ dataset, layer, mobile, colourKey, onBack, disp
               opacity={opacity}
               onCommit={value => dispatch({
                 type: 'SET_LAYER_OPACITY',
-                payload: { id: dataset.id, opacity: value === dataset.source.opacity ? undefined : value }
+                payload: { id: layer.id, opacity: value === layer.source.opacity ? undefined : value }
               })}
             />
             <Popover.Close render={<LinkButton />} className='app-map__reset-style' onClick={reset}>
