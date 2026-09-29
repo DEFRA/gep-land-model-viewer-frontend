@@ -45,7 +45,6 @@ function createMockRequest (query = {}) {
   return {
     query,
     url: new URL('http://localhost:3000/auth/callback'),
-    info: { referrer: '' },
     server: {
       oidc: {
         getConfig: vi.fn().mockResolvedValue(mockOidcConfig)
@@ -226,83 +225,31 @@ describe('#federatedOidc', () => {
       expect(result.output.statusCode).toBe(401)
     })
 
-    test('stores referrer from absolute URL', async () => {
-      const server = createMockServer()
-      const authenticate = getAuthenticate(server)
-      const request = createMockRequest()
-      request.info.referrer = 'http://localhost:3000/search?q=test'
-      const h = createMockH()
+    describe('return path', () => {
+      async function storedReferrer (request) {
+        const authenticate = getAuthenticate(createMockServer())
+        openid.randomPKCECodeVerifier.mockReturnValue('test-verifier')
+        openid.calculatePKCECodeChallenge.mockResolvedValue('test-challenge')
+        openid.buildAuthorizationUrl.mockReturnValue(new URL('http://localhost:8081'))
 
-      openid.randomPKCECodeVerifier.mockReturnValue('test-verifier')
-      openid.calculatePKCECodeChallenge.mockResolvedValue('test-challenge')
-      openid.buildAuthorizationUrl.mockReturnValue(new URL('http://localhost:8081'))
+        await authenticate(request, createMockH())
+        return request.yar.set.mock.calls[0][1].referrer
+      }
 
-      await authenticate(request, h)
+      test('uses next query param', async () => {
+        const request = createMockRequest({ next: '/datasets/abc?tab=map' })
 
-      expect(request.yar.set).toHaveBeenCalledWith('oidc-auth', {
-        codeVerifier: 'test-verifier',
-        nonce: undefined,
-        referrer: '/search?q=test'
+        expect(await storedReferrer(request)).toBe('/datasets/abc?tab=map')
       })
-    })
 
-    test('rewrites callback path referrer to /', async () => {
-      const server = createMockServer()
-      const authenticate = getAuthenticate(server)
-      const request = createMockRequest()
-      request.info.referrer = 'http://localhost:3000/auth/callback'
-      const h = createMockH()
-
-      openid.randomPKCECodeVerifier.mockReturnValue('test-verifier')
-      openid.calculatePKCECodeChallenge.mockResolvedValue('test-challenge')
-      openid.buildAuthorizationUrl.mockReturnValue(new URL('http://localhost:8081'))
-
-      await authenticate(request, h)
-
-      expect(request.yar.set).toHaveBeenCalledWith('oidc-auth', {
-        codeVerifier: 'test-verifier',
-        nonce: undefined,
-        referrer: '/'
-      })
-    })
-
-    test('falls back to / for invalid referrer', async () => {
-      const server = createMockServer()
-      const authenticate = getAuthenticate(server)
-      const request = createMockRequest()
-      request.info.referrer = 'not-a-url'
-      const h = createMockH()
-
-      openid.randomPKCECodeVerifier.mockReturnValue('test-verifier')
-      openid.calculatePKCECodeChallenge.mockResolvedValue('test-challenge')
-      openid.buildAuthorizationUrl.mockReturnValue(new URL('http://localhost:8081'))
-
-      await authenticate(request, h)
-
-      expect(request.yar.set).toHaveBeenCalledWith('oidc-auth', {
-        codeVerifier: 'test-verifier',
-        nonce: undefined,
-        referrer: '/'
-      })
-    })
-
-    test('uses relative path referrer when URL parsing fails', async () => {
-      const server = createMockServer()
-      const authenticate = getAuthenticate(server)
-      const request = createMockRequest()
-      request.info.referrer = '/dashboard?tab=overview'
-      const h = createMockH()
-
-      openid.randomPKCECodeVerifier.mockReturnValue('test-verifier')
-      openid.calculatePKCECodeChallenge.mockResolvedValue('test-challenge')
-      openid.buildAuthorizationUrl.mockReturnValue(new URL('http://localhost:8081'))
-
-      await authenticate(request, h)
-
-      expect(request.yar.set).toHaveBeenCalledWith('oidc-auth', {
-        codeVerifier: 'test-verifier',
-        nonce: undefined,
-        referrer: '/dashboard?tab=overview'
+      test.each([
+        'https://evil.example/datasets',
+        '//evil.example/datasets',
+        '/.//evil.example/datasets',
+        '/auth/login',
+        '/auth/callback'
+      ])('ignores unsafe next %s', async (next) => {
+        expect(await storedReferrer(createMockRequest({ next }))).toBe('/')
       })
     })
 

@@ -57,6 +57,7 @@ describe('#sessionStrategy', () => {
           path: '/'
         }),
         keepAlive: true,
+        appendNext: true,
         requestDecoratorName: 'sessionCookie'
       })
     )

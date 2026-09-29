@@ -20,6 +20,7 @@ const sessionStrategy = {
           clearInvalid: true
         },
         keepAlive: true,
+        appendNext: true,
         redirectTo: (request) => {
           const accept = request.headers.accept ?? ''
           if (accept.includes('application/json')) {

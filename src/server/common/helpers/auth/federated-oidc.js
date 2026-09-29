@@ -4,9 +4,11 @@ import Boom from '@hapi/boom'
 import { config } from '../../../../config/config.js'
 import { createLogger } from '../logging/logger.js'
 import { asExternalUrl } from '../url/url-helpers.js'
+import { getSafeRedirect } from '../get-safe-redirect.js'
 
 const logger = createLogger()
 const callbackPath = '/auth/callback'
+const authPathPrefix = '/auth/'
 const schemeName = 'federated-oidc'
 
 const federatedOidc = {
@@ -87,7 +89,7 @@ async function preLogin (request, oidcConfig, options) {
     parameters.nonce = nonce
   }
 
-  const referrer = getRefererAsRelativeURL(request?.info?.referrer, '/')
+  const referrer = getReturnPath(request)
 
   request.yar.set(options.sessionName, {
     codeVerifier,
@@ -137,26 +139,16 @@ async function postLogin (request, oidcConfig, options) {
 }
 
 /**
- * @param {string | undefined} referer
- * @param {string} defaultPath
+ * Path to return to after login, from the `next` query param that the session
+ * strategy's `appendNext` adds.
+ * @param {import('@hapi/hapi').Request} request
  * @returns {string}
  */
-function getRefererAsRelativeURL (referer, defaultPath) {
-  let relative = defaultPath
-  if (referer) {
-    try {
-      const url = new URL(referer)
-      relative = url.pathname + url.search
-    } catch {
-      if (referer.startsWith('/')) {
-        relative = referer
-      }
-    }
+function getReturnPath (request) {
+  const path = getSafeRedirect(request.query?.next)
+  if (path.startsWith(authPathPrefix)) {
+    return '/'
   }
 
-  if (relative.startsWith(callbackPath)) {
-    relative = defaultPath
-  }
-
-  return relative
+  return path
 }
