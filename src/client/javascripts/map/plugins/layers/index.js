@@ -4,6 +4,7 @@ import { manifest } from './manifest.js'
  * @typedef {Record<string, unknown> & {
  *   styleNonce?: string
  *   findGeoDataUrl?: string
+ *   datasetId?: string | null
  * }} LayersPluginOptions
  */
 

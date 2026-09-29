@@ -13,6 +13,7 @@ vi.mock('./datasets/hits.jsx', () => ({ createDatasetHits: vi.fn() }))
 vi.mock('./inspection/index.js', () => ({ createInspection: vi.fn() }))
 vi.mock('./datasets/attribution.js', () => ({ getAttribution: vi.fn(() => '© Ordnance Survey | Natural England') }))
 vi.mock('./datasets/use-catalogue.js', () => ({ useCatalogue: vi.fn() }))
+vi.mock('./datasets/use-linked-dataset.js', () => ({ useLinkedDataset: vi.fn() }))
 
 vi.mock('./layer-controller.js', () => ({ createLayerController: vi.fn() }))
 
@@ -24,6 +25,7 @@ const { createInspection } = await import('./inspection/index.js')
 const { getAttribution } = await import('./datasets/attribution.js')
 const { createLayerController } = await import('./layer-controller.js')
 const { useCatalogue } = await import('./datasets/use-catalogue.js')
+const { useLinkedDataset } = await import('./datasets/use-linked-dataset.js')
 const { LayersInit } = await import('./LayersInit.jsx')
 
 const WOODLAND = { ...THEMED_DATASET, id: 'woodland', title: 'Ancient Woodland' }
@@ -61,6 +63,7 @@ function props (overrides = {}) {
   return {
     mapState: { isMapReady: true, zoom: 8, mapStyle: MAP_STYLE, ...overrides.mapState },
     mapProvider: { map: olMap },
+    pluginConfig: { ...overrides.pluginConfig },
     pluginState: overrides.pluginState ?? pluginState(),
     appState: { dispatch: vi.fn(), ...overrides.appState },
     services
@@ -94,6 +97,7 @@ beforeEach(() => {
   listeners = new Map()
   services = {
     announce: vi.fn(),
+    hints: { show: vi.fn() },
     eventBus: {
       on: vi.fn((event, handler) => listeners.set(event, handler)),
       off: vi.fn((event) => listeners.delete(event))
@@ -159,7 +163,7 @@ describe('LayersInit', () => {
     expect(refs.inspection.current).toBe(inspection)
   })
 
-  test('commits dataset loading outcomes and announces failures', () => {
+  test('commits dataset loading outcomes and shows a hint for failures', () => {
     renderInit({ pluginState: pluginState({ layers: [{ id: 'woodland', title: 'Ancient Woodland', ready: false }] }) })
     const { onDatasetLoaded, onDatasetFailed } = createLayerController.mock.calls[0][0]
 
@@ -170,7 +174,7 @@ describe('LayersInit', () => {
       [{ type: 'DATASET_LOADED', payload: { id: 'woodland', source: WOODLAND.source, minZoom: 9 } }],
       [{ type: 'DATASET_FAILED', payload: { id: 'woodland', error: 'This dataset could not be added. Try again later.' } }]
     ])
-    expect(services.announce).toHaveBeenCalledWith('Ancient Woodland could not be added. Try again later.')
+    expect(services.hints.show).toHaveBeenCalledWith('Ancient Woodland could not be added')
   })
 
   test('loads the catalogue without waiting for the map', () => {
@@ -178,6 +182,17 @@ describe('LayersInit', () => {
     renderInit({ mapState: { isMapReady: false }, pluginState: state })
 
     expect(useCatalogue).toHaveBeenCalledWith(state)
+  })
+
+  test('passes the linked dataset to its loader', () => {
+    renderInit({ mapState: { isMapReady: false }, pluginConfig: { datasetId: 'woodland' } })
+
+    expect(useLinkedDataset).toHaveBeenCalledWith({
+      datasetId: 'woodland',
+      isMapReady: false,
+      dispatch,
+      hints: services.hints
+    })
   })
 
   test('waits for the map before creating inspection sources', () => {
