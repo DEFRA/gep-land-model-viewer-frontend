@@ -6,7 +6,8 @@ import {
   latestNestedDate,
   mappedValue,
   objectDefault,
-  rawArray
+  rawArray,
+  resolution
 } from './field-accessors.js'
 
 const accessLevelMap = { true: 'Open data', false: 'Restricted access' }
@@ -82,8 +83,8 @@ const fields = {
     hitAccessor: allDefaults('keywordType-place')
   },
   resolution: {
-    source: ['resolutionDistance'],
-    hitAccessor: rawArray('resolutionDistance')
+    source: ['resolutionScaleDenominator', 'resolutionDistance'],
+    hitAccessor: resolution
   },
   creationDate: {
     source: ['resourceDate.date', 'resourceDate.type'],

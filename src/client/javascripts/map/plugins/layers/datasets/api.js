@@ -18,7 +18,7 @@ import { sourceFor } from './source.js'
  * @property {string[]} format
  * @property {string | null} coordinateReferenceSystem
  * @property {string[]} places
- * @property {string[]} resolution
+ * @property {{ scaleDenominators: number[], distances: string[] } | null} resolution
  * @property {string | null} creationDate
  */
 /** @typedef {DatasetMetadata & { display: { styleConfig: { themes: object[] } | null, assets: { cog?: string, fgb?: string } } }} DatasetDetail */

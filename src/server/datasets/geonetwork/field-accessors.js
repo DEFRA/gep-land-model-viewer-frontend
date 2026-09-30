@@ -74,6 +74,22 @@ function rawArray (name) {
   return (src) => src[name] ?? []
 }
 
+/**
+ * @param {object} src
+ * @returns {import('./catalogue.js').SpatialResolution | null}
+ */
+function resolution (src) {
+  const scaleDenominators = (src.resolutionScaleDenominator ?? [])
+    .map(Number)
+    .filter((value) => Number.isSafeInteger(value) && value > 0)
+  const distances = (src.resolutionDistance ?? [])
+    .filter((value) => typeof value === 'string' && value.trim())
+
+  return scaleDenominators.length || distances.length
+    ? { scaleDenominators, distances }
+    : null
+}
+
 export {
   allDefaults,
   datedEntry,
@@ -82,5 +98,6 @@ export {
   latestNestedDate,
   mappedValue,
   objectDefault,
-  rawArray
+  rawArray,
+  resolution
 }

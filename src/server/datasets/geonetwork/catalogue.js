@@ -8,6 +8,12 @@ export const MAX_RESULTS = 500
 const RECORDS_ONLY = { term: { isTemplate: 'n' } }
 
 /**
+ * @typedef {object} SpatialResolution
+ * @property {number[]} scaleDenominators The denominator in each 1:n scale, e.g. 250000 for 1:250,000.
+ * @property {string[]} distances Distance values including their units, e.g. '2 m'.
+ */
+
+/**
  * Catalogue metadata, separate from the dataset's S3 files and style.
  *
  * @typedef {object} DatasetMetadata
@@ -24,7 +30,7 @@ const RECORDS_ONLY = { term: { isTemplate: 'n' } }
  * @property {string[]} format
  * @property {string | null} coordinateReferenceSystem
  * @property {string[]} places
- * @property {string[]} resolution
+ * @property {SpatialResolution | null} resolution
  * @property {string | null} creationDate
  */
 

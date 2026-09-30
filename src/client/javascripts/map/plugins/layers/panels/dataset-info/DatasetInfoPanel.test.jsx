@@ -28,7 +28,7 @@ describe('DatasetInfoPanel', () => {
       creationDate: '2013-01-01',
       updatedAt: '2026-03-15',
       places: ['England', 'Wales'],
-      resolution: ['10 m', '1:10000'],
+      resolution: { scaleDenominators: [10000], distances: ['10 m'] },
       format: ['GeoPackage', 'GeoJSON']
     })
 
@@ -41,7 +41,7 @@ describe('DatasetInfoPanel', () => {
       ['Categories', 'Environment, Inland waters'],
       ['Creation date', '1 January 2013'],
       ['Last updated', '15 March 2026'],
-      ['Resolution', '10 m, 1:10000'],
+      ['Resolution', '1:10,000, 10m'],
       ['Geographic extent', 'England, Wales'],
       ['Available file formats', 'GeoPackage, GeoJSON']
     ]) {
@@ -79,7 +79,7 @@ describe('DatasetInfoPanel', () => {
 
   test.each([
     { description: 'missing metadata', metadata: undefined },
-    { description: 'empty metadata fields', metadata: { abstract: ' \n ', categories: [], format: [], places: [], resolution: [] } },
+    { description: 'empty metadata fields', metadata: { abstract: ' \n ', categories: [], format: [], places: [], resolution: null } },
     { description: 'invalid catalogue dates', metadata: { creationDate: 'unknown', updatedAt: '2026-13-99' } }
   ])('shows placeholders for $description', async ({ metadata }) => {
     const view = await renderInfo(metadata)
