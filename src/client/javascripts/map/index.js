@@ -17,6 +17,7 @@ const MAX_ZOOM = 13
 const UK_EXTENT = [-100000, 0, 800000, 1250000]
 const mapElement = document.getElementById(MAP_ID)
 const { styleNonce, findGeoDataUrl } = mapElement?.closest('main')?.dataset ?? {}
+const datasetId = new URLSearchParams(window.location.search).get('dataset')
 
 const map = new InteractiveMap(MAP_ID, {
   behaviour: 'inline',
@@ -69,7 +70,7 @@ const map = new InteractiveMap(MAP_ID, {
         }]
       }
     }),
-    createLayersPlugin({ styleNonce, findGeoDataUrl }),
+    createLayersPlugin({ styleNonce, findGeoDataUrl, datasetId }),
     createNorthIndicatorPlugin(),
     createInfoLinksPlugin(),
     scaleBarPlugin({ units: 'metric' })

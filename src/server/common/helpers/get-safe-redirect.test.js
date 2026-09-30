@@ -45,6 +45,15 @@ describe('#getSafeRedirect', () => {
     expect(getSafeRedirect('//evil.com/path')).toBe('/')
   })
 
+  test.each([
+    '/.//evil.com',
+    '/..//evil.com',
+    '/foo/..//evil.com',
+    '/./\\evil.com'
+  ])('should return / for dot segments resolving to %s', (url) => {
+    expect(getSafeRedirect(url)).toBe('/')
+  })
+
   test('should return / for encoded double-slash', () => {
     expect(getSafeRedirect('%2f%2fevil.com')).toBe('/%2f%2fevil.com')
   })

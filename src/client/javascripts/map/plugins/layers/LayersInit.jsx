@@ -8,13 +8,20 @@ import { getAttribution } from './datasets/attribution.js'
 import { createLayerController } from './layer-controller.js'
 import { inspectableLayers } from './reducer.js'
 import { useCatalogue } from './datasets/use-catalogue.js'
+import { useLinkedDataset } from './datasets/use-linked-dataset.js'
 import { loadDataset } from './datasets/api.js'
 
 const ATTRIBUTIONS_SELECTOR = '.im-c-attributions'
 const DATASET_FAILED_MESSAGE = 'This dataset could not be added. Try again later.'
 
-export function LayersInit ({ mapState, mapProvider, pluginState, appState, services }) {
+export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, appState, services }) {
   useCatalogue(pluginState)
+  useLinkedDataset({
+    datasetId: pluginConfig.datasetId,
+    isMapReady: mapState.isMapReady,
+    dispatch: pluginState.dispatch,
+    hints: services.hints
+  })
   const layerControllerRef = useRef(null)
   const layersRef = useRef(pluginState.layers)
   layersRef.current = pluginState.layers
@@ -55,7 +62,7 @@ export function LayersInit ({ mapState, mapProvider, pluginState, appState, serv
       onDatasetFailed: (id) => {
         const title = layersRef.current.find(layer => layer.id === id)?.title
         pluginState.dispatch({ type: 'DATASET_FAILED', payload: { id, error: DATASET_FAILED_MESSAGE } })
-        services.announce(`${title} could not be added. Try again later.`)
+        services.hints.show(`${title} could not be added`)
       }
     })
 
