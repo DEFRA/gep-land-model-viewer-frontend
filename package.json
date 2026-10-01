@@ -84,7 +84,7 @@
     "proj4": "2.21.0",
     "react-colorful": "5.8.1",
     "semver": "7.8.5",
-    "undici": "8.10.0"
+    "undici": "8.11.2"
   },
   "devDependencies": {
     "@babel/preset-env": "8.0.2",
@@ -127,12 +127,6 @@
     "tmp": "0.2.5",
     "serialize-javascript": "7.0.5",
     "uuid": "^14.0.0",
-    "sirv": "^3.0.2",
-    "polygon-splitter": {
-      "glob": "^11.1.0",
-      "brace-expansion": "5.0.9"
-    },
-    "brace-expansion": "5.0.9",
-    "minimatch": "^10.2.6"
+    "sirv": "^3.0.2"
   }
 }

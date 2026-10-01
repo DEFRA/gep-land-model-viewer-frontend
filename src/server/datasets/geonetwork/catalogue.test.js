@@ -56,7 +56,7 @@ test('maps the Elasticsearch record into dataset metadata', async () => {
     ],
     coordinateReferenceSystem: 'http://www.opengis.net/def/crs/EPSG/0/27700',
     places: ['England'],
-    resolution: ['10 m'],
+    resolution: { scaleDenominators: [], distances: ['10 m'] },
     creationDate: '2025-05-06'
   })
 })

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { DatasetAbstract } from './DatasetAbstract.jsx'
 import { SummaryList } from '../info/SummaryList.jsx'
-import { formatDatasetDate } from '../info/format.js'
+import { formatDatasetDate, formatResolution } from '../info/format.js'
 import { loadDatasetMetadata } from '../../datasets/api.js'
 
 export function DatasetInfoPanel ({ datasetId, pluginConfig }) {
@@ -30,7 +30,7 @@ export function DatasetInfoPanel ({ datasetId, pluginConfig }) {
     ['Last updated', formatDatasetDate(metadata.updatedAt)],
     ['Update frequency', metadata.updateFrequency],
     ['Access level', metadata.accessLevel],
-    ['Resolution', metadata.resolution?.join(', ')],
+    ['Resolution', formatResolution(metadata.resolution)],
     ['Geographic extent', metadata.places?.join(', ')],
     ['Coordinate reference system', metadata.coordinateReferenceSystem],
     ['Licence', metadata.licence],
