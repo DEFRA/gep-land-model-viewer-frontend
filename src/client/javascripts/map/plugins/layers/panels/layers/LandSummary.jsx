@@ -1,7 +1,7 @@
 import { useRef } from 'react'
-import { CSPProvider } from '@base-ui/react/csp-provider'
 import { Popover } from '@base-ui/react/popover'
 import { Info } from 'lucide-preact'
+import { InfoPopoverPopup } from '../shared/InfoPopover.jsx'
 import { SUMMARIES } from '../../summaries/config.js'
 
 function SummaryRow ({ summary, layer, activeId, onChange }) {
@@ -35,7 +35,7 @@ function SummaryRow ({ summary, layer, activeId, onChange }) {
   )
 }
 
-export function LandSummary ({ layers, onChange, styleNonce }) {
+export function LandSummary ({ layers, onChange }) {
   const summaryRef = useRef(null)
   const summaries = SUMMARIES.map(summary => ({
     summary,
@@ -47,45 +47,33 @@ export function LandSummary ({ layers, onChange, styleNonce }) {
     <div className='app-map__land-summary' ref={summaryRef}>
       <h3 className='govuk-heading-s govuk-!-margin-bottom-2'>Land summary</h3>
       <p className='govuk-body-s app-map__layers-description govuk-!-margin-bottom-3'>Inspect any point on the map to see its land cover, use, ownership, protected areas and soils.</p>
-      <CSPProvider nonce={styleNonce}>
-        <Popover.Root>
-          {({ payload }) => {
-            const infoSummary = SUMMARIES.find(summary => summary.id === payload)
+      <Popover.Root>
+        {({ payload }) => {
+          const infoSummary = SUMMARIES.find(summary => summary.id === payload)
 
-            return (
-              <>
-                <fieldset className='govuk-fieldset govuk-!-margin-top-2'>
-                  <legend className='govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-2'>Summarise land by:</legend>
-                  <div className='govuk-checkboxes govuk-checkboxes--small'>
-                    {summaries.map(({ summary, layer }) => (
-                      <SummaryRow
-                        key={summary.id}
-                        summary={summary}
-                        layer={layer}
-                        activeId={activeId}
-                        onChange={onChange}
-                      />
-                    ))}
-                  </div>
-                </fieldset>
-                <Popover.Portal container={summaryRef}>
-                  <Popover.Positioner
-                    className='app-map__summary-info-positioner'
-                    side='right'
-                    sideOffset={8}
-                    positionMethod='fixed'
-                    collisionPadding={8}
-                  >
-                    <Popover.Popup className='app-map__summary-info-popup' aria-label={`About ${infoSummary?.label}`}>
-                      <Popover.Description className='im-c-hints__hint'>{infoSummary?.description}</Popover.Description>
-                    </Popover.Popup>
-                  </Popover.Positioner>
-                </Popover.Portal>
-              </>
-            )
-          }}
-        </Popover.Root>
-      </CSPProvider>
+          return (
+            <>
+              <fieldset className='govuk-fieldset govuk-!-margin-top-2'>
+                <legend className='govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-2'>Summarise land by:</legend>
+                <div className='govuk-checkboxes govuk-checkboxes--small'>
+                  {summaries.map(({ summary, layer }) => (
+                    <SummaryRow
+                      key={summary.id}
+                      summary={summary}
+                      layer={layer}
+                      activeId={activeId}
+                      onChange={onChange}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+              <InfoPopoverPopup label={`About ${infoSummary?.label}`} side='right' container={summaryRef}>
+                {infoSummary?.description}
+              </InfoPopoverPopup>
+            </>
+          )
+        }}
+      </Popover.Root>
     </div>
   )
 }

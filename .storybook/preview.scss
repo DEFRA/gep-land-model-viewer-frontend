@@ -1,0 +1,24 @@
+@use "../src/client/stylesheets/govuk-base" as *;
+
+.sb-summary-panel {
+  width: var(--app-map-info-panel-width);
+  max-width: 100%;
+
+  .im-o-app {
+    position: relative;
+    width: 100%;
+    height: auto;
+  }
+
+  .im-c-panel {
+    position: relative;
+    width: 100%;
+    max-height: none;
+    border-top: 3px solid govuk-colour("green");
+    background: govuk-colour("white");
+  }
+
+  .im-c-panel__body {
+    overflow: visible;
+  }
+}

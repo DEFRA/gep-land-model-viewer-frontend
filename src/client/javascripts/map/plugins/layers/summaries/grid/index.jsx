@@ -1,8 +1,8 @@
-import { cellAtPoint } from './cell-at-point.js'
+import { cellAtPoint, CELL_SIZE_METRES } from './cell-at-point.js'
 import { GRID_VISIBLE_MIN_ZOOM } from './constants.js'
 import { getGridDetails } from './data.js'
 import { createGridLayer } from './grid-layer.js'
-import { CellInfo } from './CellInfo.jsx'
+import { LandSummaryView } from '../components/LandSummaryView.jsx'
 
 /**
  * @param {{ on: Function, off: Function }} eventBus
@@ -35,12 +35,15 @@ export function createGridSummary (eventBus, map) {
         return []
       }
 
+      /** @type {import('../model.js').GridUnit} */
+      const unit = { kind: 'grid', bngRef: cell.cellId.compact, cellSize: CELL_SIZE_METRES }
+
       return [{
         label: 'Grid square',
         stillValid: isAvailable,
         select: () => gridLayer.highlightCell(cell.easting, cell.northing),
-        loadDetails: (_options) => getGridDetails(cell.cellId.compact),
-        render: details => <CellInfo hit={cell} details={details} />
+        loadDetails: (_options) => getGridDetails(unit.bngRef),
+        render: details => <LandSummaryView record={details} unit={unit} outsideSampleArea={!details} />
       }]
     },
 

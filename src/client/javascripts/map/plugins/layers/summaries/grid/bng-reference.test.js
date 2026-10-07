@@ -1,4 +1,4 @@
-import { toBngRef, BngReference } from './bng-reference.js'
+import { toBngRef, parseBngRef, BngReference } from './bng-reference.js'
 
 describe('#toBngRef', () => {
   test('returns a BngReference', () => {
@@ -49,5 +49,22 @@ describe('BngReference', () => {
     const ref = toBngRef(523863, 134729, 100000)
     expect(ref.compact).toBe('TQ')
     expect(ref.formatted).toBe('TQ')
+  })
+})
+
+describe('#parseBngRef', () => {
+  test('formats a compact reference, keeping leading-zero digits', () => {
+    expect(parseBngRef('SJ00010002').formatted).toBe('SJ 0001 0002')
+    expect(parseBngRef('SJ00010002').compact).toBe('SJ00010002')
+  })
+
+  test('parses a 100km reference as the prefix only', () => {
+    expect(parseBngRef('TQ').formatted).toBe('TQ')
+  })
+
+  test('returns null for values that are not compact references', () => {
+    expect(parseBngRef('SJ 0001 0002')).toBeNull()
+    expect(parseBngRef('SJ0001000')).toBeNull()
+    expect(parseBngRef('sj00010002')).toBeNull()
   })
 })

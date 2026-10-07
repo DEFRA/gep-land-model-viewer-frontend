@@ -2,7 +2,7 @@ import { OS_NGD_TILESET_URL, OS_NGD_STYLE_IDS } from '../../../../config/map-sty
 import { FEATURE_VISIBLE_MIN_ZOOM } from './constants.js'
 import { createFeatureLayer } from './feature-layer.js'
 import { getFeatureDetails } from './data.js'
-import { FeatureInfo } from './FeatureInfo.jsx'
+import { LandSummaryView } from '../components/LandSummaryView.jsx'
 
 /**
  * @param {import('ol/Map').default} map
@@ -35,12 +35,15 @@ export function createFeatureSummary (map) {
         return []
       }
 
+      /** @type {import('../model.js').FeatureUnit} */
+      const unit = { kind: 'feature', osid: feature.osid }
+
       return [{
         label: 'OS feature',
         stillValid: isAvailable,
-        select: () => featureLayer.selectFeature(feature.osid),
-        loadDetails: (_options) => getFeatureDetails(feature.osid),
-        render: details => <FeatureInfo hit={feature} details={details} />
+        select: () => featureLayer.selectFeature(unit.osid),
+        loadDetails: (_options) => getFeatureDetails(unit.osid),
+        render: details => <LandSummaryView record={details} unit={details?.unit ?? unit} outsideSampleArea={!details} />
       }]
     },
 

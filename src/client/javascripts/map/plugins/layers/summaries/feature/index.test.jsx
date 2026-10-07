@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { render } from '@testing-library/preact'
+import { featureRecord } from '../fixtures/land-model.js'
 import { InfoPanelContext } from '../../panels/info/context.js'
 
 vi.mock('./feature-layer.js', () => ({
   createFeatureLayer: vi.fn()
 }))
 
-vi.mock('./data.js', () => ({
+vi.mock('./data.js', async importOriginal => ({
+  ...await importOriginal(),
   getFeatureDetails: vi.fn(() => Promise.resolve(null))
 }))
 
@@ -169,7 +171,18 @@ describe('#createFeatureSummary', () => {
     )
 
     expect(container.textContent).toContain('abc-123')
-    expect(container.textContent).toContain('This parcel is not covered by the sample land model.')
+    expect(container.textContent).toContain('This OS feature is not covered by the sample land model.')
+    expect(container.textContent).not.toContain('TOID')
+  })
+
+  test('renders the record unit with its TOID when details load', () => {
+    mockFeatureLayer.findFeatureAtPixel.mockReturnValue({ osid: featureRecord.unit.osid })
+    const hit = registeredSource().getHits([418700, 385100])[0]
+    const rendered = hit.render(featureRecord)
+
+    expect(rendered.props.unit).toBe(featureRecord.unit)
+    expect(rendered.props.record).toBe(featureRecord)
+    expect(rendered.props.outsideSampleArea).toBe(false)
   })
 
   test('clearSelection clears the feature selection', () => {
