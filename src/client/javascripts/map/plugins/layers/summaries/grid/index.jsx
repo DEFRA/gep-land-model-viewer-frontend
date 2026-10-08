@@ -1,6 +1,6 @@
-import { cellAtPoint, CELL_SIZE_METRES } from './cell-at-point.js'
-import { GRID_VISIBLE_MIN_ZOOM } from './constants.js'
-import { getGridDetails } from './data.js'
+import { cellAtPoint } from './cell-at-point.js'
+import { cellSizeAtZoom } from './resolution.js'
+import { getGridDetails, SAMPLE_CELL_SIZE } from './data.js'
 import { createGridLayer } from './grid-layer.js'
 import { LandSummaryView } from '../components/LandSummaryView.jsx'
 
@@ -13,8 +13,6 @@ export function createGridSummary (eventBus, map) {
   const view = map.getView()
   let visible = false
 
-  const isAvailable = () => visible && view.getZoom() >= GRID_VISIBLE_MIN_ZOOM
-
   return {
     setVisible (next) {
       visible = next
@@ -26,24 +24,26 @@ export function createGridSummary (eventBus, map) {
     },
 
     getHits (coords) {
-      if (!isAvailable()) {
+      if (!visible) {
         return []
       }
 
-      const cell = cellAtPoint(coords)
+      const cellSize = cellSizeAtZoom(view.getZoom())
+      const cell = cellAtPoint(coords, cellSize)
       if (!cell) {
         return []
       }
 
+      const sampled = cellSize === SAMPLE_CELL_SIZE
       /** @type {import('../model.js').GridUnit} */
-      const unit = { kind: 'grid', bngRef: cell.cellId.compact, cellSize: CELL_SIZE_METRES }
+      const unit = { kind: 'grid', bngRef: cell.cellId.compact, cellSize }
 
       return [{
         label: 'Grid square',
-        stillValid: isAvailable,
-        select: () => gridLayer.highlightCell(cell.easting, cell.northing),
-        loadDetails: (_options) => getGridDetails(unit.bngRef),
-        render: details => <LandSummaryView record={details} unit={unit} outsideSampleArea={!details} />
+        stillValid: () => visible,
+        select: () => gridLayer.highlightCell(cell.easting, cell.northing, cellSize),
+        loadDetails: (_options) => sampled ? getGridDetails(unit.bngRef) : Promise.resolve(null),
+        render: details => <LandSummaryView record={details} unit={unit} outsideSampleArea={sampled && !details} />
       }]
     },
 

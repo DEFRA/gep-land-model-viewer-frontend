@@ -1,18 +1,18 @@
 import { EVENTS } from '@defra/interactive-map'
+import { buffer, containsExtent } from 'ol/extent.js'
 import Feature from 'ol/Feature.js'
 import LineString from 'ol/geom/LineString.js'
 import Polygon from 'ol/geom/Polygon.js'
 import VectorSource from 'ol/source/Vector.js'
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
-import { CELL_SIZE_METRES, snapDown, snapUp } from './cell-at-point.js'
-import { GRID_VISIBLE_MIN_ZOOM } from './constants.js'
+import { snapDown, snapUp } from './cell-at-point.js'
+import { cellSizeAtZoom } from './resolution.js'
 import { DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../../../config/colours.js'
 import { SELECTION_Z_INDEX } from '../../../../config/layers.js'
 import { GRID_SUMMARY } from '../config.js'
 
-const MAX_LINES_PER_AXIS = 1000
-const GRID_PAD_SCREEN_PIXELS = 512
-const GRID_MIN_PAD_CELLS = 80
+// OpenLayers only redraws WebGL vector layers once the view stops, so the buffer must cover a whole pan.
+const GRID_PAD_CELLS = 80
 const GRID_REDRAW_MARGIN_FACTOR = 0.75
 
 const GRID_LINE_STYLE = {
@@ -52,9 +52,9 @@ export function createGridLayer (eventBus, map) {
   scheduleRefresh()
 
   return {
-    highlightCell (easting, northing) {
+    highlightCell (easting, northing, cellSize) {
       selectedSource.clear()
-      selectedSource.addFeature(buildHighlightFeature(easting, northing))
+      selectedSource.addFeature(buildHighlightFeature(easting, northing, cellSize))
     },
 
     clearHighlight () {
@@ -118,50 +118,32 @@ function createBufferedGrid (map, gridSource) {
     drawnGrid = null
   }
 
-  function viewportInsideRedrawExtent () {
-    if (!drawnGrid) {
+  function canReuseDrawnGrid (cellSize) {
+    if (drawnGrid?.cellSize !== cellSize) {
       return false
     }
-    const viewportExtent = map.getView().calculateExtent(map.getSize())
-    const redrawMargin = drawnGrid.paddingMetres * GRID_REDRAW_MARGIN_FACTOR
-    const redrawExtent = [
-      drawnGrid.extent[0] + redrawMargin,
-      drawnGrid.extent[1] + redrawMargin,
-      drawnGrid.extent[2] - redrawMargin,
-      drawnGrid.extent[3] - redrawMargin
-    ]
-    return (
-      viewportExtent[0] >= redrawExtent[0] &&
-      viewportExtent[1] >= redrawExtent[1] &&
-      viewportExtent[2] <= redrawExtent[2] &&
-      viewportExtent[3] <= redrawExtent[3]
-    )
+
+    const redrawExtent = buffer(drawnGrid.extent, -cellSize * GRID_PAD_CELLS * GRID_REDRAW_MARGIN_FACTOR)
+    return containsExtent(redrawExtent, map.getView().calculateExtent(map.getSize()))
   }
 
   function refreshGrid (enabled) {
-    const view = map.getView()
-    if (!enabled || view.getZoom() < GRID_VISIBLE_MIN_ZOOM) {
+    if (!enabled) {
       if (drawnGrid) {
         clearGrid()
       }
       return
     }
-    if (viewportInsideRedrawExtent()) {
+
+    const cellSize = cellSizeAtZoom(map.getView().getZoom())
+    if (canReuseDrawnGrid(cellSize)) {
       return
     }
 
-    const result = buildGridFeatures(map)
-    if (!result) {
-      clearGrid()
-      return
-    }
-
+    const { features, extent } = buildGridFeatures(map, cellSize)
     gridSource.clear()
-    gridSource.addFeatures(result.features)
-    drawnGrid = {
-      extent: result.extent,
-      paddingMetres: result.paddingMetres
-    }
+    gridSource.addFeatures(features)
+    drawnGrid = { extent, cellSize }
   }
 
   return {
@@ -170,40 +152,35 @@ function createBufferedGrid (map, gridSource) {
   }
 }
 
-/** @param {import('ol/Map').default} map */
-function buildGridFeatures (map) {
-  const view = map.getView()
-  const viewport = view.calculateExtent(map.getSize())
-  const [xmin, ymin, xmax, ymax] = viewport
-  const paddingMetres = Math.max(view.getResolution() * GRID_PAD_SCREEN_PIXELS, CELL_SIZE_METRES * GRID_MIN_PAD_CELLS)
-  const startE = snapDown(xmin - paddingMetres, CELL_SIZE_METRES)
-  const endE = snapUp(xmax + paddingMetres, CELL_SIZE_METRES)
-  const startN = snapDown(ymin - paddingMetres, CELL_SIZE_METRES)
-  const endN = snapUp(ymax + paddingMetres, CELL_SIZE_METRES)
-
-  const eCount = (endE - startE) / CELL_SIZE_METRES
-  const nCount = (endN - startN) / CELL_SIZE_METRES
-  if (eCount > MAX_LINES_PER_AXIS || nCount > MAX_LINES_PER_AXIS) {
-    return null
-  }
+/**
+ * @param {import('ol/Map').default} map
+ * @param {import('./resolution.js').GridCellSize} cellSize
+ */
+function buildGridFeatures (map, cellSize) {
+  const [xmin, ymin, xmax, ymax] = map.getView().calculateExtent(map.getSize())
+  const paddingMetres = cellSize * GRID_PAD_CELLS
+  const startE = snapDown(xmin - paddingMetres, cellSize)
+  const endE = snapUp(xmax + paddingMetres, cellSize)
+  const startN = snapDown(ymin - paddingMetres, cellSize)
+  const endN = snapUp(ymax + paddingMetres, cellSize)
 
   const features = []
-  for (let e = startE; e <= endE; e += CELL_SIZE_METRES) {
+  for (let e = startE; e <= endE; e += cellSize) {
     features.push(new Feature({ geometry: new LineString([[e, startN], [e, endN]]) }))
   }
-  for (let n = startN; n <= endN; n += CELL_SIZE_METRES) {
+  for (let n = startN; n <= endN; n += cellSize) {
     features.push(new Feature({ geometry: new LineString([[startE, n], [endE, n]]) }))
   }
-  return { features, extent: [startE, startN, endE, endN], paddingMetres }
+  return { features, extent: [startE, startN, endE, endN] }
 }
 
-function buildHighlightFeature (easting, northing) {
+function buildHighlightFeature (easting, northing, cellSize) {
   return new Feature({
     geometry: new Polygon([[
       [easting, northing],
-      [easting + CELL_SIZE_METRES, northing],
-      [easting + CELL_SIZE_METRES, northing + CELL_SIZE_METRES],
-      [easting, northing + CELL_SIZE_METRES],
+      [easting + cellSize, northing],
+      [easting + cellSize, northing + cellSize],
+      [easting, northing + cellSize],
       [easting, northing]
     ]])
   })

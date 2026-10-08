@@ -15,7 +15,7 @@ import { toDate } from '../../../date.js'
  * @typedef {object} GridUnit
  * @property {'grid'} kind
  * @property {string} bngRef Compact British National Grid reference
- * @property {10 | 100 | 1000 | 10000 | 100000} cellSize Metres
+ * @property {import('./grid/resolution.js').GridCellSize} cellSize Metres
  */
 
 /**

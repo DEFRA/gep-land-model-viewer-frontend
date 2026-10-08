@@ -1,7 +1,5 @@
 import { toBngRef } from './bng-reference.js'
 
-export const CELL_SIZE_METRES = 10
-
 export function snapDown (value, step) {
   return Math.floor(value / step) * step
 }
@@ -10,10 +8,14 @@ export function snapUp (value, step) {
   return Math.ceil(value / step) * step
 }
 
-export function cellAtPoint ([easting, northing]) {
-  const snappedE = snapDown(easting, CELL_SIZE_METRES)
-  const snappedN = snapDown(northing, CELL_SIZE_METRES)
-  const cellId = toBngRef(snappedE, snappedN, CELL_SIZE_METRES)
+/**
+ * @param {number[]} coords
+ * @param {import('./resolution.js').GridCellSize} cellSize
+ */
+export function cellAtPoint ([easting, northing], cellSize) {
+  const snappedE = snapDown(easting, cellSize)
+  const snappedN = snapDown(northing, cellSize)
+  const cellId = toBngRef(snappedE, snappedN, cellSize)
   if (!cellId) {
     return null
   }

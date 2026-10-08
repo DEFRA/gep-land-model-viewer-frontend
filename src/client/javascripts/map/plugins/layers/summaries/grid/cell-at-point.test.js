@@ -38,7 +38,7 @@ describe('#snapUp', () => {
 
 describe('#cellAtPoint', () => {
   test('snaps coordinates to 10m grid and returns BNG reference', () => {
-    const result = cellAtPoint([418725, 385137])
+    const result = cellAtPoint([418725, 385137], 10)
     expect(result.cellId.formatted).toBe('SK 1872 8513')
     expect(result.cellId.compact).toBe('SK18728513')
     expect(result.easting).toBe(418720)
@@ -46,26 +46,52 @@ describe('#cellAtPoint', () => {
   })
 
   test('returns exact coordinates when already on grid', () => {
-    const result = cellAtPoint([418720, 385130])
+    const result = cellAtPoint([418720, 385130], 10)
     expect(result.cellId.formatted).toBe('SK 1872 8513')
     expect(result.easting).toBe(418720)
     expect(result.northing).toBe(385130)
   })
 
   test('snaps coordinates just below cell boundary', () => {
-    const result = cellAtPoint([418729.999, 385139.999])
+    const result = cellAtPoint([418729.999, 385139.999], 10)
     expect(result.cellId.formatted).toBe('SK 1872 8513')
     expect(result.easting).toBe(418720)
     expect(result.northing).toBe(385130)
   })
 
   test('handles small coordinates near origin', () => {
-    expect(cellAtPoint([0, 0]).cellId.formatted).toBe('SV 0000 0000')
-    expect(cellAtPoint([5, 7]).cellId.formatted).toBe('SV 0000 0000')
+    expect(cellAtPoint([0, 0], 10).cellId.formatted).toBe('SV 0000 0000')
+    expect(cellAtPoint([5, 7], 10).cellId.formatted).toBe('SV 0000 0000')
   })
 
-  test('returns null for coordinates outside the BNG extent', () => {
-    expect(cellAtPoint([-1, 385130])).toBeNull()
-    expect(cellAtPoint([418720, -1])).toBeNull()
+  test.each([
+    [10, 466720, 475130, 'SE 6672 7513'],
+    [100, 466700, 475100, 'SE 667 751'],
+    [1000, 466000, 475000, 'SE 66 75'],
+    [10000, 460000, 470000, 'SE 6 7'],
+    [100000, 400000, 400000, 'SE']
+  ])('snaps the SE67 test point to a %im cell', (size, easting, northing, reference) => {
+    const cell = cellAtPoint([466725, 475137], size)
+
+    expect(cell.easting).toBe(easting)
+    expect(cell.northing).toBe(northing)
+    expect(cell.cellId.formatted).toBe(reference)
+  })
+
+  test.each([10, 100, 1000, 10000, 100000])('returns null outside the BNG extent at %im', size => {
+    expect(cellAtPoint([-1, 385130], size)).toBeNull()
+    expect(cellAtPoint([418720, -1], size)).toBeNull()
+    expect(cellAtPoint([700000, 385130], size)).toBeNull()
+    expect(cellAtPoint([418720, 1300000], size)).toBeNull()
+  })
+
+  test.each([10, 100, 1000, 10000, 100000])('assigns a %im boundary to the cell to its north and east', size => {
+    const before = cellAtPoint([500000 - 0.001, 400000 - 0.001], size)
+    const atBoundary = cellAtPoint([500000, 400000], size)
+
+    expect(before.easting).toBe(500000 - size)
+    expect(before.northing).toBe(400000 - size)
+    expect(atBoundary.easting).toBe(500000)
+    expect(atBoundary.northing).toBe(400000)
   })
 })
