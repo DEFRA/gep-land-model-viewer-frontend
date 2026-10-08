@@ -24,7 +24,7 @@ function themeCount (selected, total) {
   return <>{total}<span className='govuk-visually-hidden'> {noun}</span></>
 }
 
-export function LayersPanel ({ pluginConfig, pluginState, services, appState }) {
+export function LayersPanel ({ pluginState, services, appState }) {
   const { dispatch } = pluginState
   const { catalogue, layers } = /** @type {import('../../reducer.js').LayersState} */ (pluginState)
   const { query, results, expandedThemes } = catalogue
@@ -79,7 +79,7 @@ export function LayersPanel ({ pluginConfig, pluginState, services, appState }) 
         Layers
       </h2>
       <div className='app-map__layers-scroll'>
-        <LandSummary layers={layers} onChange={handleSummaryChange} styleNonce={pluginConfig.styleNonce} />
+        <LandSummary layers={layers} onChange={handleSummaryChange} />
 
         <h3 className='govuk-heading-s govuk-!-margin-bottom-2'>Datasets</h3>
         <p className='govuk-body-s app-map__layers-description govuk-!-margin-bottom-4'>Add datasets to the map.</p>

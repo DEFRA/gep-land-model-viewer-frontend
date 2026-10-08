@@ -33,7 +33,6 @@ function TestPanel ({ initial = {}, visible = true }) {
 
   return visible && (
     <LayersPanel
-      pluginConfig={{}}
       pluginState={{
         ...state,
         dispatch: action => {

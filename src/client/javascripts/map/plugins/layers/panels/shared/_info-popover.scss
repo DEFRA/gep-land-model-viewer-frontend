@@ -1,0 +1,56 @@
+@use "govuk-base" as *;
+
+.app-map__info-popover {
+  display: inline-flex;
+  flex: none;
+  margin-left: govuk-spacing(1);
+  vertical-align: middle;
+}
+
+.app-map .app-map__info-popover-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: govuk-functional-colour("secondary-text");
+  cursor: pointer;
+
+  svg {
+    display: block;
+  }
+
+  &:hover {
+    color: govuk-functional-colour("link");
+  }
+
+  &:focus-visible {
+    outline: var(--focus-outline-width) solid var(--focus-outline-color);
+    outline-offset: 0;
+    box-shadow: inset 0 0 0 var(--focus-border-width) var(--focus-border-color);
+
+    @media screen and (forced-colors: active) {
+      outline: var(--focus-highlight-width) solid Highlight;
+    }
+  }
+}
+
+.app-map__info-popover-positioner {
+  z-index: 9999;
+
+  &[data-anchor-hidden] {
+    visibility: hidden;
+  }
+}
+
+.app-map__info-popover-popup {
+  --tooltip-background-color: #{govuk-functional-colour("text")};
+
+  width: 240px;
+  max-width: var(--available-width);
+  max-height: var(--available-height);
+  overflow: auto;
+}

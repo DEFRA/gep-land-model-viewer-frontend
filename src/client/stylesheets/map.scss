@@ -1,7 +1,9 @@
 @use "map-page";
 @use "../javascripts/map/plugins/layers/controls/zoom-warning";
 @use "../javascripts/map/plugins/layers/panels/shared/style-swatch";
+@use "../javascripts/map/plugins/layers/panels/shared/info-popover";
 @use "../javascripts/map/plugins/layers/panels/info/info-panel";
+@use "../javascripts/map/plugins/layers/summaries/components/land-summary";
 @use "../javascripts/map/plugins/layers/panels/key/key-panel";
 @use "../javascripts/map/plugins/layers/panels/layers/layers";
 @use "../javascripts/map/plugins/layers/panels/dataset-info/dataset-info";

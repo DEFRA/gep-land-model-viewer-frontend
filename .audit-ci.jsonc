@@ -1,0 +1,13 @@
+{
+  "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "high": true,
+  "allowlist": [
+    {
+      "GHSA-vfj7-8cjw-p6xm": {
+        "active": true,
+        "notes": "braces has no patched release (>3.0.3). Transitive via micromatch and chokidar. Disputed by the maintainer: https://github.com/micromatch/braces/issues/70#issuecomment-5995348316.",
+        "expiry": "2026-11-07"
+      }
+    }
+  ]
+}

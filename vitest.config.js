@@ -30,7 +30,6 @@ export default defineConfig({
             '@base-ui/react/menu',
             '@base-ui/react/popover',
             '@base-ui/react/slider',
-            '@base-ui/react/csp-provider',
             'react-colorful'
           ]
         }
@@ -53,6 +52,7 @@ export default defineConfig({
       exclude: [
         ...configDefaults.exclude,
         'src/client/stylesheets/**',
+        'src/**/*.stories.{js,jsx}',
         '.public',
         'coverage',
         'postcss.config.js',

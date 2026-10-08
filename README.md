@@ -17,6 +17,7 @@ Core delivery platform Node.js Frontend Template.
   - [Update dependencies](#update-dependencies)
   - [Linting and Formatting](#linting-and-formatting)
   - [Testing](#testing)
+  - [Storybook](#storybook)
   - [CI/CD](#cicd)
 - [Authentication](#authentication)
 - [Docker](#docker)
@@ -185,6 +186,18 @@ npx vitest run path/to/file.test.js
 ```
 
 Test coverage must meet 90% for lines, functions, statements and branches. This is enforced by the [vitest configuration](vitest.config.js).
+
+### Storybook
+
+Storybook is used to develop and manually review UI components in different states.
+
+To run Storybook:
+
+```bash
+npm run storybook
+```
+
+Open [Storybook](http://localhost:6006).
 
 ### CI/CD
 

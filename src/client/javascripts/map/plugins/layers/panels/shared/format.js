@@ -2,13 +2,6 @@ import { format, isValid, parseISO } from 'date-fns'
 
 export const EMPTY = '-'
 
-export function formatDate (value) {
-  if (!value) {
-    return EMPTY
-  }
-  return format(value, 'yyyy-MM-dd')
-}
-
 export function formatDatasetDate (value) {
   if (typeof value !== 'string' || !value) {
     return EMPTY
@@ -26,7 +19,7 @@ export function formatResolution (resolution) {
   const scales = resolution.scaleDenominators
     .map((value) => `1:${value.toLocaleString('en-GB')}`)
   const distances = resolution.distances
-    .map((value) => value.trim().replace(/(\d)\s+(?=[a-z])/gi, '$1'))
+    .map((value) => value.trim().replaceAll(/(\d)\s+(?=[a-z])/gi, '$1'))
 
   return [...new Set([...scales, ...distances])].join(', ')
 }

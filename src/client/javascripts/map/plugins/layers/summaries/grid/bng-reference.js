@@ -84,3 +84,17 @@ export function toBngRef (easting, northing, resolution) {
 
   return new BngReference(prefix, e, n)
 }
+
+/**
+ * @param {string} compact - Compact reference with an even number of digits, e.g. 'TQ23863472'
+ * @returns {BngReference | null} Parsed reference, or null if the value is not a compact reference
+ */
+export function parseBngRef (compact) {
+  const match = /^([A-Z]{2})((?:\d{2}){0,5})$/.exec(compact)
+  if (!match) {
+    return null
+  }
+
+  const digits = match[2]
+  return new BngReference(match[1], digits.slice(0, digits.length / 2), digits.slice(digits.length / 2))
+}

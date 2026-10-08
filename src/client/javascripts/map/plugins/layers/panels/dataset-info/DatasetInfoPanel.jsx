@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { DatasetAbstract } from './DatasetAbstract.jsx'
-import { SummaryList } from '../info/SummaryList.jsx'
-import { formatDatasetDate, formatResolution } from '../info/format.js'
+import { SummaryList } from '../shared/SummaryList.jsx'
+import { formatDatasetDate, formatResolution } from '../shared/format.js'
 import { loadDatasetMetadata } from '../../datasets/api.js'
 
 export function DatasetInfoPanel ({ datasetId, pluginConfig }) {
@@ -50,7 +50,6 @@ export function DatasetInfoPanel ({ datasetId, pluginConfig }) {
       {metadata.abstract && <DatasetAbstract key={datasetId} text={metadata.abstract} />}
       {dataset.status === 'ready' && (
         <SummaryList
-          noBorder={false}
           className='govuk-!-margin-bottom-6'
           rows={rows.map(([label, value]) => ({ label, value: value || '-' }))}
         />

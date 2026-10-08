@@ -2,7 +2,7 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { render } from '@testing-library/preact'
 import { InfoPanel } from './InfoPanel.jsx'
-import { Section } from './Section.jsx'
+import { Section } from '../../summaries/components/Section.jsx'
 
 const map = {
   getView: () => ({ setCenter: vi.fn(), setZoom: vi.fn() })
@@ -108,34 +108,34 @@ describe('InfoPanel', () => {
   test('keeps section state when the same panel instance is rebuilt', () => {
     const sections = new Map()
     const selectedHit = hit('Grid square')
-    renderHit.mockReturnValue(<Section title='Land cover'>Section body</Section>)
+    renderHit.mockReturnValue(<Section sectionKey='landCover' title='Land cover' preview='Woodland'>Section body</Section>)
     const inspection = { ...INITIAL_INSPECTION, status: 'detail-ready', hits: [selectedHit], hit: selectedHit }
 
     renderPanel(inspection, { sections })
     const details = /** @type {HTMLDetailsElement} */ (view.container.querySelector('details'))
-    details.open = true
+    details.open = false
     details.dispatchEvent(new Event('toggle'))
 
     view.unmount()
     renderPanel(inspection, { sections })
-    expect(view.container.querySelector('details').open).toBe(true)
+    expect(view.container.querySelector('details').open).toBe(false)
 
     view.unmount()
     renderPanel(inspection)
-    expect(view.container.querySelector('details').open).toBe(false)
+    expect(view.container.querySelector('details').open).toBe(true)
   })
 
   test('the sample area control recentres the map', async () => {
     const setCenter = vi.fn()
     const setZoom = vi.fn()
     const sampleMap = { getView: () => ({ setCenter, setZoom }) }
-    const { Unavailable } = await import('./Unavailable.jsx')
+    const { OutsideSampleArea } = await import('../../summaries/components/OutsideSampleArea.jsx')
     const selectedHit = {
       id: 0,
       label: 'Grid square',
       details: null
     }
-    renderHit.mockReturnValue(<Unavailable typeLabel='grid cell'>{null}</Unavailable>)
+    renderHit.mockReturnValue(<OutsideSampleArea typeLabel='grid square' />)
     const inspection = { ...INITIAL_INSPECTION, status: 'detail-ready', hits: [selectedHit], hit: selectedHit }
     renderPanel(inspection, { panelMap: sampleMap })
 

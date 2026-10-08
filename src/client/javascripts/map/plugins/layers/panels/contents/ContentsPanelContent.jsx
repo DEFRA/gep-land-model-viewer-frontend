@@ -2,7 +2,6 @@ import { DragDropProvider } from '@dnd-kit/react'
 import { Accessibility, StyleInjector, defaultPreset } from '@dnd-kit/dom'
 import { move } from '@dnd-kit/helpers'
 import { useEffect, useMemo, useRef } from 'react'
-import { CSPProvider } from '@base-ui/react/csp-provider'
 import { setNonce } from 'react-colorful'
 import { layerIndexAfterMove } from '../../reducer.js'
 import { getLayerTheme } from '../../datasets/layer-style.js'
@@ -93,46 +92,44 @@ export function ContentsPanelContent ({ pluginConfig, pluginState, appState, ser
   }
 
   return (
-    <CSPProvider nonce={styleNonce}>
-      <div className='app-map__contents-panel' ref={panelRef}>
-        <div hidden={editorOpen}>
-          {entries.length
-            ? (
-              <DragDropProvider plugins={dndPlugins} onDragEnd={handleDragEnd}>
-                <ul className='app-map__contents-list'>
-                  {entries.map((entry, index) => (
-                    <ContentsRow
-                      key={entry.id}
-                      entry={entry}
-                      index={index}
-                      total={entries.length}
-                      onVisibilityToggle={handleVisibilityToggle}
-                      onRemove={handleRemove}
-                      onMove={handleMove}
-                      onEdit={openEditor}
-                      portalContainerRef={panelRef}
-                    />
-                  ))}
-                </ul>
-              </DragDropProvider>
-              )
-            : (
-              <p className='app-map__contents-message govuk-body govuk-!-margin-bottom-0'>
-                No layers added
-              </p>
-              )}
-        </div>
-        {editorOpen && (
-          <EditLayerForm
-            key={`${editedLayer.id}:${getLayerTheme(editedLayer)?.band}`}
-            layer={editedLayer}
-            mobile={appState.breakpoint === 'mobile'}
-            colourKey={editingLayer.colourKey}
-            onBack={closeEditor}
-            dispatch={dispatch}
-          />
-        )}
+    <div className='app-map__contents-panel' ref={panelRef}>
+      <div hidden={editorOpen}>
+        {entries.length
+          ? (
+            <DragDropProvider plugins={dndPlugins} onDragEnd={handleDragEnd}>
+              <ul className='app-map__contents-list'>
+                {entries.map((entry, index) => (
+                  <ContentsRow
+                    key={entry.id}
+                    entry={entry}
+                    index={index}
+                    total={entries.length}
+                    onVisibilityToggle={handleVisibilityToggle}
+                    onRemove={handleRemove}
+                    onMove={handleMove}
+                    onEdit={openEditor}
+                    portalContainerRef={panelRef}
+                  />
+                ))}
+              </ul>
+            </DragDropProvider>
+            )
+          : (
+            <p className='app-map__contents-message govuk-body govuk-!-margin-bottom-0'>
+              No layers added
+            </p>
+            )}
       </div>
-    </CSPProvider>
+      {editorOpen && (
+        <EditLayerForm
+          key={`${editedLayer.id}:${getLayerTheme(editedLayer)?.band}`}
+          layer={editedLayer}
+          mobile={appState.breakpoint === 'mobile'}
+          colourKey={editingLayer.colourKey}
+          onBack={closeEditor}
+          dispatch={dispatch}
+        />
+      )}
+    </div>
   )
 }

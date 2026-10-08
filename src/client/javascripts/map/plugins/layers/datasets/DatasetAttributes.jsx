@@ -1,4 +1,4 @@
-import { SummaryList } from '../panels/info/SummaryList.jsx'
+import { SummaryList } from '../panels/shared/SummaryList.jsx'
 
 function attributeText (value) {
   if (typeof value === 'object') {
@@ -24,7 +24,6 @@ export function DatasetAttributes ({ label, features }) {
         ? rowsByFeature.map((rows, index) => (
           <SummaryList
             className='app-map__info-attributes'
-            noBorder={false}
             rows={rows}
             key={index}
           />

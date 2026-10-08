@@ -1,10 +1,12 @@
+import { grid10mRecord } from '../fixtures/land-model.js'
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 
 vi.mock('./grid-layer.js', () => ({
   createGridLayer: vi.fn()
 }))
 
-vi.mock('./data.js', () => ({
+vi.mock('./data.js', async importOriginal => ({
+  ...await importOriginal(),
   getGridDetails: vi.fn(() => Promise.resolve(null))
 }))
 
@@ -117,6 +119,28 @@ describe('#createGridSummary', () => {
     await source.getHits([418725, 385137])[0].loadDetails({ signal: null })
 
     expect(getGridDetails).toHaveBeenCalledWith('SK18728513')
+  })
+
+  test('renders the clicked cell with no record when details are missing', () => {
+    const source = registeredSource()
+    const hit = source.getHits([418725, 385137])[0]
+    const rendered = hit.render(null)
+
+    expect(rendered.props.unit).toEqual({ kind: 'grid', bngRef: 'SK18728513', cellSize: 10 })
+    expect(rendered.props.record).toBeNull()
+    expect(rendered.props.outsideSampleArea).toBe(true)
+  })
+
+  test('keeps the clicked cell after the zoom changes', () => {
+    const source = registeredSource()
+    const hit = source.getHits([418725, 385137])[0]
+    zoom = 18
+    const rendered = hit.render(grid10mRecord)
+
+    expect(rendered.props.unit.cellSize).toBe(10)
+    expect(rendered.props.unit.bngRef).toBe('SK18728513')
+    expect(rendered.props.record).toBe(grid10mRecord)
+    expect(rendered.props.outsideSampleArea).toBe(false)
   })
 
   test('clearSelection clears the cell highlight', () => {

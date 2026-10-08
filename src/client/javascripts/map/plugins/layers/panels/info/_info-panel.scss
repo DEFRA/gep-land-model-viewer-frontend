@@ -90,16 +90,6 @@
   padding: 0 govuk-spacing(5) govuk-spacing(4);
 }
 
-.app-map__info-unavailable {
-  padding: govuk-spacing(3) govuk-spacing(4);
-  background-color: govuk-colour("black", $variant: "tint-95");
-  border-left: 4px solid govuk-colour("black", $variant: "tint-80");
-
-  .govuk-body {
-    margin: 0 0 govuk-spacing(2);
-  }
-}
-
 .app-map__info-content {
   padding: 0 govuk-spacing(5) govuk-spacing(4);
 
@@ -109,104 +99,6 @@
     font-size: inherit;
     line-height: inherit;
   }
-}
-
-// ===== IDs =====
-
-.app-map__info-ids {
-  margin: 0 0 govuk-spacing(3);
-
-  .govuk-summary-list__row {
-    display: block;
-    margin: 0;
-
-    &:not(:last-child) {
-      margin-bottom: govuk-spacing(1);
-    }
-  }
-
-  .govuk-summary-list__key,
-  .govuk-summary-list__value {
-    display: inline;
-    width: auto;
-    margin: 0;
-    padding: 0;
-    overflow-wrap: break-word;
-  }
-
-  .govuk-summary-list__key {
-    padding-right: govuk-spacing(1);
-    font-weight: $govuk-font-weight-bold;
-  }
-}
-
-// ===== Collapsible sections =====
-
-.app-map__info-section {
-  border-top: 1px solid govuk-colour("black", $variant: "tint-80");
-}
-
-.app-map__info-section-heading {
-  display: block;
-  position: relative;
-  margin: 0;
-  padding: govuk-spacing(3) 26px govuk-spacing(3) 0;
-  cursor: pointer;
-  user-select: none;
-
-  &::-webkit-details-marker {
-    display: none;
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 20px;
-    right: 2px;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid currentcolor;
-    border-bottom: 2px solid currentcolor;
-    transform: rotate(45deg);
-  }
-
-  &:focus-visible {
-    outline: none;
-
-    .app-map__info-section-title {
-      width: fit-content;
-      color: govuk-functional-colour("focus-text");
-      background-color: govuk-functional-colour("focus");
-      box-shadow:
-        0 -2px govuk-functional-colour("focus"),
-        0 4px govuk-colour("black");
-    }
-  }
-}
-
-.app-map__info-section[open] .app-map__info-section-heading::after {
-  transform: rotate(-135deg);
-}
-
-.app-map__info-section-title {
-  display: block;
-  color: govuk-colour("black");
-  font-weight: $govuk-font-weight-bold;
-  @include govuk-font-size($size: 19);
-}
-
-.app-map__info-section-value {
-  display: block;
-  margin-top: govuk-spacing(3);
-  color: govuk-colour("black", $variant: "tint-25");
-}
-
-.app-map__info-section[open] .app-map__info-section-value {
-  display: none;
-}
-
-.app-map__info-section-detail {
-  padding-bottom: govuk-spacing(3);
 }
 
 // ===== Hit list (several layers under one click) =====
@@ -289,80 +181,6 @@
   margin-top: govuk-spacing(1);
 }
 
-// ===== Summary lists =====
-
-.app-map__info-list {
-  margin: 0;
-
-  .govuk-summary-list__row {
-    display: grid;
-    grid-template-columns: minmax(110px, 42%) minmax(0, 1fr);
-
-    &:last-child {
-      .govuk-summary-list__key,
-      .govuk-summary-list__value {
-        padding-bottom: 0;
-      }
-    }
-  }
-
-  .govuk-summary-list__key,
-  .govuk-summary-list__value {
-    width: auto;
-    margin: 0;
-    padding: 0 0 govuk-spacing(2);
-  }
-
-  .govuk-summary-list__key {
-    padding-right: govuk-spacing(2);
-    font-weight: $govuk-font-weight-bold;
-  }
-}
-
-.app-map__info-subheading {
-  margin: 0 0 govuk-spacing(2);
-  color: govuk-colour("black");
-  font-weight: $govuk-font-weight-bold;
-}
-
-// ===== Cover/soil proportion breakdown =====
-
-.app-map__cover-list {
-  padding: 0;
-  list-style: none;
-}
-
-.app-map__cover-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 84px 40px;
-  align-items: center;
-  column-gap: govuk-spacing(2);
-  margin-bottom: govuk-spacing(1);
-}
-
-.app-map__cover-track {
-  display: block;
-  width: 84px;
-  height: 10px;
-  background: govuk-colour("black", $variant: "tint-95");
-}
-
-.app-map__cover-bar {
-  display: block;
-  height: 100%;
-  background: govuk-colour("green");
-}
-
-.app-map__cover-percent {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.app-map__cover-note {
-  margin: 0 0 govuk-spacing(3);
-  color: govuk-colour("black", $variant: "tint-25");
-}
-
 // ===== Mobile overrides =====
 
 @include govuk-media-query($until: tablet) {
@@ -379,9 +197,5 @@
   .app-map .app-map__info-back {
     margin-right: govuk-spacing(3);
     margin-left: govuk-spacing(3);
-  }
-
-  .app-map__info-list .govuk-summary-list__row {
-    grid-template-columns: 1fr;
   }
 }

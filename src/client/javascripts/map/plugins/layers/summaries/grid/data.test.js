@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { toGridCell, indexGrids } from './data.js'
+import { toGridRecord, indexGrids } from './data.js'
 
 function testLookups () {
   return {
@@ -8,13 +8,12 @@ function testLookups () {
     land_cover: ['Cropped land', 'Improved grass'],
     land_cover_code: ['C010', 'C021'],
     soil: ['Surface-water gley soils', 'Brown soils'],
-    soil_code: ['S070', 'S050'],
-    aspect_aspect: ['EAST', 'SOUTH', 'FLAT', 'ERROR']
+    soil_code: ['S070', 'S050']
   }
 }
 
 function compactRow (overrides = {}) {
-  const row = ['SE60007003', 1, 0, 0, 1, 1, 0, 42.3, 50.01, 50.11, 0.1, 0.5, 1.5, 1]
+  const row = ['SE60007003', 1, 0, 0, 1, 1, 0]
   for (const [index, value] of Object.entries(overrides)) {
     row[Number.parseInt(index)] = value
   }
@@ -30,17 +29,7 @@ function testMetadata () {
     land_cover_source: 'UKCEH LCM2024',
     land_cover_date: '28/04/2015',
     soil_source: 'Cranfield Soils Data',
-    soil_date: '28/04/2026',
-    topography_source: 'LIDAR Composite Digital Terrain Model (DTM) 1m',
-    topography_date: '08/03/2023'
-  }
-}
-
-function parsedMetadata () {
-  return {
-    landCover: { source: 'UKCEH LCM2024', date: new Date(2015, 3, 28) },
-    soil: { source: 'Cranfield Soils Data', date: new Date(2026, 3, 28) },
-    topography: { source: 'LIDAR Composite Digital Terrain Model (DTM) 1m', date: new Date(2023, 2, 8) }
+    soil_date: '28/04/2026'
   }
 }
 
@@ -48,66 +37,43 @@ function wireFormat (rows = [compactRow()]) {
   return { metadata: testMetadata(), lookups: testLookups(), rows }
 }
 
-describe('#toGridCell', () => {
-  const metadata = parsedMetadata()
+describe('#toGridRecord', () => {
+  test('maps lookup labels and codes, including index 0', () => {
+    const { metadata, lookups } = indexGrids(wireFormat())
+    const summary = toGridRecord(compactRow(), lookups, metadata)
 
-  test('maps the compact row and lookups into the internal shape', () => {
-    const cell = toGridCell(compactRow(), testLookups(), metadata)
-
-    expect(cell.bngRef).toBe('SE60007003')
-    expect(cell.landUse).toEqual({ label: 'Dwellings', code: 'U011' })
-    expect(cell.landCover.label).toBe('Cropped land')
-    expect(cell.landCover.code).toBe('C021')
-    expect(cell.soil.label).toBe('Brown soils')
-    expect(cell.soil.code).toBe('S070')
+    expect(summary.unit).toEqual({ kind: 'grid', bngRef: 'SE60007003', cellSize: 10 })
+    expect(summary.landUse.dominant).toEqual({ label: 'Dwellings', code: 'U011' })
+    expect(summary.landCover.dominant).toEqual({ label: 'Cropped land', code: 'C021' })
+    expect(summary.soils.dominant).toEqual({ label: 'Brown soils', code: 'S070' })
   })
 
-  test('includes source and date metadata from the dataset', () => {
-    const cell = toGridCell(compactRow(), testLookups(), metadata)
+  test('maps source metadata', () => {
+    const { metadata, lookups } = indexGrids(wireFormat())
+    const record = toGridRecord(compactRow(), lookups, metadata)
 
-    expect(cell.landCover.source).toBe('UKCEH LCM2024')
-    expect(cell.landCover.date).toEqual(new Date(2015, 3, 28))
-    expect(cell.soil.source).toBe('Cranfield Soils Data')
-    expect(cell.topography.source).toBe('LIDAR Composite Digital Terrain Model (DTM) 1m')
-    expect(cell.topography.date).toEqual(new Date(2023, 2, 8))
+    expect(record.landCover.source).toEqual({ name: 'UKCEH LCM2024', updated: new Date(2015, 3, 28) })
+    expect(record.soils.source).toEqual({ name: 'Cranfield Soils Data', updated: new Date(2026, 3, 28) })
+    expect(record.landUse).not.toHaveProperty('source')
   })
 
-  test('resolves null indices to null values', () => {
-    const cell = toGridCell(compactRow({ 1: null, 2: null }), testLookups(), metadata)
+  test('returns null for themes with no data', () => {
+    const { metadata, lookups } = indexGrids(wireFormat())
+    const record = toGridRecord(compactRow({ 1: null, 2: null }), lookups, metadata)
 
-    expect(cell.landUse).toEqual({ label: null, code: null })
-  })
-
-  test('maps elevation, slope, and aspect fields', () => {
-    const cell = toGridCell(compactRow(), testLookups(), metadata)
-
-    expect(cell.elevation).toEqual({ min: 42.3, mean: 50.01, max: 50.11, mode: null })
-    expect(cell.slope).toEqual({ min: 0.1, mode: 0.5, max: 1.5, mean: null })
-    expect(cell.aspect).toEqual({ label: 'SOUTH', mean: null })
-  })
-
-  test('maps ERROR aspect label to null', () => {
-    const cell = toGridCell(compactRow({ 13: 3 }), testLookups(), metadata)
-
-    expect(cell.aspect.label).toBeNull()
+    for (const key of ['landUse', 'ownership', 'landManagement', 'protectedAreas']) {
+      expect(record[key]).toBeNull()
+    }
   })
 })
 
 describe('#indexGrids', () => {
-  test('keys rows by bng_ref in a Map', () => {
+  test('indexes rows by BNG reference', () => {
     const second = compactRow({ 0: 'SE60017003' })
     const { byBngRef } = indexGrids(wireFormat([compactRow(), second]))
 
     expect(byBngRef.size).toBe(2)
     expect(byBngRef.get('SE60017003')).toBe(second)
-  })
-
-  test('parses date strings in the metadata', () => {
-    const { metadata } = indexGrids(wireFormat())
-
-    expect(metadata.landCover.date).toEqual(new Date(2015, 3, 28))
-    expect(metadata.soil.date).toEqual(new Date(2026, 3, 28))
-    expect(metadata.topography.date).toEqual(new Date(2023, 2, 8))
   })
 })
 
@@ -120,14 +86,14 @@ describe('#getGridDetails', () => {
     vi.unstubAllGlobals()
   })
 
-  test('returns the hydrated grid cell matching the bng_ref', async () => {
+  test('returns the record matching the BNG reference', async () => {
     vi.stubGlobal('fetch', okResponse(wireFormat()))
     const { getGridDetails } = await import('./data.js')
 
     const cell = await getGridDetails('SE60007003')
 
-    expect(cell.bngRef).toBe('SE60007003')
-    expect(cell.landUse.label).toBe('Dwellings')
+    expect(cell.unit.bngRef).toBe('SE60007003')
+    expect(cell.landUse.dominant.label).toBe('Dwellings')
   })
 
   test('returns null for an unknown bng_ref', async () => {
@@ -160,7 +126,7 @@ describe('#getGridDetails', () => {
     await expect(getGridDetails('SE60007003')).rejects.toThrow()
     const cell = await getGridDetails('SE60007003')
 
-    expect(cell.landUse.label).toBe('Dwellings')
+    expect(cell.landUse.dominant.label).toBe('Dwellings')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

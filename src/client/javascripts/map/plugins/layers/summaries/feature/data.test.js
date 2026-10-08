@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { toParcel, indexParcels } from './data.js'
+import { toFeatureRecord, indexFeatures } from './data.js'
 
 /**
  * @param {Partial<import('./data.js').RawParcel>} [overrides]
@@ -21,16 +21,6 @@ function rawParcel (overrides = {}) {
     dominant_soil_code: 'S050',
     soil_source: 'Cranfield Soils Data',
     soil_date: '28/04/2026',
-    elevation_min: 42,
-    elevation_mean: 42.5,
-    elevation_mode: null,
-    elevation_max: 43.69,
-    slope_min: 0.2,
-    slope_mean: null,
-    slope_mode: 2.8,
-    slope_max: 28,
-    aspect_mean: 147.83,
-    aspect_aspect: 'SOUTH',
     ...overrides
   }
 }
@@ -39,91 +29,59 @@ function okResponse (rows) {
   return vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(rows) }))
 }
 
-describe('#toParcel', () => {
-  test('maps the wire shape into the internal shape', () => {
-    const parcel = toParcel(rawParcel())
+describe('#toFeatureRecord', () => {
+  test('maps the unit and land use', () => {
+    const record = toFeatureRecord(rawParcel())
 
-    expect(parcel.osid).toBe('a')
-    expect(parcel.toid).toBe('t1')
-    expect(parcel.landUse).toEqual({ label: 'Agriculture', code: 'U011' })
-    expect(parcel.landCover.dominantLabel).toBe('Improved grass')
-    expect(parcel.aspect).toEqual({ mean: 147.83, label: 'SOUTH' })
+    expect(record.unit).toEqual({ kind: 'feature', osid: 'a', toid: 't1' })
+    expect(record.landUse).toEqual({ dominant: { label: 'Agriculture', code: 'U011' } })
   })
 
-  test('sorts the composition breakdown by descending percentage', () => {
-    const { breakdown } = toParcel(rawParcel()).landCover
+  test('maps intersections in source order and the dominant class', () => {
+    const record = toFeatureRecord(rawParcel({ land_cover_intersecting: { Woodland: 17.8, 'Improved grass': 75.9 } }))
 
-    expect(breakdown).toEqual([
-      { label: 'Improved grass', percentage: 82.2 },
-      { label: 'Woodland', percentage: 17.8 }
+    expect(record.landCover.intersections).toEqual([
+      { label: 'Woodland', percentage: 17.8 },
+      { label: 'Improved grass', percentage: 75.9 }
     ])
+    expect(record.landCover.dominant).toEqual({ label: 'Improved grass', code: 'C021' })
+    expect(record.soils.intersections).toEqual([{ label: 'Brown soils', percentage: 100 }])
   })
 
-  test('flags isMixed when a category spans more than one value', () => {
-    const parcel = toParcel(rawParcel())
+  test('maps source metadata', () => {
+    const record = toFeatureRecord(rawParcel())
 
-    expect(parcel.landCover.isMixed).toBe(true)
-    expect(parcel.soil.isMixed).toBe(false)
+    expect(record.landCover.source).toEqual({ name: 'UKCEH LCM2024', updated: new Date(2015, 3, 28) })
+    expect(record.soils.source).toEqual({ name: 'Cranfield Soils Data', updated: new Date(2026, 3, 28) })
   })
 
-  test('parses dd/mm/yyyy dates to Date objects and nulls unparseable ones', () => {
-    expect(toParcel(rawParcel()).landCover.date).toEqual(new Date(2015, 3, 28))
-    expect(toParcel(rawParcel({ land_cover_date: 'unknown' })).landCover.date).toBeNull()
+  test('keeps the dominant class when there are no intersections', () => {
+    const record = toFeatureRecord(rawParcel({ land_cover_intersecting: null }))
+    expect(record.landCover.dominant).toEqual({ label: 'Improved grass', code: 'C021' })
+    expect(record.landCover).not.toHaveProperty('intersections')
   })
 
-  test('maps elevation and slope values from the wire format', () => {
-    const parcel = toParcel(rawParcel())
-
-    expect(parcel.elevation).toEqual({ min: 42, mean: 42.5, mode: null, max: 43.69 })
-    expect(parcel.slope).toEqual({ min: 0.2, mean: null, mode: 2.8, max: 28 })
+  test('returns null for a theme without a dominant class', () => {
+    const record = toFeatureRecord(rawParcel({ dominant_land_cover_model_display_text: null }))
+    expect(record.landCover).toBeNull()
   })
 
-  test('maps the shared topography metadata from constants', () => {
-    const parcel = toParcel(rawParcel())
+  test('returns null for themes with no data', () => {
+    const record = toFeatureRecord(rawParcel({ land_use_model_display_text: null, land_use_model_code: null, land_cover_intersecting: null, dominant_land_cover_model_display_text: null, soil_intersecting: null, dominant_soil_model_display_text: null }))
 
-    expect(parcel.topography.source).toBe('LIDAR Composite Digital Terrain Model (DTM) 1m')
-    expect(parcel.topography.date).toEqual(new Date(2023, 2, 8))
-  })
-
-  test('returns null when the date field is missing', () => {
-    const parcel = toParcel(rawParcel({ land_cover_date: null }))
-
-    expect(parcel.landCover.date).toBeNull()
-  })
-
-  test('maps null intersecting fields to empty breakdowns', () => {
-    const parcel = toParcel(rawParcel({
-      land_cover_intersecting: null,
-      soil_intersecting: null
-    }))
-
-    expect(parcel.landCover.isMixed).toBe(false)
-    expect(parcel.landCover.breakdown).toEqual([])
-    expect(parcel.soil.isMixed).toBe(false)
-    expect(parcel.soil.breakdown).toEqual([])
-  })
-
-  test('maps ERROR aspect label to null', () => {
-    const parcel = toParcel(rawParcel({ aspect_aspect: 'ERROR' }))
-
-    expect(parcel.aspect.label).toBeNull()
-  })
-
-  test('maps elevation mode and slope mean once the upstream provides them', () => {
-    const parcel = toParcel(rawParcel({ elevation_mode: 80, slope_mean: 3.5 }))
-
-    expect(parcel.elevation.mode).toBe(80)
-    expect(parcel.slope.mean).toBe(3.5)
+    for (const theme of ['landCover', 'landUse', 'ownership', 'landManagement', 'protectedAreas', 'soils']) {
+      expect(record[theme]).toBeNull()
+    }
   })
 })
 
-describe('#indexParcels', () => {
-  test('keys mapped parcels by osid', () => {
-    const byOsid = indexParcels([rawParcel({ osid: 'a' }), rawParcel({ osid: 'b', toid: 't2' })])
+describe('#indexFeatures', () => {
+  test('indexes records by OSID', () => {
+    const byOsid = indexFeatures([rawParcel({ osid: 'a' }), rawParcel({ osid: 'b', toid: 't2' })])
 
     expect(byOsid.size).toBe(2)
-    expect(byOsid.get('b').toid).toBe('t2')
-    expect(byOsid.get('a').landUse.label).toBe('Agriculture')
+    expect(byOsid.get('b').unit.toid).toBe('t2')
+    expect(byOsid.get('a').landUse.dominant.label).toBe('Agriculture')
   })
 })
 
@@ -136,14 +94,14 @@ describe('#getFeatureDetails', () => {
     vi.unstubAllGlobals()
   })
 
-  test('returns the mapped parcel matching the osid', async () => {
+  test('returns the mapped feature matching the osid', async () => {
     vi.stubGlobal('fetch', okResponse([rawParcel({ osid: 'b', toid: 't2' })]))
     const { getFeatureDetails } = await import('./data.js')
 
-    const parcel = await getFeatureDetails('b')
+    const feature = await getFeatureDetails('b')
 
-    expect(parcel.toid).toBe('t2')
-    expect(parcel.landCover.dominantLabel).toBe('Improved grass')
+    expect(feature.unit.toid).toBe('t2')
+    expect(feature.landCover.dominant.label).toBe('Improved grass')
   })
 
   test('returns null for an unknown osid', async () => {
@@ -173,9 +131,9 @@ describe('#getFeatureDetails', () => {
     const { getFeatureDetails } = await import('./data.js')
 
     await expect(getFeatureDetails('a')).rejects.toThrow()
-    const parcel = await getFeatureDetails('a')
+    const feature = await getFeatureDetails('a')
 
-    expect(parcel.toid).toBe('t1')
+    expect(feature.unit.toid).toBe('t1')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

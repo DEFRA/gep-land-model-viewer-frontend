@@ -221,20 +221,3 @@
     color: govuk-functional-colour("link");
   }
 }
-
-.app-map__summary-info-positioner {
-  z-index: 9999;
-
-  &[data-anchor-hidden] {
-    visibility: hidden;
-  }
-}
-
-.app-map__summary-info-popup {
-  --tooltip-background-color: #{govuk-functional-colour("text")};
-
-  width: 240px;
-  max-width: var(--available-width);
-  max-height: var(--available-height);
-  overflow: auto;
-}
