@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { DatasetAbstract } from './DatasetAbstract.jsx'
 import { SummaryList } from '../shared/SummaryList.jsx'
+import { FullDatasetLink } from '../shared/FullDatasetLink.jsx'
 import { formatDatasetDate, formatResolution } from '../shared/format.js'
 import { loadDatasetMetadata } from '../../datasets/api.js'
 
@@ -36,9 +37,6 @@ export function DatasetInfoPanel ({ datasetId, pluginConfig }) {
     ['Licence', metadata.licence],
     ['Available file formats', metadata.format?.join(', ')]
   ]
-  const detailsUrl = pluginConfig.findGeoDataUrl
-    ? new URL(`/dataset/${encodeURIComponent(datasetId)}`, pluginConfig.findGeoDataUrl).href
-    : null
 
   return (
     <div className='app-map__dataset-info'>
@@ -54,13 +52,7 @@ export function DatasetInfoPanel ({ datasetId, pluginConfig }) {
           rows={rows.map(([label, value]) => ({ label, value: value || '-' }))}
         />
       )}
-      {detailsUrl && (
-        <p className='govuk-body govuk-!-margin-bottom-0'>
-          <a className='govuk-link' href={detailsUrl} target='_blank' rel='noreferrer noopener'>
-            View full dataset (opens in new tab)
-          </a>
-        </p>
-      )}
+      <FullDatasetLink datasetId={datasetId} findGeoDataUrl={pluginConfig.findGeoDataUrl} />
     </div>
   )
 }

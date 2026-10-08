@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import Polygon from 'ol/geom/Polygon.js'
+import { h } from 'preact'
 import { render } from '@testing-library/preact'
 import { THEMED_DATASET } from './test-helpers/themed-dataset.js'
+import { InfoPanelContext } from '../panels/info/context.js'
 
 const datasets = [
   {
@@ -113,6 +115,21 @@ function stubDetailLayer ({ visible = true, minZoom = 4 } = {}) {
   }
 }
 
+function stubPeatLayer () {
+  return {
+    ...stubLayer('gep-peat'),
+    getSource: vi.fn(() => ({ bandCount: 2, hasAlpha: true })),
+    getData: vi.fn(() => new Float32Array([7, 255]))
+  }
+}
+
+function stubWmsLayer (id) {
+  return {
+    ...stubLayer(id),
+    getSource: vi.fn(() => ({ getParams: () => ({ LAYERS: 'Flood_Zones_2' }) }))
+  }
+}
+
 function stubFeature (properties, geometryName = 'geometry') {
   return {
     get: key => properties[key],
@@ -150,6 +167,15 @@ function getHits (map) {
 
 function highlightedFeatures (map) {
   return map.addLayer.mock.calls[0][0].getSource().getFeatures()
+}
+
+const FIND_GEO_DATA_URL = 'https://find-geo-data.example.test/'
+
+async function renderHitInInfoPanel (map) {
+  const [hit] = await getHits(map)
+  const details = await hit.loadDetails({ signal: SIGNAL })
+
+  return render(h(InfoPanelContext.Provider, { value: { findGeoDataUrl: FIND_GEO_DATA_URL } }, hit.render(details)))
 }
 
 describe('#createDatasetHits', () => {
@@ -597,5 +623,47 @@ describe('#createDatasetHits', () => {
 
     expect(view.container.textContent).toContain('Ancient Woodland')
     expect(view.container.textContent).toContain('No attributes found at this location')
+  })
+
+  test.each([
+    {
+      kind: 'vector feature',
+      datasetId: 'woodland',
+      createMap: () => createOlMap({ vectorHits: [{ feature: stubFeature({ geometry: {}, A_pred: 0.8 }), layer: stubLayer('gep-woodland') }] })
+    },
+    {
+      kind: 'standalone COG',
+      datasetId: 'peat',
+      createMap: () => createOlMap({ layers: [stubPeatLayer()] })
+    },
+    {
+      kind: 'COG overview',
+      datasetId: 'habitats',
+      createMap: () => createOlMap({ layers: [stubCogOverviewLayer(), stubDetailLayer()], zoom: 2 })
+    },
+    {
+      kind: 'WMS',
+      datasetId: 'flood',
+      createMap: () => {
+        getVisibleWmsLayers.mockReturnValue([stubWmsLayer('gep-flood')])
+        fetch.mockResolvedValue({ json: async () => ({ features: [{ properties: { zone: '2' } }] }) })
+        return createOlMap()
+      }
+    }
+  ])('a $kind hit links its details to the full dataset', async ({ datasetId, createMap }) => {
+    const view = await renderHitInInfoPanel(createMap())
+
+    const link = view.getByRole('link', { name: 'View full dataset (opens in new tab)' })
+    expect(link.getAttribute('href')).toBe(`${FIND_GEO_DATA_URL}dataset/${datasetId}`)
+  })
+
+  test('a WMS hit from a layer with no matching dataset has no full dataset link', async () => {
+    getVisibleWmsLayers.mockReturnValue([stubWmsLayer('gep-unknown')])
+    fetch.mockResolvedValue({ json: async () => ({ features: [{ properties: { zone: '2' } }] }) })
+
+    const view = await renderHitInInfoPanel(createOlMap())
+
+    expect(view.container.textContent).toContain('zone')
+    expect(view.queryByRole('link')).toBeNull()
   })
 })
