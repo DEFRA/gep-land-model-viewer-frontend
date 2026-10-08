@@ -77,14 +77,36 @@ describe('#createGridSummary', () => {
     expect(hit.stillValid()).toBe(false)
   })
 
-  test('a zoom below the grid floor prevents hits and invalidates an existing hit', () => {
+  test.each([
+    [12, 10, 466720, 475130, 'SE66727513'],
+    [9, 100, 466700, 475100, 'SE667751'],
+    [6, 1000, 466000, 475000, 'SE6675'],
+    [3, 10000, 460000, 470000, 'SE67'],
+    [0, 100000, 400000, 400000, 'SE']
+  ])('at UK zoom %i selects a %im cell', (level, size, easting, northing, reference) => {
+    zoom = level
+    const hit = registeredSource().getHits([466725, 475137])[0]
+
+    hit.select()
+
+    expect(mockGridLayer.highlightCell).toHaveBeenCalledWith(easting, northing, size)
+    expect(hit.render(null).props.unit).toEqual({ kind: 'grid', bngRef: reference, cellSize: size })
+  })
+
+  test('a hit keeps the cell size it was created with after zooming', () => {
     const summary = registeredSource()
-    const hit = summary.getHits([418725, 385137])[0]
+    const fine = summary.getHits([466725, 475137])[0]
+    zoom = 0
+    const coarse = summary.getHits([466725, 475137])[0]
+    zoom = 12
 
-    zoom = 8
+    fine.select()
+    coarse.select()
 
-    expect(summary.getHits([418725, 385137])).toEqual([])
-    expect(hit.stillValid()).toBe(false)
+    expect(fine.stillValid()).toBe(true)
+    expect(mockGridLayer.highlightCell.mock.calls).toEqual([[466720, 475130, 10], [400000, 400000, 100000]])
+    expect(fine.render(null).props.unit.cellSize).toBe(10)
+    expect(coarse.render(null).props.unit.cellSize).toBe(100000)
   })
 
   test('a click snaps to a cell and yields a Grid square hit', () => {
@@ -103,7 +125,7 @@ describe('#createGridSummary', () => {
 
     source.getHits([418725, 385137])[0].select()
 
-    expect(mockGridLayer.highlightCell).toHaveBeenCalledWith(418720, 385130)
+    expect(mockGridLayer.highlightCell).toHaveBeenCalledWith(418720, 385130, 10)
   })
 
   test('coordinates outside the BNG extent yield no hits', () => {
@@ -119,6 +141,15 @@ describe('#createGridSummary', () => {
     await source.getHits([418725, 385137])[0].loadDetails({ signal: null })
 
     expect(getGridDetails).toHaveBeenCalledWith('SK18728513')
+  })
+
+  test('coarse cells load no details and are not shown as outside the sample area', async () => {
+    zoom = 0
+    const hit = registeredSource().getHits([418725, 385137])[0]
+
+    expect(await hit.loadDetails({ signal: null })).toBeNull()
+    expect(getGridDetails).not.toHaveBeenCalled()
+    expect(hit.render(null).props.outsideSampleArea).toBe(false)
   })
 
   test('renders the clicked cell with no record when details are missing', () => {

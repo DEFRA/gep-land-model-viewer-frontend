@@ -1,8 +1,10 @@
 import { authenticatedFetch } from '../../../../authenticated-fetch.js'
 import { toTaxonomyClass, toSource } from '../model.js'
-import { CELL_SIZE_METRES } from './cell-at-point.js'
 
 const GRIDS_URL = '/land-model/grids.json'
+
+// The current sample file contains only 10m summaries.
+export const SAMPLE_CELL_SIZE = 10
 
 const BNG_REF = 0
 const LAND_USE = 1
@@ -38,7 +40,7 @@ function toDominantTheme (label, code, source) {
  */
 export function toGridRecord (row, lookups, metadata) {
   return {
-    unit: { kind: 'grid', bngRef: row[BNG_REF], cellSize: CELL_SIZE_METRES },
+    unit: { kind: 'grid', bngRef: row[BNG_REF], cellSize: SAMPLE_CELL_SIZE },
     landCover: toDominantTheme(resolve(lookups.land_cover, row[LAND_COVER]), resolve(lookups.land_cover_code, row[LAND_COVER_CODE]), metadata.landCover),
     landUse: toDominantTheme(resolve(lookups.land_use, row[LAND_USE]), resolve(lookups.land_use_code, row[LAND_USE_CODE])),
     ownership: null,

@@ -1,5 +1,4 @@
 import { FEATURE_VISIBLE_MIN_ZOOM } from './feature/constants.js'
-import { GRID_VISIBLE_MIN_ZOOM } from './grid/constants.js'
 import { DEFRA_GREEN_DARK, GOVUK_DARK_GREY, withAlpha } from '../../../config/colours.js'
 
 const FEATURE_STROKE_OPACITY = 0.6
@@ -8,7 +7,6 @@ export const GRID_SUMMARY = {
   id: 'grid',
   label: 'Grid squares',
   description: 'Uniform squares based on the British National Grid.',
-  minZoom: GRID_VISIBLE_MIN_ZOOM,
   symbol: {
     type: 'line',
     colour: GOVUK_DARK_GREY,

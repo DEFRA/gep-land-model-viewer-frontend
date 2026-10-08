@@ -29,10 +29,10 @@ beforeEach(() => {
 
 describe('ZoomWarning', () => {
   test('warns when an enabled summary is not drawn at this zoom, and announces it', () => {
-    renderWarning({ pluginState: { layers: [{ id: 'grid', ready: true }] } })
+    renderWarning({ pluginState: { layers: [{ id: 'features', ready: true }] } })
 
-    expect(view.container.querySelector('.app-map__zoom-warning').textContent).toBe('Zoom in to see Grid squares')
-    expect(services.announce).toHaveBeenCalledWith('Zoom in to see Grid squares')
+    expect(view.container.querySelector('.app-map__zoom-warning').textContent).toBe('Zoom in to see OS features')
+    expect(services.announce).toHaveBeenCalledWith('Zoom in to see OS features')
   })
 
   test('warns about a dataset that has a zoom floor', () => {
@@ -50,6 +50,7 @@ describe('ZoomWarning', () => {
       pluginState: {
         layers: [
           { id: 'grid', ready: true },
+          { id: 'features', ready: true },
           { id: 'woodland', title: 'Ancient Woodland', ready: true, minZoom: 10 }
         ]
       }
@@ -90,6 +91,7 @@ describe('ZoomWarning', () => {
       pluginState: {
         layers: [
           { id: 'grid', ready: true, hidden: true },
+          { id: 'features', ready: true, hidden: true },
           { id: 'woodland', ready: true, minZoom: 10, hidden: true }
         ]
       }
@@ -100,7 +102,14 @@ describe('ZoomWarning', () => {
   })
 
   test('takes up no room when an enabled layer is drawn at its minimum zoom', () => {
-    renderWarning({ zoom: 11, pluginState: { layers: [{ id: 'grid', ready: true }] } })
+    renderWarning({ zoom: 10, pluginState: { layers: [{ id: 'features', ready: true }] } })
+
+    expect(view.container.querySelector('.app-map__zoom-warning')).toBeNull()
+    expect(services.announce).not.toHaveBeenCalled()
+  })
+
+  test('does not warn about grid squares at UK zoom 0', () => {
+    renderWarning({ zoom: 0, pluginState: { layers: [{ id: 'grid', ready: true }] } })
 
     expect(view.container.querySelector('.app-map__zoom-warning')).toBeNull()
     expect(services.announce).not.toHaveBeenCalled()

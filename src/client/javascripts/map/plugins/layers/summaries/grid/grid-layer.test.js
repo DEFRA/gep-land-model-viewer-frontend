@@ -58,11 +58,24 @@ function createMapHarness () {
   }
 }
 
-function createOlMapMock (zoom = 17, extent = [418700, 385100, 418900, 385300], resolution = 1) {
+// First rung of TILE_GRID_RESOLUTIONS in @defra/interactive-map OpenLayers provider.
+const UK_ZOOM_0_RESOLUTION = 896
+
+function resolutionAtZoom (zoom) {
+  return UK_ZOOM_0_RESOLUTION / 2 ** zoom
+}
+
+function linePositions (source, axis) {
+  return source.features
+    .map(feature => feature.geometry.coords)
+    .filter(([start, end]) => start[axis] === end[axis])
+    .map(([start]) => start[axis])
+}
+
+function createOlMapMock (zoom = 12, extent = [418700, 385100, 418900, 385300]) {
   const layers = []
   const view = {
     getZoom: vi.fn(() => zoom),
-    getResolution: vi.fn(() => resolution),
     calculateExtent: vi.fn(() => extent)
   }
   return {
@@ -96,15 +109,21 @@ describe('#createGridLayer', () => {
     expect(WebGLVectorLayer).toHaveBeenCalledTimes(2)
   })
 
-  test('highlightCell adds feature to selected source', () => {
+  test.each([10, 100, 1000, 10000, 100000])('highlights a %im cell using its captured size', size => {
     const api = createGridLayer(interactiveMap, olMap)
 
-    api.highlightCell(418720, 385130)
+    api.highlightCell(460000, 470000, size)
 
     const selectedLayer = olMap._layers[1]
     const selectedSource = selectedLayer.source
     expect(selectedSource.clear).toHaveBeenCalled()
-    expect(selectedSource.addFeature).toHaveBeenCalled()
+    expect(selectedSource.features[0].geometry.rings).toEqual([[
+      [460000, 470000],
+      [460000 + size, 470000],
+      [460000 + size, 470000 + size],
+      [460000, 470000 + size],
+      [460000, 470000]
+    ]])
   })
 
   test('clearHighlight clears selected source', () => {
@@ -136,27 +155,27 @@ describe('#createGridLayer', () => {
     expect(olMap._layers[1].setZIndex).not.toHaveBeenCalled()
   })
 
-  test('does not draw grid when zoom too low', () => {
-    olMap = createOlMapMock(8)
-    const api = createGridLayer(interactiveMap, olMap)
-    api.setEnabled(true)
+  test.each([
+    [12, 10],
+    [9, 100],
+    [6, 1000],
+    [3, 10000],
+    [0, 100000]
+  ])('at UK zoom %i draws grid lines %im apart on the grid', (zoom, size) => {
+    const resolution = resolutionAtZoom(zoom)
+    olMap = createOlMapMock(zoom, [460000, 470000, 460000 + 800 * resolution, 470000 + 600 * resolution])
+    createGridLayer(interactiveMap, olMap).setEnabled(true)
 
-    const gridSource = olMap._layers[0].source
-    expect(gridSource.addFeatures).not.toHaveBeenCalled()
-  })
-
-  test('draws grid lines when enabled and zoom is appropriate', () => {
-    olMap = createOlMapMock(17)
-    const api = createGridLayer(interactiveMap, olMap)
-    api.setEnabled(true)
-
-    const gridSource = olMap._layers[0].source
-    expect(gridSource.addFeatures).toHaveBeenCalled()
-    expect(gridSource.features.length).toBeGreaterThan(0)
+    for (const axis of [0, 1]) {
+      const positions = linePositions(olMap._layers[0].source, axis)
+      expect(positions.length).toBeGreaterThan(1)
+      expect(positions.every(position => position % size === 0)).toBe(true)
+      expect(positions.slice(1).every((position, index) => position - positions[index] === size)).toBe(true)
+    }
   })
 
   test('does not draw grid until enabled, even at high zoom', () => {
-    olMap = createOlMapMock(17)
+    olMap = createOlMapMock(12)
     createGridLayer(interactiveMap, olMap)
 
     const gridSource = olMap._layers[0].source
@@ -178,7 +197,7 @@ describe('#createGridLayer', () => {
   })
 
   test('skips rebuild when viewport is still inside the drawn grid', () => {
-    olMap = createOlMapMock(17)
+    olMap = createOlMapMock(12)
     const api = createGridLayer(interactiveMap, olMap)
     api.setEnabled(true)
 
@@ -194,7 +213,7 @@ describe('#createGridLayer', () => {
   })
 
   test('rebuilds grid when viewport moves outside drawn extent', () => {
-    olMap = createOlMapMock(17)
+    olMap = createOlMapMock(12)
     const api = createGridLayer(interactiveMap, olMap)
     api.setEnabled(true)
 
@@ -210,12 +229,62 @@ describe('#createGridLayer', () => {
     expect(gridSource.addFeatures).toHaveBeenCalled()
   })
 
-  test('limits grid lines when extent is too large', () => {
-    olMap = createOlMapMock(17, [0, 0, 100000, 100000])
+  test('rebuilds on a resolution threshold even if the viewport remains inside the buffer', () => {
+    olMap = createOlMapMock(11)
+    const api = createGridLayer(interactiveMap, olMap)
+    api.setEnabled(true)
+    const gridSource = olMap._layers[0].source
+    gridSource.clear.mockClear()
+    gridSource.addFeatures.mockClear()
+
+    olMap._view.getZoom.mockReturnValue(10)
+    interactiveMap._handlers['map:render']()
+
+    expect(gridSource.clear).toHaveBeenCalledTimes(1)
+    expect(gridSource.addFeatures).toHaveBeenCalledTimes(1)
+    const eastings = linePositions(gridSource, 0)
+    expect(eastings[1] - eastings[0]).toBe(100)
+  })
+
+  test('reuses the buffer when zoom changes within the same grid size', () => {
+    const api = createGridLayer(interactiveMap, olMap)
+    api.setEnabled(true)
+    const gridSource = olMap._layers[0].source
+    gridSource.clear.mockClear()
+    gridSource.addFeatures.mockClear()
+
+    olMap._view.getZoom.mockReturnValue(11)
+    interactiveMap._handlers['map:render']()
+
+    expect(gridSource.clear).not.toHaveBeenCalled()
+    expect(gridSource.addFeatures).not.toHaveBeenCalled()
+  })
+
+  test('keeps the selected geometry when the displayed grid changes resolution', () => {
+    const api = createGridLayer(interactiveMap, olMap)
+    api.setEnabled(true)
+    api.highlightCell(466720, 475130, 10)
+    const selectedSource = olMap._layers[1].source
+    const selectedFeature = selectedSource.features[0]
+    selectedSource.clear.mockClear()
+    selectedSource.addFeature.mockClear()
+
+    olMap._view.getZoom.mockReturnValue(0)
+    interactiveMap._handlers['map:render']()
+
+    expect(selectedSource.clear).not.toHaveBeenCalled()
+    expect(selectedSource.addFeature).not.toHaveBeenCalled()
+    expect(selectedSource.features).toEqual([selectedFeature])
+  })
+
+  test.each(Array.from({ length: 14 }, (_, zoom) => zoom))('keeps grid drawing bounded on a 4K viewport at UK zoom %i', zoom => {
+    const resolution = resolutionAtZoom(zoom)
+    olMap = createOlMapMock(zoom, [0, 0, 3840 * resolution, 2160 * resolution])
     const api = createGridLayer(interactiveMap, olMap)
     api.setEnabled(true)
 
     const gridSource = olMap._layers[0].source
-    expect(gridSource.addFeatures).not.toHaveBeenCalled()
+    expect(gridSource.features.length).toBeGreaterThan(0)
+    expect(gridSource.features.length).toBeLessThan(1000)
   })
 })
