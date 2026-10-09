@@ -64,7 +64,7 @@ function PanelBody ({ status, hits, hit, onSelectHit, onBack, renderHit }) {
   return null
 }
 
-export function InfoPanel ({ pluginState, mapProvider }) {
+export function InfoPanel ({ pluginState, pluginConfig, mapProvider }) {
   const sectionsRef = pluginState.useRef('inspectionSections')
   sectionsRef.current ??= new Map()
   const sections = sectionsRef.current
@@ -80,7 +80,7 @@ export function InfoPanel ({ pluginState, mapProvider }) {
   }
 
   return (
-    <InfoPanelContext.Provider value={{ sections, goToSampleArea }}>
+    <InfoPanelContext.Provider value={{ sections, goToSampleArea, findGeoDataUrl: pluginConfig.findGeoDataUrl }}>
       <div className='app-map__info-panel' aria-busy={isLoading ? 'true' : undefined}>
         <PanelBody
           status={inspection.status}

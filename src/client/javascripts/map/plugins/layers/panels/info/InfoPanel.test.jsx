@@ -3,10 +3,13 @@ import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { render } from '@testing-library/preact'
 import { InfoPanel } from './InfoPanel.jsx'
 import { Section } from '../../summaries/components/Section.jsx'
+import { DatasetAttributes } from '../../datasets/DatasetAttributes.jsx'
 
 const map = {
   getView: () => ({ setCenter: vi.fn(), setZoom: vi.fn() })
 }
+
+const FIND_GEO_DATA_URL = 'https://find-geo-data.example.test/'
 
 const INITIAL_INSPECTION = {
   status: 'idle',
@@ -37,7 +40,7 @@ function renderPanel (inspection = INITIAL_INSPECTION, { sections = new Map(), p
     useRef: key => refs[key]
   }
 
-  view = render(<InfoPanel pluginState={pluginState} mapProvider={{ map: panelMap }} />)
+  view = render(<InfoPanel pluginState={pluginState} pluginConfig={{ findGeoDataUrl: FIND_GEO_DATA_URL }} mapProvider={{ map: panelMap }} />)
   return view
 }
 
@@ -142,5 +145,13 @@ describe('InfoPanel', () => {
     click(view.container.querySelector('.app-link-button'))
     expect(setCenter).toHaveBeenCalledWith([465000, 475000])
     expect(setZoom).toHaveBeenCalledWith(11)
+  })
+
+  test('dataset attributes link to the full dataset on search and find', () => {
+    const selectedHit = hit('SSSI')
+    renderHit.mockReturnValue(<DatasetAttributes label='SSSI' features={[]} datasetId='sssi' />)
+    renderPanel({ ...INITIAL_INSPECTION, status: 'detail-ready', hits: [selectedHit], hit: selectedHit })
+
+    expect(view.getByRole('link', { name: 'View full dataset (opens in new tab)' }).getAttribute('href')).toBe(`${FIND_GEO_DATA_URL}dataset/sssi`)
   })
 })

@@ -178,7 +178,11 @@
 }
 
 .app-map__info-content > .govuk-heading-s {
-  margin-top: govuk-spacing(1);
+  margin-bottom: govuk-spacing(1);
+}
+
+.app-map__info-content > .app-map__dataset-link {
+  margin-top: govuk-spacing(3);
 }
 
 // ===== Mobile overrides =====

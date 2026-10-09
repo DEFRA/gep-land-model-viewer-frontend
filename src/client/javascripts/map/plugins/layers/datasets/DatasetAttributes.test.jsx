@@ -2,6 +2,7 @@
 import { describe, test, expect } from 'vitest'
 import { render } from '@testing-library/preact'
 import { DatasetAttributes } from './DatasetAttributes.jsx'
+import { InfoPanelContext } from '../panels/info/context.js'
 
 let view
 
@@ -46,5 +47,33 @@ describe('DatasetAttributes', () => {
     view = render(<DatasetAttributes label='SSSI' features={features} />)
 
     expect(values()).toEqual(['true', 'false', '0', '[1,2]', '{"a":1}'])
+  })
+  test.each([
+    { case: 'attributes', features: [{ name: 'Site' }] },
+    { case: 'no attributes', features: [] }
+  ])('links to the full dataset when it has $case', ({ features }) => {
+    view = render(
+      <InfoPanelContext.Provider value={{ findGeoDataUrl: 'https://find-geo-data.example.test/' }}>
+        <DatasetAttributes label='SSSI' features={features} datasetId='sssi' />
+      </InfoPanelContext.Provider>
+    )
+
+    const link = view.getByRole('link', { name: 'View full dataset (opens in new tab)' })
+    expect(link.getAttribute('href')).toBe('https://find-geo-data.example.test/dataset/sssi')
+    expect(link.getAttribute('target')).toBe('_blank')
+  })
+
+  test.each([
+    { case: 'no dataset id', context: { findGeoDataUrl: 'https://find-geo-data.example.test/' }, datasetId: undefined },
+    { case: 'no find geo data url', context: {}, datasetId: 'sssi' },
+    { case: 'no info panel', context: null, datasetId: 'sssi' }
+  ])('omits the link when there is $case', ({ context, datasetId }) => {
+    view = render(
+      <InfoPanelContext.Provider value={context}>
+        <DatasetAttributes label='SSSI' features={[]} datasetId={datasetId} />
+      </InfoPanelContext.Provider>
+    )
+
+    expect(view.container.querySelector('a')).toBeNull()
   })
 })

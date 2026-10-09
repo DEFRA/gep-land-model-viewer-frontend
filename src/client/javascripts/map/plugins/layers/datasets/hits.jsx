@@ -171,7 +171,7 @@ function makeVectorHit ({ highlight, dataset, matches, isCurrent }) {
       return matches.map((match) => featureProperties(match.feature))
     },
 
-    render: (details) => <DatasetAttributes label={dataset.title} features={details} />
+    render: (details) => <DatasetAttributes label={dataset.title} features={details} datasetId={dataset.id} />
   }
 }
 
@@ -236,7 +236,7 @@ function makeCogOverviewHit ({ map, highlight, dataset, detailLayer, styleConfig
       return [nearest.properties ?? {}]
     },
 
-    render: (details) => <DatasetAttributes label={dataset.title} features={details} />
+    render: (details) => <DatasetAttributes label={dataset.title} features={details} datasetId={dataset.id} />
   }
 }
 
@@ -275,7 +275,7 @@ function rasterHitsAt ({ map, datasets, highlight, getStyle }, pixel, coords) {
       stillValid: () => isCurrent() && layer.getVisible(),
       select: () => highlight.showPoint(coords),
       loadDetails: async () => [attributes],
-      render: (details) => <DatasetAttributes label={dataset.title} features={details} />
+      render: (details) => <DatasetAttributes label={dataset.title} features={details} datasetId={dataset.id} />
     }]
   })
 }
@@ -305,7 +305,7 @@ async function wmsHitsAt (map, datasets, highlight, coords, signal) {
         },
 
         loadDetails: async () => features.map(feature => feature.properties ?? {}),
-        render: (details) => <DatasetAttributes label={label} features={details} />
+        render: (details) => <DatasetAttributes label={label} features={details} datasetId={dataset?.id} />
       }
     } catch (error) {
       if (signal.aborted) {
@@ -320,7 +320,7 @@ async function wmsHitsAt (map, datasets, highlight, coords, signal) {
         loadDetails: async () => {
           throw error
         },
-        render: (details) => <DatasetAttributes label={label} features={details} />
+        render: (details) => <DatasetAttributes label={label} features={details} datasetId={dataset?.id} />
       }
     }
   }))
