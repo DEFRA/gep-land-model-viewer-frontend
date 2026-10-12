@@ -7,16 +7,6 @@ function cogStyleFor (styleConfig) {
   return { color: buildCogColourExpression(styleConfig) }
 }
 
-function createCogDatasetLayer (options, styleConfig) {
-  const layer = new WebGLTileLayer({ ...options, style: cogStyleFor(styleConfig) })
-
-  return {
-    layers: [layer],
-    applyStyle: next => layer.setStyle(cogStyleFor(next)),
-    setOpacity: next => layer.setOpacity(next)
-  }
-}
-
 // GeoTIFF leaves getView() pending after a metadata error, so source state
 // must be watched as well.
 function waitForMetadata (source) {
@@ -48,6 +38,17 @@ function waitForMetadata (source) {
       )
     }
   })
+}
+
+async function createCogDatasetLayer (options, styleConfig) {
+  await waitForMetadata(options.source)
+  const layer = new WebGLTileLayer({ ...options, style: cogStyleFor(styleConfig) })
+
+  return {
+    layers: [layer],
+    applyStyle: next => layer.setStyle(cogStyleFor(next)),
+    setOpacity: next => layer.setOpacity(next)
+  }
 }
 
 /**
@@ -89,8 +90,6 @@ export async function createCogOverviewLayer (overview, layerId, { styleConfig, 
     // Newly loaded overview tiles must cover missing detail immediately.
     transition: 0
   })
-
-  await waitForMetadata(source)
 
   return createCogDatasetLayer({
     properties: { id: layerId },

@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach } from 'vitest'
+import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { bbox } from 'ol/loadingstrategy.js'
 import { getLayerStyle } from '../layer-style.js'
 import { THEMED_DATASET } from '../test-helpers/themed-dataset.js'
@@ -123,6 +123,18 @@ function latestLoadController () {
 }
 
 describe('#createFlatGeobufLayer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      new Uint8Array([102, 103, 98, 3, 102, 103, 98, 0]),
+      { status: 206 }
+    )))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   test('switches vector fields and the COG overview while retaining the data source', async () => {
     const { default: ActualWebGLVectorLayer } = await vi.importActual('ol/layer/WebGLVector.js')
     const { default: ActualVectorSource } = await vi.importActual('ol/source/Vector.js')
@@ -166,8 +178,42 @@ describe('#createFlatGeobufLayer', () => {
     }
   })
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+  test.each([0, 1, 255])('checks the version-pinned FGB and accepts patch version %s', async (patch) => {
+    fetch.mockResolvedValueOnce(new Response(new Uint8Array([102, 103, 98, 3, 102, 103, 98, patch]), { status: 206 }))
+    const url = '/api/datasets/11111111-1111-4111-8111-111111111111/layer/assets/data.fgb?v=release%2B1'
+
+    const { layers } = await createLayerForTest(fgbDataset({ url }), 'gep-test-fgb', mapHarness().map)
+
+    expect(layers).toHaveLength(1)
+    expect(fetch).toHaveBeenCalledExactlyOnceWith(url, { headers: { Range: 'bytes=0-7' } })
+  })
+
+  test.each([403, 404, 500])('rejects an unavailable FGB (%s) before registering load recovery', async (status) => {
+    fetch.mockResolvedValueOnce(new Response(null, { status }))
+    const { map } = mapHarness()
+    const dataset = fgbDataset({ overview: { type: 'cog', url: '/overview' } })
+
+    await expect(createLayerForTest(dataset, 'gep-test-fgb', map)).rejects.toThrow(`Failed to load FlatGeobuf: ${status}`)
+
+    expect(WebGLVectorLayer).not.toHaveBeenCalled()
+    expect(createCogOverviewLayer).not.toHaveBeenCalled()
+    expect(createFgbLoadController).not.toHaveBeenCalled()
+    expect(map.on).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    ['wrong file type', [0, 0, 0, 0, 0, 0, 0, 0]],
+    ['unsupported major version', [102, 103, 98, 4, 102, 103, 98, 0]],
+    ['truncated signature', [102, 103, 98]],
+    ['empty response', []]
+  ])('rejects an FGB with %s', async (_description, bytes) => {
+    fetch.mockResolvedValueOnce(new Response(new Uint8Array(bytes), { status: 206 }))
+    const { map } = mapHarness()
+
+    await expect(createLayerForTest(fgbDataset(), 'gep-test-fgb', map)).rejects.toThrow('Invalid FlatGeobuf signature')
+
+    expect(createFgbLoadController).not.toHaveBeenCalled()
+    expect(map.on).not.toHaveBeenCalled()
   })
 
   test('styles the layer and wires its load controller', async () => {

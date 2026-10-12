@@ -15,7 +15,6 @@ test.each([
 })
 
 test.each([
-  { styleConfig: null, assets: { cog: '/peat.tif' }, message: 'Missing style config' },
   { styleConfig: {}, assets: { cog: '/peat.tif' }, message: 'Missing style themes' },
   { styleConfig: { themes: [] }, assets: { cog: '/peat.tif' }, message: 'Missing style themes' },
   { styleConfig: { themes: [{ band: 1 }] }, assets: {}, message: 'Missing map data' }

@@ -1,27 +1,13 @@
 import Validate from '@hapi/validate'
 import { statusCodes } from '../common/constants/status-codes.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
-import { serveDatasetAsset } from './s3/assets.js'
+import { serveAsset } from './s3/assets.js'
 import { getDatasetMetadata, queryDatasets } from './geonetwork/catalogue.js'
-import { ASSET_FILES, getDatasetAssetsAndStyle } from './s3/client.js'
+import { BrokenReleaseError, VERSION_ID_SCHEMA, getManifest, getJson } from './s3/client.js'
 
+const ASSET_FILES = { cog: 'data.tif', fgb: 'data.fgb' }
+const DATASET_ID_SCHEMA = Validate.string().guid().required()
 const logger = createLogger()
-const RANGE = /^bytes=(\d+)-(\d+)$/
-
-/**
- * @param {string | undefined} header
- * @returns {boolean}
- */
-function isValidRange (header) {
-  const match = RANGE.exec(header ?? '')
-  if (!match) {
-    return false
-  }
-
-  const start = Number(match[1])
-  const end = Number(match[2])
-  return Number.isSafeInteger(start) && Number.isSafeInteger(end) && start <= end
-}
 
 /**
  * @template {import('@hapi/hapi').ReqRef} Refs
@@ -31,6 +17,17 @@ function isValidRange (header) {
 function unavailable (error, h) {
   logger.error({ err: error }, 'Dataset request failed')
   return h.response({ error: 'Dataset service unavailable' }).code(statusCodes.badGateway)
+}
+
+/**
+ * @param {string} id Dataset UUID
+ * @param {string} filename
+ * @param {string | null} version S3 version ID from the manifest
+ * @returns {string}
+ */
+function assetUrl (id, filename, version) {
+  const path = `/api/datasets/${id}/layer/assets/${filename}`
+  return version === null ? path : `${path}?${new URLSearchParams({ v: version })}`
 }
 
 /**
@@ -69,26 +66,18 @@ const detailHandler = {
   options: {
     tags: ['api'],
     validate: {
-      params: Validate.object({ id: Validate.string().guid().required() }),
+      params: Validate.object({ id: DATASET_ID_SCHEMA }),
       failAction: failWith(statusCodes.notFound, 'Dataset not found')
     }
   },
   async handler (request, h) {
-    const { id } = request.params
-
     try {
-      const [record, { styleConfig, assets }] = await Promise.all([
-        getDatasetMetadata(id),
-        getDatasetAssetsAndStyle(id)
-      ])
+      const record = await getDatasetMetadata(request.params.id)
       if (!record) {
         return h.response({ error: 'Dataset not found' }).code(statusCodes.notFound)
       }
 
-      const assetUrls = Object.fromEntries(Object.entries(assets)
-        .map(([type, filename]) => [type, `/api/datasets/${id}/assets/${filename}`]))
-
-      return { ...record, display: { styleConfig, assets: assetUrls } }
+      return record
     } catch (error) {
       return unavailable(error, h)
     }
@@ -96,38 +85,71 @@ const detailHandler = {
 }
 
 /**
- * Range support is limited to what the map's COG and FlatGeobuf readers need.
- * GET requires a single byte range with a start and end to prevent accidental
- * full downloads. HEAD returns metadata without downloading the body.
+ * @type {import('@hapi/hapi').ServerRoute<{ Params: { id: string } }>}
+ */
+const layerHandler = {
+  method: 'GET',
+  path: '/api/datasets/{id}/layer',
+  options: {
+    tags: ['api'],
+    validate: {
+      params: Validate.object({ id: DATASET_ID_SCHEMA }),
+      failAction: failWith(statusCodes.notFound, 'Dataset layer not found')
+    }
+  },
+  async handler (request, h) {
+    const { id } = request.params
+
+    try {
+      const release = await getManifest(id)
+      if (!release) {
+        return h.response({ error: 'Dataset layer not found' }).code(statusCodes.notFound)
+      }
+
+      const { manifestVersion, generatedAt, files } = release
+      const styleConfig = await getJson(id, 'style.json', files['style.json'])
+      const assets = Object.fromEntries(Object.entries(ASSET_FILES)
+        .filter(([, filename]) => Object.hasOwn(files, filename))
+        .map(([type, filename]) => [type, assetUrl(id, filename, files[filename])]))
+
+      return { manifestVersion, generatedAt, styleConfig, assets }
+    } catch (error) {
+      if (error instanceof BrokenReleaseError) {
+        logger.error({ err: error }, 'Dataset layer release is broken')
+        return h.response({ error: 'Dataset layer is invalid' }).code(statusCodes.internalServerError)
+      }
+
+      return unavailable(error, h)
+    }
+  }
+}
+
+/**
  *
  * @type {import('@hapi/hapi').ServerRoute<import('./s3/assets.js').AssetRequestRefs>}
  */
 const assetHandler = {
   method: 'GET',
-  path: '/api/datasets/{id}/assets/{filename}',
+  path: '/api/datasets/{id}/layer/assets/{filename}',
   options: {
     tags: ['api'],
     response: { ranges: false },
     validate: {
       params: Validate.object({
-        id: Validate.string().guid().required(),
+        id: DATASET_ID_SCHEMA,
         filename: Validate.string().valid(...Object.values(ASSET_FILES)).required()
       }),
+      query: Validate.object({ v: VERSION_ID_SCHEMA }),
       failAction: failWith(statusCodes.notFound, 'Dataset file not found')
     }
   },
   async handler (request, h) {
-    const { range } = request.headers
-    if ((request.method === 'get' || range !== undefined) && !isValidRange(range)) {
-      return h.response({ error: 'A single byte range with a start and end is required' }).code(statusCodes.badRequest)
-    }
-
     try {
-      return await serveDatasetAsset(request, h)
+      return await serveAsset(request.params.id, request, h)
     } catch (error) {
       return unavailable(error, h)
     }
   }
 }
 
-export default [searchHandler, detailHandler, assetHandler]
+export default [searchHandler, detailHandler, layerHandler, assetHandler]

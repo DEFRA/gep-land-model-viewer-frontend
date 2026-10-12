@@ -1,10 +1,26 @@
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
 import VectorSource from 'ol/source/Vector.js'
 import { bbox } from 'ol/loadingstrategy.js'
+import { magicbytes } from 'flatgeobuf/lib/mjs/constants.js'
 import { overviewIdFor } from '../../../../config/layers.js'
 import { createCogOverviewLayer } from './cog.js'
 import { createFgbLoadController } from './fgb-loader.js'
 import { buildColourVariables, buildVectorStyleWithVariables } from '../style-config.js'
+
+async function checkFgbSignature (url) {
+  const response = await fetch(url, { headers: { Range: 'bytes=0-7' } })
+  if (!response.ok) {
+    throw new Error(`Failed to load FlatGeobuf: ${response.status}`)
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  // FGB starts with an eight-byte signature, the 8th byte is the backwards compatible patch version so can be ignored
+  // https://flatgeobuf.org/#specification
+  const signature = magicbytes.subarray(0, 7)
+  if (bytes.length !== magicbytes.length || !signature.every((byte, index) => bytes[index] === byte)) {
+    throw new Error('Invalid FlatGeobuf signature')
+  }
+}
 
 // Datasets state the first zoom that draws. OL hides a layer at its minZoom, so
 // step back one to make that level the first that renders.
@@ -74,6 +90,8 @@ function registerSharedCanvasOpacity (layers, initialOpacity) {
  */
 export async function createFlatGeobufLayer (dataset, layerId, map, { styleConfig, opacity }) {
   const { url, minZoom, overview } = dataset.source
+  await checkFgbSignature(url)
+
   let themeBand = styleConfig.band
 
   const { style, variables } = buildVectorStyleWithVariables(styleConfig)

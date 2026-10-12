@@ -23,7 +23,7 @@ test('does nothing without a linked dataset', () => {
 })
 
 test('adds the linked dataset once the map is ready', async () => {
-  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ id: DATASET_ID, title: 'Peat depth', display: {} }) })))
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ id: DATASET_ID, title: 'Peat depth' }) })))
   const dispatch = vi.fn()
   const view = render(<LinkedDataset isMapReady={false} dispatch={dispatch} />)
   expect(fetch).not.toHaveBeenCalled()
@@ -56,7 +56,7 @@ test('cancels the request when unmounted', async () => {
   view.unmount()
   expect(requests[0].options.signal.aborted).toBe(true)
 
-  requests[0].resolve({ ok: true, json: async () => ({ title: 'Peat depth', display: {} }) })
+  requests[0].resolve({ ok: true, json: async () => ({ title: 'Peat depth' }) })
   await Promise.resolve()
   expect(dispatch).not.toHaveBeenCalled()
 })
