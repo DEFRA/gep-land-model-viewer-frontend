@@ -21,6 +21,11 @@ function stubGeoTiffSource (opts) {
   }
 }
 
+function stubPendingView (opts) {
+  stubGeoTiffSource.call(this, opts)
+  this.getView = vi.fn(() => new Promise(() => {}))
+}
+
 vi.mock('ol/source/GeoTIFF.js', () => ({
   default: vi.fn().mockImplementation(stubGeoTiffSource)
 }))
@@ -115,6 +120,17 @@ describe('#createCogLayer', () => {
     expect(GeoTIFF).toHaveBeenCalledOnce()
     expect(WebGLTileLayer).toHaveBeenCalledOnce()
   })
+
+  test('rejects when the COG metadata fails to load', async () => {
+    GeoTIFF.mockImplementationOnce(stubPendingView)
+    const dataset = { id: 'missing-cog', source: { type: 'cog', url: '/missing.tif', styleConfig: { themes: [SOURCE_VALUE_RANGE_STYLE] } } }
+
+    const creating = createCogLayer(dataset, 'gep-missing-cog', getLayerStyle(dataset))
+    GeoTIFF.mock.instances.at(-1)._fail(new Error('Request failed with status 404'))
+
+    await expect(creating).rejects.toThrow('Request failed with status 404')
+    expect(WebGLTileLayer).not.toHaveBeenCalled()
+  })
 })
 
 describe('#createCogOverviewLayer', () => {
@@ -158,10 +174,7 @@ describe('#createCogOverviewLayer', () => {
   })
 
   test('rejects when the COG source errors while getView remains pending', async () => {
-    GeoTIFF.mockImplementationOnce(function (opts) {
-      stubGeoTiffSource.call(this, opts)
-      this.getView = vi.fn(() => new Promise(() => {}))
-    })
+    GeoTIFF.mockImplementationOnce(stubPendingView)
 
     const creating = createCogOverviewLayer({ type: 'cog', url: '/broken.tif' }, 'gep-test-fgb-overview', { styleConfig })
     const source = GeoTIFF.mock.instances.at(-1)

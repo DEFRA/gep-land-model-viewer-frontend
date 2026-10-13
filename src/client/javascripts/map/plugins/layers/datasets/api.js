@@ -21,7 +21,13 @@ import { sourceFor } from './source.js'
  * @property {{ scaleDenominators: number[], distances: string[] } | null} resolution
  * @property {string | null} creationDate
  */
-/** @typedef {DatasetMetadata & { display: { styleConfig: { themes: object[] } | null, assets: { cog?: string, fgb?: string } } }} DatasetDetail */
+/**
+ * @typedef {object} DatasetLayer
+ * @property {string | null} manifestVersion S3 version ID of manifest.json, null when unavailable
+ * @property {string} generatedAt When the pipeline published the release
+ * @property {{ themes: object[] }} styleConfig
+ * @property {{ cog?: string, fgb?: string }} assets Asset URLs pinned to the release's file versions
+ */
 
 async function getJson (url, signal) {
   const response = await authenticatedFetch(url, { signal })
@@ -42,23 +48,14 @@ export function loadCatalogue (query, signal) {
   return getJson(`/api/datasets?${params}`, signal)
 }
 
-/**
- * @param {string} id
- * @param {AbortSignal} [signal]
- * @returns {Promise<DatasetDetail>}
- */
-function getDataset (id, signal) {
-  return getJson(`/api/datasets/${encodeURIComponent(id)}`, signal)
-}
-
 /** @returns {Promise<{ id: string, source: import('./source.js').DatasetSource }>} */
 export async function loadDataset (id, signal) {
-  const { display } = await getDataset(id, signal)
-  return { id, source: sourceFor(display.styleConfig, display.assets) }
+  /** @type {DatasetLayer} */
+  const { styleConfig, assets } = await getJson(`/api/datasets/${encodeURIComponent(id)}/layer`, signal)
+  return { id, source: sourceFor(styleConfig, assets) }
 }
 
 /** @returns {Promise<DatasetMetadata>} */
-export async function loadDatasetMetadata (id, signal) {
-  const { display, ...metadata } = await getDataset(id, signal)
-  return metadata
+export function loadDatasetMetadata (id, signal) {
+  return getJson(`/api/datasets/${encodeURIComponent(id)}`, signal)
 }

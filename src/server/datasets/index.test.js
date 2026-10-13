@@ -1,6 +1,6 @@
 import Hapi from '@hapi/hapi'
 import { PassThrough, Readable } from 'node:stream'
-import { S3Client, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { datasets } from './index.js'
 
 const { getDatasetMetadata, queryDatasets } = vi.hoisted(() => ({
@@ -8,13 +8,62 @@ const { getDatasetMetadata, queryDatasets } = vi.hoisted(() => ({
 }))
 vi.mock('./geonetwork/catalogue.js', () => ({ getDatasetMetadata, queryDatasets }))
 
+const logger = vi.hoisted(() => ({ debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() }))
+vi.mock('../common/helpers/logging/logger.js', () => ({ createLogger: () => logger }))
+
 const LOCAL = '11111111-1111-4111-8111-111111111111'
+const LAYER = `/api/datasets/${LOCAL}/layer`
+const ASSETS = `${LAYER}/assets`
+const AWS_VERSION_ID = '3/L4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY'
+const generatedAt = '2026-10-08T14:52:12.304Z'
 const styleConfig = { themes: [{ type: 'uniform', band: 1, classes: [] }] }
 let server
 let send
 
 function get (url, options = {}) {
   return server.inject({ url, auth: { strategy: 'test', credentials: { id: 'user' } }, ...options })
+}
+
+function s3Error (status) {
+  return Object.assign(new Error(`S3 error ${status}`), { $metadata: { httpStatusCode: status } })
+}
+
+/**
+ * @param {unknown} value Serialised unless it is already text
+ * @param {string} [versionId] S3 response version ID
+ */
+function jsonObject (value, versionId) {
+  const text = typeof value === 'string' ? value : JSON.stringify(value)
+  return { Body: { transformToString: async () => text }, VersionId: versionId }
+}
+
+function manifest (files) {
+  return { generatedAt, files }
+}
+
+function partialContent (body = '0123', contentRange = `bytes 0-${body.length - 1}/10`) {
+  return {
+    Body: Readable.from([Buffer.from(body)], { objectMode: false }),
+    ContentLength: body.length,
+    ContentRange: contentRange,
+    $metadata: { httpStatusCode: 206 }
+  }
+}
+
+/**
+ * Responds to S3 commands by filename. Errors are thrown and missing files give an S3 404.
+ *
+ * @param {Record<string, object>} objects
+ */
+function serveObjects (objects) {
+  send.mockImplementation(async command => {
+    const object = objects[command.input.Key.slice(`${LOCAL}/`.length)] ?? s3Error(404)
+    if (object instanceof Error) {
+      throw object
+    }
+
+    return object
+  })
 }
 
 beforeEach(async () => {
@@ -51,12 +100,27 @@ test('search accepts only q and reads no S3 files', async () => {
   expect((await get(`/api/datasets?q=${'a'.repeat(201)}`)).statusCode).toBe(400)
 })
 
-test('requires authentication and rejects paths or ranges the proxy does not support', async () => {
-  expect((await server.inject(`/api/datasets/${LOCAL}/assets/data.tif`)).statusCode).toBe(401)
+test('requires authentication and rejects paths, queries or ranges the proxy does not support', async () => {
+  expect((await server.inject(LAYER)).statusCode).toBe(401)
+  expect((await server.inject(`${ASSETS}/data.tif`)).statusCode).toBe(401)
   expect((await get('/api/datasets/not-a-uuid')).statusCode).toBe(404)
+  expect((await get('/api/datasets/not-a-uuid/layer')).statusCode).toBe(404)
+  expect((await get('/api/datasets/not-a-uuid/layer/assets/data.tif', { headers: { range: 'bytes=0-3' } })).statusCode).toBe(404)
   expect((await get(`/api/datasets/${LOCAL}/rendering`)).statusCode).toBe(404)
-  expect((await get(`/api/datasets/${LOCAL}/assets/secret.json`)).statusCode).toBe(404)
-  expect((await get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=0-10,20-30' } })).statusCode).toBe(400)
+  for (const filename of ['secret.json', 'manifest.json', 'style.json']) {
+    expect((await get(`${ASSETS}/${filename}`, { headers: { range: 'bytes=0-3' } })).statusCode).toBe(404)
+  }
+  for (const query of ['v=', 'v=a&v=b', `v=${'a'.repeat(1025)}`, `v=${encodeURIComponent('é'.repeat(513))}`, 'version=a', 'v=a&x=1']) {
+    expect((await get(`${ASSETS}/data.tif?${query}`, { headers: { range: 'bytes=0-3' } })).statusCode).toBe(404)
+  }
+  expect((await get(`${ASSETS}/data.tif`, { headers: { range: 'bytes=0-10,20-30' } })).statusCode).toBe(400)
+  expect(send).not.toHaveBeenCalled()
+})
+
+test('no longer serves assets from the old route', async () => {
+  const response = await get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=0-3' } })
+
+  expect(response.statusCode).toBe(404)
   expect(send).not.toHaveBeenCalled()
 })
 
@@ -72,7 +136,7 @@ test.each([
   'bytes=0-9007199254740992'
 ])('rejects GET range %j before contacting S3', async range => {
   for (const filename of ['data.tif', 'data.fgb']) {
-    const response = await get(`/api/datasets/${LOCAL}/assets/${filename}`, {
+    const response = await get(`${ASSETS}/${filename}`, {
       headers: range === undefined ? {} : { range }
     })
 
@@ -81,14 +145,17 @@ test.each([
   expect(send).not.toHaveBeenCalled()
 })
 
-test('returns 404 when GeoNetwork has no record, even if S3 has files', async () => {
+test('returns GeoNetwork metadata without reading S3', async () => {
+  const response = await get(`/api/datasets/${LOCAL}`)
+
+  expect(response.statusCode).toBe(200)
+  expect(response.result).toEqual({ id: LOCAL, title: 'Peaty soil depth', owner: 'Natural England' })
+  expect(getDatasetMetadata).toHaveBeenCalledWith(LOCAL)
+  expect(send).not.toHaveBeenCalled()
+})
+
+test('returns 404 when GeoNetwork has no record', async () => {
   getDatasetMetadata.mockResolvedValue(null)
-  send.mockImplementation(async command => {
-    if (command instanceof GetObjectCommand) {
-      return { Body: { transformToString: async () => JSON.stringify(styleConfig) } }
-    }
-    return { Contents: [{ Key: `${LOCAL}/data.tif` }] }
-  })
 
   const response = await get(`/api/datasets/${LOCAL}`)
 
@@ -98,12 +165,6 @@ test('returns 404 when GeoNetwork has no record, even if S3 has files', async ()
 
 test('does not treat a failed GeoNetwork lookup as a missing dataset', async () => {
   getDatasetMetadata.mockRejectedValue(new Error('GeoNetwork unavailable'))
-  send.mockImplementation(async command => {
-    if (command instanceof GetObjectCommand) {
-      return { Body: { transformToString: async () => JSON.stringify(styleConfig) } }
-    }
-    return { Contents: [{ Key: `${LOCAL}/data.tif` }] }
-  })
 
   const response = await get(`/api/datasets/${LOCAL}`)
 
@@ -111,31 +172,157 @@ test('does not treat a failed GeoNetwork lookup as a missing dataset', async () 
   expect(response.result).toEqual({ error: 'Dataset service unavailable' })
 })
 
-test('discovers S3 files while GeoNetwork is loading', async () => {
-  const metadata = Promise.withResolvers()
-  const s3Started = Promise.withResolvers()
-  getDatasetMetadata.mockReturnValueOnce(metadata.promise)
-  send.mockImplementation(async command => {
-    s3Started.resolve()
-    if (command instanceof ListObjectsV2Command) {
-      return { Contents: [{ Key: `${LOCAL}/data.tif` }, { Key: `${LOCAL}/style.json` }] }
-    }
-    return { Body: { transformToString: async () => JSON.stringify(styleConfig) } }
+test('returns the manifest version and reads the style at the version it lists', async () => {
+  serveObjects({
+    'manifest.json': jsonObject(manifest({ 'style.json': 'style-version', 'data.tif': 'tif-version', 'data.fgb': 'fgb-version' }), AWS_VERSION_ID),
+    'style.json': jsonObject(styleConfig, 'style-version')
   })
 
-  const loading = get(`/api/datasets/${LOCAL}`)
-  await s3Started.promise
-  expect(getDatasetMetadata).toHaveBeenCalledWith(LOCAL)
-  metadata.resolve({ id: LOCAL, title: 'Peaty soil depth', owner: 'Natural England' })
-  const detail = await loading
-  expect(detail.result).toEqual({
-    id: LOCAL,
-    title: 'Peaty soil depth',
-    owner: 'Natural England',
-    display: { styleConfig, assets: { cog: `/api/datasets/${LOCAL}/assets/data.tif` } }
+  const response = await get(LAYER)
+
+  expect(response.statusCode).toBe(200)
+  expect(response.result).toEqual({
+    manifestVersion: AWS_VERSION_ID,
+    generatedAt,
+    styleConfig,
+    assets: {
+      cog: `${ASSETS}/data.tif?v=tif-version`,
+      fgb: `${ASSETS}/data.fgb?v=fgb-version`
+    }
   })
-  const listing = send.mock.calls.find(([command]) => command instanceof ListObjectsV2Command)[0]
-  expect(listing.input).toEqual({ Bucket: 'datasets', Prefix: `${LOCAL}/` })
+  expect(send).toHaveBeenCalledTimes(2)
+  const [[manifestRead], [styleRead]] = send.mock.calls
+  expect(manifestRead).toBeInstanceOf(GetObjectCommand)
+  expect(manifestRead.input).toStrictEqual({ Bucket: 'datasets', Key: `${LOCAL}/manifest.json` })
+  expect(styleRead).toBeInstanceOf(GetObjectCommand)
+  expect(styleRead.input).toStrictEqual({ Bucket: 'datasets', Key: `${LOCAL}/style.json`, VersionId: 'style-version' })
+})
+
+test('returns a null manifest version and latest-file URLs for an unversioned release', async () => {
+  serveObjects({
+    'manifest.json': jsonObject(manifest({ 'style.json': null, 'data.tif': null, 'data.fgb': null })),
+    'style.json': jsonObject(styleConfig)
+  })
+
+  const response = await get(LAYER)
+
+  expect(response.result).toEqual({
+    manifestVersion: null,
+    generatedAt,
+    styleConfig,
+    assets: { cog: `${ASSETS}/data.tif`, fgb: `${ASSETS}/data.fgb` }
+  })
+  expect(send.mock.calls[1][0].input).toStrictEqual({ Bucket: 'datasets', Key: `${LOCAL}/style.json` })
+})
+
+test.each([
+  { files: { 'data.tif': null }, assets: { cog: `${ASSETS}/data.tif` } },
+  { files: { 'data.fgb': 'fgb-version' }, assets: { fgb: `${ASSETS}/data.fgb?v=fgb-version` } },
+  { files: { 'secret.json': null }, assets: {} }
+])('links only the data files the manifest lists: $files', async ({ files, assets }) => {
+  serveObjects({
+    'manifest.json': jsonObject({ ...manifest({ 'style.json': null, ...files }), publisher: 'pipeline' }),
+    'style.json': jsonObject(styleConfig)
+  })
+
+  const response = await get(LAYER)
+
+  expect(response.statusCode).toBe(200)
+  expect(response.result.assets).toEqual(assets)
+})
+
+test('passes a version ID containing / and + from the manifest to S3 unchanged', async () => {
+  serveObjects({
+    'manifest.json': jsonObject(manifest({ 'style.json': AWS_VERSION_ID, 'data.tif': AWS_VERSION_ID })),
+    'style.json': jsonObject(styleConfig),
+    'data.tif': partialContent()
+  })
+
+  const { result: { assets } } = await get(LAYER)
+  expect(assets.cog).toBe(`${ASSETS}/data.tif?v=3%2FL4kqtJlcpXroDTDmJ%2BrmSpXd3dIbrHY`)
+  const file = await get(assets.cog, { headers: { range: 'bytes=0-3' } })
+
+  expect(file.statusCode).toBe(206)
+  expect(file.payload).toBe('0123')
+  expect(send.mock.calls.map(([command]) => command.input.VersionId)).toEqual([undefined, AWS_VERSION_ID, AWS_VERSION_ID])
+})
+
+test('keeps reading the versions a layer loaded after a newer release is published', async () => {
+  serveObjects({
+    'manifest.json': jsonObject(manifest({ 'style.json': null, 'data.fgb': 'old-fgb' })),
+    'style.json': jsonObject(styleConfig)
+  })
+  const { result: { assets } } = await get(LAYER)
+  send.mockClear()
+  serveObjects({
+    'manifest.json': jsonObject(manifest({ 'style.json': null, 'data.fgb': 'new-fgb' })),
+    'data.fgb': partialContent()
+  })
+
+  const file = await get(assets.fgb, { headers: { range: 'bytes=0-3' } })
+
+  expect(file.statusCode).toBe(206)
+  expect(send).toHaveBeenCalledOnce()
+  expect(send.mock.calls[0][0].input).toStrictEqual({ Bucket: 'datasets', Key: `${LOCAL}/data.fgb`, VersionId: 'old-fgb', Range: 'bytes=0-3' })
+})
+
+test('returns 404 when the dataset has no manifest', async () => {
+  serveObjects({ 'style.json': jsonObject(styleConfig) })
+
+  const response = await get(LAYER)
+
+  expect(response.statusCode).toBe(404)
+  expect(response.result).toEqual({ error: 'Dataset layer not found' })
+  expect(send).toHaveBeenCalledOnce()
+  expect(logger.error).not.toHaveBeenCalled()
+})
+
+test.each([
+  { release: 'manifest that is not JSON', manifestBody: '{ not json' },
+  { release: 'manifest without generatedAt', manifestBody: { files: { 'style.json': null } } },
+  { release: 'manifest without files', manifestBody: { generatedAt } },
+  { release: 'manifest with a numeric version', manifestBody: manifest({ 'style.json': null, 'data.tif': 1 }) },
+  { release: 'manifest with an empty version', manifestBody: manifest({ 'style.json': null, 'data.tif': '' }) },
+  { release: 'manifest with a version over 1,024 bytes', manifestBody: manifest({ 'style.json': null, 'data.tif': 'é'.repeat(513) }) },
+  { release: 'manifest without a style entry', manifestBody: manifest({ 'data.tif': null }) },
+  { release: 'style that is not JSON', style: '{ not json' },
+  { release: 'style that is not an object', style: 'null' },
+  { release: 'style that is an array', style: [] }
+])('returns 500 and logs an error for a $release', async ({ manifestBody = manifest({ 'style.json': null }), style = styleConfig }) => {
+  serveObjects({ 'manifest.json': jsonObject(manifestBody), 'style.json': jsonObject(style) })
+
+  const response = await get(LAYER)
+
+  expect(response.statusCode).toBe(500)
+  expect(response.result).toEqual({ error: 'Dataset layer is invalid' })
+  expect(logger.error).toHaveBeenCalledOnce()
+  expect(logger.error.mock.calls[0][0].err.name).toBe('BrokenReleaseError')
+})
+
+test('returns 500 when S3 cannot find the pinned style version', async () => {
+  const error = s3Error(404)
+  serveObjects({ 'manifest.json': jsonObject(manifest({ 'style.json': 'pinned-version' })), 'style.json': error })
+
+  const response = await get(LAYER)
+
+  expect(response.statusCode).toBe(500)
+  expect(send.mock.calls[1][0].input).toStrictEqual({ Bucket: 'datasets', Key: `${LOCAL}/style.json`, VersionId: 'pinned-version' })
+  expect(logger.error).toHaveBeenCalledOnce()
+  expect(logger.error.mock.calls[0][0].err).toMatchObject({ name: 'BrokenReleaseError', cause: error })
+})
+
+test.each([
+  { failure: 'manifest request times out', objects: { 'manifest.json': Object.assign(new Error('Timed out'), { name: 'TimeoutError' }) } },
+  { failure: 'manifest request is rejected', objects: { 'manifest.json': s3Error(400) } },
+  { failure: 'pinned style request is rejected', objects: { 'manifest.json': jsonObject(manifest({ 'style.json': 'style-version' })), 'style.json': s3Error(400) } },
+  { failure: 'style read fails', objects: { 'manifest.json': jsonObject(manifest({ 'style.json': 'style-version' })), 'style.json': s3Error(503) } }
+])('returns 502 when the $failure', async ({ objects }) => {
+  serveObjects(objects)
+
+  const response = await get(LAYER)
+
+  expect(response.statusCode).toBe(502)
+  expect(response.result).toEqual({ error: 'Dataset service unavailable' })
 })
 
 test('streams the requested range without conditional or internal S3 headers', async () => {
@@ -155,7 +342,7 @@ test('streams the requested range without conditional or internal S3 headers', a
     $metadata: { httpStatusCode: 206 }
   })
 
-  const file = await get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=0-3', 'if-range': '"old"', 'if-none-match': '"current"' } })
+  const file = await get(`${ASSETS}/data.tif`, { headers: { range: 'bytes=0-3', 'if-range': '"old"', 'if-none-match': '"current"' } })
   expect(file.statusCode).toBe(206)
   expect(file.payload).toBe('0123')
   expect(file.headers).toMatchObject({ 'content-type': 'image/tiff', 'content-range': 'bytes 0-3/10', 'content-length': '4', 'accept-ranges': 'bytes' })
@@ -165,7 +352,68 @@ test('streams the requested range without conditional or internal S3 headers', a
   expect(send).toHaveBeenCalledOnce()
   const [command] = send.mock.calls[0]
   expect(command).toBeInstanceOf(GetObjectCommand)
-  expect(command.input).toEqual({ Bucket: 'datasets', Key: `${LOCAL}/data.tif`, Range: 'bytes=0-3' })
+  expect(command.input).toStrictEqual({ Bucket: 'datasets', Key: `${LOCAL}/data.tif`, Range: 'bytes=0-3' })
+})
+
+test.each([
+  { method: 'GET', Command: GetObjectCommand, status: 206 },
+  { method: 'HEAD', Command: HeadObjectCommand, status: 200 }
+])('$method sends v to S3 as VersionId and leaves it out without v', async ({ method, Command, status }) => {
+  send.mockImplementation(async () => {
+    if (method === 'HEAD') {
+      return { ContentLength: 4, $metadata: { httpStatusCode: 200 } }
+    }
+
+    return partialContent()
+  })
+  const options = { method, headers: { range: 'bytes=0-3' } }
+
+  expect((await get(`${ASSETS}/data.fgb?v=fgb-version`, options)).statusCode).toBe(status)
+  expect((await get(`${ASSETS}/data.fgb`, options)).statusCode).toBe(status)
+
+  const [[versioned], [latest]] = send.mock.calls
+  expect(versioned).toBeInstanceOf(Command)
+  expect(versioned.input).toStrictEqual({ Bucket: 'datasets', Key: `${LOCAL}/data.fgb`, VersionId: 'fgb-version', Range: 'bytes=0-3' })
+  expect(latest).toBeInstanceOf(Command)
+  expect(latest.input).toStrictEqual({ Bucket: 'datasets', Key: `${LOCAL}/data.fgb`, Range: 'bytes=0-3' })
+})
+
+test('accepts a v of 1,024 bytes', async () => {
+  send.mockResolvedValue(partialContent())
+  const version = 'a'.repeat(1024)
+
+  const response = await get(`${ASSETS}/data.tif?v=${version}`, { headers: { range: 'bytes=0-3' } })
+
+  expect(response.statusCode).toBe(206)
+  expect(send.mock.calls[0][0].input.VersionId).toBe(version)
+})
+
+test.each(['GET', 'HEAD'])('%s returns 404 for a missing pinned version without reading the latest object', async method => {
+  send.mockRejectedValue(s3Error(404))
+
+  const response = await get(`${ASSETS}/data.tif?v=unknown-version`, { method, headers: { range: 'bytes=0-3' } })
+
+  expect(response.statusCode).toBe(404)
+  expect(response.payload).toBe('')
+  expect(send).toHaveBeenCalledOnce()
+  expect(send.mock.calls[0][0].input.VersionId).toBe('unknown-version')
+})
+
+test.each(['GET', 'HEAD'])('%s returns 502 for S3 request errors with or without a version', async method => {
+  const error = Object.assign(s3Error(400), { name: 'AuthorizationHeaderMalformed' })
+  send.mockRejectedValue(error)
+
+  for (const query of ['', '?v=tif-version']) {
+    const response = await get(`${ASSETS}/data.tif${query}`, { method, headers: { range: 'bytes=0-3' } })
+
+    expect(response.statusCode).toBe(502)
+    expect(response.result).toEqual(method === 'HEAD' ? null : { error: 'Dataset service unavailable' })
+  }
+
+  expect(send).toHaveBeenCalledTimes(2)
+  expect(send.mock.calls.map(([command]) => command.input.VersionId)).toEqual([undefined, 'tif-version'])
+  expect(logger.error).toHaveBeenCalledTimes(2)
+  expect(logger.error.mock.calls[0][0].err).toBe(error)
 })
 
 test('cancels S3 when the browser disconnects before response headers arrive', async () => {
@@ -184,7 +432,7 @@ test('cancels S3 when the browser disconnects before response headers arrive', a
     })
   })
 
-  const loading = get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=0-3' } })
+  const loading = get(`${ASSETS}/data.tif`, { headers: { range: 'bytes=0-3' } })
   await started.promise
   const { abortSignal } = send.mock.calls[0][1]
   expect(abortSignal.aborted).toBe(false)
@@ -213,7 +461,7 @@ test('cancels S3 and closes the body when the browser disconnects during streami
     $metadata: { httpStatusCode: 206 }
   })
 
-  const loading = get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=0-3' } })
+  const loading = get(`${ASSETS}/data.tif?v=tif-version`, { headers: { range: 'bytes=0-3' } })
   await streaming.promise
   body.write(Buffer.from('01'))
   const { abortSignal } = send.mock.calls[0][1]
@@ -233,14 +481,9 @@ test.each([
   { range: 'bytes=8-100', contentRange: 'bytes 8-9/10', body: '89' },
   { range: 'bytes=0-99999999999', contentRange: 'bytes 0-9/10', body: '0123456789' }
 ])('streams $range, allowing large requests and clipping at EOF', async ({ range, contentRange, body }) => {
-  send.mockResolvedValue({
-    Body: Readable.from([Buffer.from(body)], { objectMode: false }),
-    ContentLength: body.length,
-    ContentRange: contentRange,
-    $metadata: { httpStatusCode: 206 }
-  })
+  send.mockResolvedValue(partialContent(body, contentRange))
 
-  const response = await get(`/api/datasets/${LOCAL}/assets/data.fgb`, { headers: { range } })
+  const response = await get(`${ASSETS}/data.fgb`, { headers: { range } })
 
   expect(response.statusCode).toBe(206)
   expect(response.payload).toBe(body)
@@ -258,7 +501,7 @@ test('aborts a full response without reading or forwarding its body', async () =
     $metadata: { httpStatusCode: 200 }
   })
 
-  const response = await get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=0-3' } })
+  const response = await get(`${ASSETS}/data.tif`, { headers: { range: 'bytes=0-3' } })
 
   expect(response.statusCode).toBe(502)
   expect(response.result).toEqual({ error: 'Dataset service unavailable' })
@@ -268,56 +511,30 @@ test('aborts a full response without reading or forwarding its body', async () =
   expect(send).toHaveBeenCalledOnce()
 })
 
-test('does not hide S3 access failures as missing optional files', async () => {
-  send.mockRejectedValue(Object.assign(new Error('Access denied'), { $metadata: { httpStatusCode: 403 } }))
-
-  expect((await get(`/api/datasets/${LOCAL}`)).statusCode).toBe(502)
-  expect((await get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=0-3' } })).statusCode).toBe(502)
-})
-
 test.each([
-  { case: 'missing', style: undefined },
-  { case: 'empty', style: '' },
-  { case: 'invalid', style: '{ not json' }
-])('a $case style does not prevent valid metadata from loading', async ({ style }) => {
-  send.mockImplementation(async command => {
-    if (command instanceof GetObjectCommand) {
-      if (style === undefined) {
-        throw Object.assign(new Error('Not found'), { $metadata: { httpStatusCode: 404 } })
-      }
-      return { Body: { transformToString: async () => style } }
-    }
-    return { Contents: [{ Key: `${LOCAL}/data.tif` }, { Key: `${LOCAL}/data.fgb` }] }
-  })
+  { failure: 'access failures', error: s3Error(403) },
+  { failure: 'a missing bucket', error: Object.assign(s3Error(404), { name: 'NoSuchBucket' }) }
+])('does not hide $failure as missing files', async ({ error }) => {
+  send.mockRejectedValue(error)
 
-  const metadata = await get(`/api/datasets/${LOCAL}`)
-  expect(metadata.statusCode).toBe(200)
-  expect(metadata.result.owner).toBe('Natural England')
-  expect(metadata.result.display).toEqual({
-    styleConfig: null,
-    assets: {
-      cog: `/api/datasets/${LOCAL}/assets/data.tif`,
-      fgb: `/api/datasets/${LOCAL}/assets/data.fgb`
-    }
-  })
+  expect((await get(LAYER)).statusCode).toBe(502)
+  expect((await get(`${ASSETS}/data.tif`, { headers: { range: 'bytes=0-3' } })).statusCode).toBe(502)
+  expect((await get(`${ASSETS}/data.tif?v=tif-version`, { headers: { range: 'bytes=0-3' } })).statusCode).toBe(502)
 })
 
-test.each([404, 416])('passes S3 status %s through without its error body', async status => {
-  send.mockRejectedValueOnce(Object.assign(new Error('S3 error'), { $metadata: { httpStatusCode: status } }))
+test.each([404, 416])('passes S3 status %i through without its error body', async status => {
+  send.mockRejectedValueOnce(s3Error(status))
 
-  const response = await get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=100-200' } })
+  const response = await get(`${ASSETS}/data.tif`, { headers: { range: 'bytes=100-200' } })
 
   expect(response.statusCode).toBe(status)
   expect(response.payload).toBe('')
 })
 
 test('preserves the size from an S3 416 without another request', async () => {
-  send.mockRejectedValueOnce(Object.assign(new Error('Invalid range'), {
-    $metadata: { httpStatusCode: 416 },
-    $response: { headers: { 'content-range': 'bytes */10' } }
-  }))
+  send.mockRejectedValueOnce(Object.assign(s3Error(416), { $response: { headers: { 'content-range': 'bytes */10' } } }))
 
-  const response = await get(`/api/datasets/${LOCAL}/assets/data.fgb`, { headers: { range: 'bytes=100-200' } })
+  const response = await get(`${ASSETS}/data.fgb?v=fgb-version`, { headers: { range: 'bytes=100-200' } })
 
   expect(response.statusCode).toBe(416)
   expect(response.headers['content-range']).toBe('bytes */10')
@@ -329,7 +546,7 @@ test.each([undefined, 'bytes=0-3'])('HEAD with range %j returns metadata without
   const size = range ? 4 : 10
   send.mockResolvedValue({ ContentLength: size, $metadata: { httpStatusCode: 200 } })
 
-  const response = await get(`/api/datasets/${LOCAL}/assets/data.tif`, {
+  const response = await get(`${ASSETS}/data.tif`, {
     method: 'HEAD',
     headers: range === undefined ? {} : { range }
   })

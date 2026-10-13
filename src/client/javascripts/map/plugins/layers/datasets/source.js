@@ -22,10 +22,6 @@ export const DEFAULT_OPACITY = 0.5
  * @returns {DatasetSource}
  */
 export function sourceFor (styleConfig, assets) {
-  if (!styleConfig) {
-    throw new Error('Missing style config')
-  }
-
   if (!styleConfig.themes?.length) {
     throw new Error('Missing style themes')
   }

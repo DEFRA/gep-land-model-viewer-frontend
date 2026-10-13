@@ -2,34 +2,44 @@ import { loadDataset, loadDatasetMetadata, loadCatalogue } from './api.js'
 
 afterEach(() => vi.unstubAllGlobals())
 
-function stubDetail (detail) {
-  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => detail })))
+function stubResponse (body) {
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => body })))
 }
 
-test('returns only the id and map source from the detail request', async () => {
-  stubDetail({ id: 'dataset', title: 'Dataset', owner: 'Natural England', display: { assets: { cog: '/a.tif' }, styleConfig: { themes: [{ band: 1 }] } } })
+test('builds the map source from the dataset layer response', async () => {
+  const styleConfig = { themes: [{ band: 1 }] }
+  const assets = {
+    cog: '/api/datasets/dataset/layer/assets/data.tif?v=3%2FL4kqtJlcpXroDTDmJ%2BrmSpXd3dIbrHY',
+    fgb: '/api/datasets/dataset/layer/assets/data.fgb?v=fgb-version'
+  }
+  stubResponse({ manifestVersion: 'manifest-version', generatedAt: '2026-10-08T14:52:12.304Z', styleConfig, assets })
 
   const dataset = await loadDataset('dataset')
 
-  expect(dataset).toEqual({ id: 'dataset', source: expect.objectContaining({ type: 'cog' }) })
+  expect(dataset).toEqual({
+    id: 'dataset',
+    source: expect.objectContaining({ type: 'fgb', url: assets.fgb, styleConfig, overview: { type: 'cog', url: assets.cog } })
+  })
   expect(fetch).toHaveBeenCalledOnce()
+  expect(fetch).toHaveBeenCalledWith('/api/datasets/dataset/layer', expect.any(Object))
+})
+
+test('rejects map loading when the layer request fails', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })))
+
+  await expect(loadDataset('dataset')).rejects.toThrow('Dataset request failed (500)')
+})
+
+test('returns the metadata response body', async () => {
+  const metadata = { id: 'dataset', title: 'Dataset', owner: 'Natural England' }
+  stubResponse(metadata)
+
+  await expect(loadDatasetMetadata('dataset')).resolves.toEqual(metadata)
   expect(fetch).toHaveBeenCalledWith('/api/datasets/dataset', expect.any(Object))
 })
 
-test('rejects map loading when the style config is missing', async () => {
-  stubDetail({ id: 'dataset', display: { assets: { cog: '/a.tif' }, styleConfig: null } })
-
-  await expect(loadDataset('dataset')).rejects.toThrow('Missing style config')
-})
-
-test('returns metadata without validating map assets or style', async () => {
-  stubDetail({ id: 'dataset', owner: 'Natural England', display: { assets: {}, styleConfig: null } })
-
-  await expect(loadDatasetMetadata('dataset')).resolves.toEqual({ id: 'dataset', owner: 'Natural England' })
-})
-
 test('asks for JSON and passes the abort signal', async () => {
-  stubDetail({ results: [], total: 0 })
+  stubResponse({ results: [], total: 0 })
   const signal = new AbortController().signal
 
   await loadCatalogue('peat', signal)

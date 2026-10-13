@@ -95,14 +95,14 @@ this project and the `gep-find-geo-data-frontend`.
 
 ### Local operational datasets
 
-Docker Compose starts Garage and uploads `compose/garage/data/` to the private `datasets` bucket. The backend serves files through `/api/datasets/<uuid>/assets/<filename>`.
+Docker Compose starts Garage and syncs `compose/garage/data/` to the private `datasets` bucket. The backend serves files through `/api/datasets/<uuid>/layer/assets/<filename>`.
 
 COGs and FGBs are in the .gitignore to avoid them being committed, there
 exists style configs for each of the test datasets matching what is populated
 in the `DEFRA-GEP-metadata-management` GeoNetwork docker compose.
 
 You can download cog/fgbs for testing locally and place them in the relevant
-folder, to upload changed files again:
+folder. Re-run the import to upload new or changed files and remove bucket objects whose local files have been deleted:
 
 ```bash
 docker compose run --rm garage-import-test-data
