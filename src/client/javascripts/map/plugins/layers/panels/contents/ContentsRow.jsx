@@ -33,7 +33,7 @@ export function ContentsRow ({
   })
   const menuItems = [
     ...moveMenuItems(index, total, position => onMove(entry, position)),
-    { id: 'edit', label: 'Edit layer', disabled: entry.kind !== 'dataset', handleSelect: () => onEdit(entry, actionsRef.current) }
+    { id: 'edit', label: 'Edit layer', disabled: !entry.editable, handleSelect: () => onEdit(entry, actionsRef.current) }
   ]
   const VisibilityIcon = entry.hidden ? EyeOff : Eye
   const className = [

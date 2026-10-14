@@ -1,4 +1,4 @@
-import { statusCodes } from '../../common/constants/status-codes.js'
+import { statusCodes } from '../../constants/status-codes.js'
 import { getAsset, getAssetMetadata, getS3ErrorStatus, isMissingObject } from './client.js'
 
 const RANGE = /^bytes=(\d+)-(\d+)$/
@@ -7,7 +7,7 @@ const RANGE = /^bytes=(\d+)-(\d+)$/
 
 /**
  * @typedef {object} AssetRequestRefs
- * @property {{ id: string, filename: string }} Params
+ * @property {{ filename: string }} Params
  * @property {{ v?: string }} Query
  * @property {{ range?: string }} Headers
  */

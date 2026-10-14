@@ -1,4 +1,4 @@
-import { SUMMARIES } from '../../summaries/config.js'
+import { GRID_SUMMARY } from '../../summaries/config.js'
 import { getLayerStyle } from '../../datasets/layer-style.js'
 import { swatchColours, visibleStyleDefinitions } from '../shared/swatch-helpers.js'
 
@@ -12,48 +12,27 @@ import { swatchColours, visibleStyleDefinitions } from '../shared/swatch-helpers
 /**
  * @typedef {object} ContentsEntry
  * @property {string} id
- * @property {'dataset' | 'summary'} kind
  * @property {string} label
  * @property {boolean} hidden
  * @property {boolean} loading
+ * @property {boolean} editable
  * @property {ContentsSwatch} swatch
  */
 
-/** @returns {ContentsEntry} */
-function datasetEntry (layer) {
+/** @returns {ContentsSwatch} */
+function styleSwatch (layer) {
   const { styleConfig } = getLayerStyle(layer)
   const definitions = visibleStyleDefinitions(styleConfig)
-  /** @type {ContentsSwatch} */
-  let swatch
 
   if (definitions.length === 1) {
-    swatch = { type: 'style', definition: definitions[0] }
-  } else if (styleConfig || !layer.source) {
-    swatch = { type: 'colours', colours: swatchColours(definitions) }
-  } else {
-    swatch = { type: 'wms' }
+    return { type: 'style', definition: definitions[0] }
   }
 
-  return {
-    id: layer.id,
-    kind: 'dataset',
-    label: layer.title,
-    hidden: Boolean(layer.hidden),
-    loading: !layer.ready,
-    swatch
+  if (styleConfig || !layer.source) {
+    return { type: 'colours', colours: swatchColours(definitions) }
   }
-}
 
-/** @returns {ContentsEntry} */
-function summaryEntry (summary, layer) {
-  return {
-    id: summary.id,
-    kind: 'summary',
-    label: summary.label,
-    hidden: Boolean(layer.hidden),
-    loading: !layer.ready,
-    swatch: summary.symbol
-  }
+  return { type: 'wms' }
 }
 
 /**
@@ -62,7 +41,16 @@ function summaryEntry (summary, layer) {
  */
 export function getContentsEntries (pluginState) {
   return pluginState.layers.map(layer => {
-    const summary = SUMMARIES.find(candidate => candidate.id === layer.id)
-    return summary ? summaryEntry(summary, layer) : datasetEntry(layer)
+    // TODO: remove when the grid is hosted and has a style.
+    const isGrid = layer.id === GRID_SUMMARY.id
+
+    return {
+      id: layer.id,
+      label: layer.title,
+      hidden: Boolean(layer.hidden),
+      loading: !layer.ready,
+      editable: !isGrid,
+      swatch: isGrid ? /** @type {ContentsSwatch} */ (GRID_SUMMARY.symbol) : styleSwatch(layer)
+    }
   })
 }

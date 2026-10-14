@@ -1,15 +1,21 @@
 import { parse, isValid } from 'date-fns'
 
+const YEAR = /^\d{4}$/
+
 /**
- * Parses the `dd/MM/yyyy` the land model API sends. Returns null for anything
- * else, so a bad or missing value reaches the panel as "no date" rather than an
- * Invalid Date.
+ * Parses the `dd/MM/yyyy` the land model API sends, or a `yyyy` year for
+ * annual products. Returns null for anything else, so a bad or missing value
+ * reaches the panel as "no date" rather than an Invalid Date.
  * @param {string | null | undefined} value
  * @returns {Date | null}
  */
 export function toDate (value) {
   if (!value) {
     return null
+  }
+
+  if (YEAR.test(value)) {
+    return new Date(Number.parseInt(value, 10), 0, 1)
   }
 
   const date = parse(value, 'dd/MM/yyyy', new Date(0))

@@ -51,7 +51,7 @@ let dispatch
 function contentsState ({ layers, ...overrides } = {}) {
   return {
     layers: (layers ?? [
-      { id: 'grid', ready: true },
+      { id: 'grid', title: 'Grid squares', ready: true },
       { id: 'flood', ready: true },
       { id: 'woodland', ready: true, hidden: true }
     ]).map(layer => ({ ...DATASETS.find(dataset => dataset.id === layer.id), ...layer })),
@@ -182,7 +182,7 @@ describe('ContentsPanel', () => {
     expect(view.queryByRole('button', { name: /^Edit colour for/ })).toBeNull()
   })
 
-  test('summary menus disable Edit layer', () => {
+  test('the grid menu disables Edit layer', () => {
     const view = renderPanel()
     fireEvent.click(view.getByRole('button', { name: 'Layer actions for Grid squares' }))
 

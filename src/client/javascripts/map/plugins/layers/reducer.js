@@ -1,4 +1,5 @@
 import { SUMMARIES } from './summaries/config.js'
+import { datasetLayerUrl } from './datasets/api.js'
 import { colourForDefinition, coloursEqual, getLayerTheme } from './datasets/layer-style.js'
 
 const INSPECTION_STATUS = /** @type {const} */ ({
@@ -23,8 +24,9 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @typedef {object} LayerState
  * @property {string} id
  * @property {boolean} ready
- * @property {string} [title] Dataset title, copied from its catalogue result
- * @property {import('./datasets/source.js').DatasetSource} [source] Dataset map source, set once loaded
+ * @property {string} [title] Catalogue title for a dataset, or a summary's label
+ * @property {string} [layerUrl] Layer route for a hosted layer
+ * @property {import('./datasets/source.js').DatasetSource} [source] Map source of a hosted layer, set once loaded
  * @property {number} [minZoom]
  * @property {string[]} [wmsLayerNames]
  * @property {boolean} [hidden]
@@ -40,13 +42,11 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @property {import('./inspection/index.js').Hit | null} hit
  */
 
-/** @typedef {import('./datasets/api.js').DatasetSummary & { error?: string }} CatalogueResult */
-
 /**
  * @typedef {object} CatalogueState
  * @property {string} query
  * @property {string[]} expandedThemes
- * @property {CatalogueResult[]} results
+ * @property {import('./datasets/api.js').DatasetSummary[]} results
  * @property {number} total
  * @property {number} attempt
  * @property {'loading' | 'ready' | 'error'} status
@@ -56,6 +56,7 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @typedef {object} LayersState
  * @property {CatalogueState} catalogue
  * @property {LayerState[]} layers Top-most entry first
+ * @property {string[]} failedLayerIds Layers whose last load failed, until they are added again
  * @property {{ id: string, colourKey?: string } | null} editingLayer
  * @property {InspectionState} inspection
  */
@@ -71,6 +72,7 @@ const initialInspectionState = {
 const initialState = {
   catalogue: { query: '', expandedThemes: [], results: [], total: 0, attempt: 0, status: 'loading' },
   layers: [],
+  failedLayerIds: [],
   editingLayer: null,
   inspection: initialInspectionState
 }
@@ -137,22 +139,17 @@ const setDatasetThemeExpanded = (state, { datasetTheme, expanded }) => {
   }
 }
 
-function setResultError (state, id, error) {
-  if (!state.catalogue.results.some(result => result.id === id && result.error !== error)) {
+function setLayerFailed (state, id, failed) {
+  if (state.failedLayerIds.includes(id) === failed) {
     return state
   }
 
-  const results = state.catalogue.results.map(result => {
-    if (result.id !== id || result.error === error) {
-      return result
-    }
-
-    const rest = { ...result }
-    delete rest.error
-    return error ? { ...rest, error } : rest
-  })
-
-  return { ...state, catalogue: { ...state.catalogue, results } }
+  return {
+    ...state,
+    failedLayerIds: failed
+      ? [...state.failedLayerIds, id]
+      : state.failedLayerIds.filter(candidate => candidate !== id)
+  }
 }
 
 const setEditingLayer = (state, editingLayer) => state.editingLayer === editingLayer ? state : { ...state, editingLayer }
@@ -163,12 +160,12 @@ const datasetLoading = (state, { id, title }) => {
   }
 
   return {
-    ...setResultError(state, id, undefined),
-    layers: [{ id, title, ready: false }, ...state.layers]
+    ...setLayerFailed(state, id, false),
+    layers: [{ id, title, layerUrl: datasetLayerUrl(id), ready: false }, ...state.layers]
   }
 }
 
-const datasetLoaded = (state, { id, ...metadata }) => updateLayer(state, id, (layer) => {
+const layerLoaded = (state, { id, ...metadata }) => updateLayer(state, id, (layer) => {
   if (layer.ready) {
     return layer
   }
@@ -193,7 +190,7 @@ const removeLayer = (state, { id }) => {
   }
 }
 
-const datasetFailed = (state, { id, error }) => setResultError(removeLayer(state, { id }), id, error)
+const layerFailed = (state, { id }) => setLayerFailed(removeLayer(state, { id }), id, true)
 
 const setSummary = (state, { id, enabled }) => {
   if (!enabled) {
@@ -203,15 +200,17 @@ const setSummary = (state, { id, enabled }) => {
   const otherSummaryIds = new Set(SUMMARIES
     .filter(summary => summary.id !== id)
     .map(summary => summary.id))
-  const layers = state.layers.filter(layer => !otherSummaryIds.has(layer.id))
+  const current = setLayerFailed(state, id, false)
+  const layers = current.layers.filter(layer => !otherSummaryIds.has(layer.id))
 
   if (layers.some(layer => layer.id === id)) {
-    return layers.length === state.layers.length ? state : { ...state, layers }
+    return layers.length === current.layers.length ? current : { ...current, layers }
   }
 
+  const { label, layerUrl } = SUMMARIES.find(summary => summary.id === id)
   return {
-    ...state,
-    layers: [{ id, ready: true }, ...layers]
+    ...current,
+    layers: [{ id, title: label, ...(layerUrl && { layerUrl }), ready: !layerUrl }, ...layers]
   }
 }
 
@@ -229,7 +228,7 @@ const setLayerHidden = (state, { id, hidden }) => updateLayer(state, id, (layer)
   return updatedLayer
 })
 
-// An undefined value removes an override when the editor restores a dataset default.
+// An undefined value removes an override when the editor restores a layer default.
 const setLayerOpacity = (state, { id, opacity }) => updateLayer(state, id, (layer) => {
   if (layer.opacity === opacity) {
     return layer
@@ -461,8 +460,8 @@ const actions = {
   SET_DATASET_THEME_EXPANDED: setDatasetThemeExpanded,
   SET_EDITING_LAYER: setEditingLayer,
   DATASET_LOADING: datasetLoading,
-  DATASET_LOADED: datasetLoaded,
-  DATASET_FAILED: datasetFailed,
+  LAYER_LOADED: layerLoaded,
+  LAYER_FAILED: layerFailed,
   REMOVE_LAYER: removeLayer,
   SET_SUMMARY: setSummary,
   SET_LAYER_HIDDEN: setLayerHidden,
