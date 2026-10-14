@@ -76,7 +76,7 @@ vi.mock('./layers/fgb-lookup.js', () => ({
 
 const { getVisibleWmsLayers } = await import('./layers/wms.js')
 const { queryFgbNearPoint } = await import('./layers/fgb-lookup.js')
-const { createDatasetHits } = await import('./hits.jsx')
+const { createLayerHits } = await import('./hits.jsx')
 
 const COORDS = [418700, 385100]
 const SIGNAL = new AbortController().signal
@@ -162,7 +162,7 @@ function createOlMap ({ vectorHits = [], layers = [], zoom = 2 } = {}) {
 }
 
 function getHits (map) {
-  return createDatasetHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true }))).getHits(COORDS, { signal: SIGNAL })
+  return createLayerHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true }))).getHits(COORDS, { signal: SIGNAL })
 }
 
 function highlightedFeatures (map) {
@@ -178,7 +178,7 @@ async function renderHitInInfoPanel (map) {
   return render(h(InfoPanelContext.Provider, { value: { findGeoDataUrl: FIND_GEO_DATA_URL } }, hit.render(details)))
 }
 
-describe('#createDatasetHits', () => {
+describe('#createLayerHits', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
     getVisibleWmsLayers.mockReset()
@@ -208,7 +208,7 @@ describe('#createDatasetHits', () => {
     }
     const map = createOlMap({ layers: type === 'cog' ? [raster] : [raster, stubLayer('gep-themed')] })
     let state = { id: dataset.id, ready: true, themeBand: 1 }
-    const source = createDatasetHits(map, () => [{ ...dataset, ...state }])
+    const source = createLayerHits(map, () => [{ ...dataset, ...state }])
     const [cropHit] = await source.getHits(COORDS, { signal: SIGNAL })
     await expect(cropHit.loadDetails({ signal: SIGNAL })).resolves.toEqual([{ lucode: 'AC44' }])
 
@@ -233,7 +233,7 @@ describe('#createDatasetHits', () => {
       ]
     })
     let state = { id: 'themed', ready: true, themeBand: 1 }
-    const source = createDatasetHits(map, () => [{ ...THEMED_DATASET, ...state }])
+    const source = createLayerHits(map, () => [{ ...THEMED_DATASET, ...state }])
     const [cropHit] = await source.getHits(COORDS, { signal: SIGNAL })
     await expect(cropHit.loadDetails({ signal: SIGNAL })).resolves.toEqual([potato])
 
@@ -256,7 +256,7 @@ describe('#createDatasetHits', () => {
     }
     const map = createOlMap({ layers: [raster, stubLayer('gep-themed')] })
     let state = { id: 'themed', ready: true, themeBand: 1 }
-    const source = createDatasetHits(map, () => [{ ...dataset, ...state }])
+    const source = createLayerHits(map, () => [{ ...dataset, ...state }])
     const [hit] = await source.getHits(COORDS, { signal: SIGNAL })
     const lookup = Promise.withResolvers()
     queryFgbNearPoint.mockReturnValueOnce(lookup.promise)
@@ -301,6 +301,33 @@ describe('#createDatasetHits', () => {
     expect(highlightedFeatures(map)).toHaveLength(2)
   })
 
+  test('a layer with its own hit options labels, builds and renders its hits', async () => {
+    const layer = stubLayer('gep-woodland')
+    const map = createOlMap({
+      vectorHits: [
+        { feature: stubFeature({ geometry: {}, id: 1 }), layer }
+      ]
+    })
+    const hitOptions = {
+      label: () => 'Parcel',
+      toDetails: ([properties]) => ({ parcel: properties.id }),
+      render: (details, layerState) => h('p', null, `${layerState.title} ${details.parcel}`)
+    }
+    const source = createLayerHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true })), { woodland: hitOptions })
+
+    const hits = await source.getHits(COORDS, { signal: SIGNAL })
+    const details = await hits[0].loadDetails({ signal: SIGNAL })
+    hits[0].select()
+
+    expect(hits).toHaveLength(1)
+    expect(hits[0].label).toBe('Parcel')
+    expect(hits[0].panelTitle).toBeUndefined()
+    expect(details).toEqual({ parcel: 1 })
+    expect(render(hits[0].render(details)).container.textContent).toBe('Ancient Woodland 1')
+    expect(highlightedFeatures(map)).toHaveLength(1)
+    source.dispose()
+  })
+
   test('a standalone source-value COG classifies its pixel and reports the class label', async () => {
     const layer = {
       ...stubLayer('gep-peat'),
@@ -341,7 +368,7 @@ describe('#createDatasetHits', () => {
     }
     const map = createOlMap({ layers: [layer] })
 
-    const hits = await createDatasetHits(map, () => [{ ...dataset, ready: true }]).getHits(COORDS, { signal: SIGNAL })
+    const hits = await createLayerHits(map, () => [{ ...dataset, ready: true }]).getHits(COORDS, { signal: SIGNAL })
 
     expect(hits).toHaveLength(1)
     await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ Classification: 'Up to 20cm' }])
@@ -584,7 +611,7 @@ describe('#createDatasetHits', () => {
     const feature = stubFeature({ geometry: {} })
     const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland') }] })
 
-    const source = createDatasetHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true })))
+    const source = createLayerHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true })))
     const hits = await source.getHits(COORDS, { signal: SIGNAL })
     hits[0].select()
     source.clearSelection()
@@ -605,7 +632,7 @@ describe('#createDatasetHits', () => {
 
   test('dispose clears and removes its highlight layer', () => {
     const map = createOlMap()
-    const source = createDatasetHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true })))
+    const source = createLayerHits(map, () => datasets.map(dataset => ({ ...dataset, ready: true })))
     const highlightLayer = map.addLayer.mock.calls[0][0]
 
     source.dispose()

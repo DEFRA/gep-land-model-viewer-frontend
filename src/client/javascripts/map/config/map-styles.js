@@ -1,11 +1,6 @@
 export const OS_ATTRIBUTION = `© Crown copyright and database rights ${new Date().getFullYear()} OS AC0000805307`
 export const APGB_ATTRIBUTION = `© Getmapping Plc and Bluesky International Limited ${new Date().getFullYear()}`
 
-const OS_NGD_COLLECTION_URL = '/os/ngd/collections/ngd-base'
-
-// The tileset behind the NGD vector styles, and the only one carrying lnd_fts_land
-export const OS_NGD_TILESET_URL = `${OS_NGD_COLLECTION_URL}/tiles/27700`
-
 export const mapStyles = [
   {
     id: 'os-outdoor-ngd',
@@ -59,10 +54,3 @@ export const mapStyles = [
     appColorScheme: 'light'
   }
 ]
-
-/**
- * Styles whose basemap draws from the NGD tileset, to test if the source can be reused.
- */
-export const OS_NGD_STYLE_IDS = mapStyles
-  .filter((style) => style.url.startsWith(OS_NGD_COLLECTION_URL))
-  .map((style) => style.id)

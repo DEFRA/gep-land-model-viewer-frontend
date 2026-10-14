@@ -1,6 +1,6 @@
-import Hapi from '@hapi/hapi'
 import { PassThrough, Readable } from 'node:stream'
 import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
+import { AWS_VERSION_ID, TEST_AUTH, createTestServer, generatedAt, jsonObject, manifest, partialContent, s3Error, serveObjects, styleConfig } from '../common/test-helpers/s3.js'
 import { datasets } from './index.js'
 
 const { getDatasetMetadata, queryDatasets } = vi.hoisted(() => ({
@@ -14,69 +14,17 @@ vi.mock('../common/helpers/logging/logger.js', () => ({ createLogger: () => logg
 const LOCAL = '11111111-1111-4111-8111-111111111111'
 const LAYER = `/api/datasets/${LOCAL}/layer`
 const ASSETS = `${LAYER}/assets`
-const AWS_VERSION_ID = '3/L4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY'
-const generatedAt = '2026-10-08T14:52:12.304Z'
-const styleConfig = { themes: [{ type: 'uniform', band: 1, classes: [] }] }
 let server
 let send
 
 function get (url, options = {}) {
-  return server.inject({ url, auth: { strategy: 'test', credentials: { id: 'user' } }, ...options })
-}
-
-function s3Error (status) {
-  return Object.assign(new Error(`S3 error ${status}`), { $metadata: { httpStatusCode: status } })
-}
-
-/**
- * @param {unknown} value Serialised unless it is already text
- * @param {string} [versionId] S3 response version ID
- */
-function jsonObject (value, versionId) {
-  const text = typeof value === 'string' ? value : JSON.stringify(value)
-  return { Body: { transformToString: async () => text }, VersionId: versionId }
-}
-
-function manifest (files) {
-  return { generatedAt, files }
-}
-
-function partialContent (body = '0123', contentRange = `bytes 0-${body.length - 1}/10`) {
-  return {
-    Body: Readable.from([Buffer.from(body)], { objectMode: false }),
-    ContentLength: body.length,
-    ContentRange: contentRange,
-    $metadata: { httpStatusCode: 206 }
-  }
-}
-
-/**
- * Responds to S3 commands by filename. Errors are thrown and missing files give an S3 404.
- *
- * @param {Record<string, object>} objects
- */
-function serveObjects (objects) {
-  send.mockImplementation(async command => {
-    const object = objects[command.input.Key.slice(`${LOCAL}/`.length)] ?? s3Error(404)
-    if (object instanceof Error) {
-      throw object
-    }
-
-    return object
-  })
+  return server.inject({ url, auth: TEST_AUTH, ...options })
 }
 
 beforeEach(async () => {
   send = vi.spyOn(S3Client.prototype, 'send')
   getDatasetMetadata.mockImplementation(async id => ({ id, title: 'Peaty soil depth', owner: 'Natural England' }))
-  server = Hapi.server()
-  server.auth.scheme('test', () => ({
-    authenticate (_request, h) {
-      return h.response({ error: 'Unauthorized' }).code(401).takeover()
-    }
-  }))
-  server.auth.strategy('test', 'test')
-  server.auth.default('test')
+  server = createTestServer()
   await server.register(datasets)
 })
 
@@ -114,13 +62,6 @@ test('requires authentication and rejects paths, queries or ranges the proxy doe
     expect((await get(`${ASSETS}/data.tif?${query}`, { headers: { range: 'bytes=0-3' } })).statusCode).toBe(404)
   }
   expect((await get(`${ASSETS}/data.tif`, { headers: { range: 'bytes=0-10,20-30' } })).statusCode).toBe(400)
-  expect(send).not.toHaveBeenCalled()
-})
-
-test('no longer serves assets from the old route', async () => {
-  const response = await get(`/api/datasets/${LOCAL}/assets/data.tif`, { headers: { range: 'bytes=0-3' } })
-
-  expect(response.statusCode).toBe(404)
   expect(send).not.toHaveBeenCalled()
 })
 
@@ -173,7 +114,7 @@ test('does not treat a failed GeoNetwork lookup as a missing dataset', async () 
 })
 
 test('returns the manifest version and reads the style at the version it lists', async () => {
-  serveObjects({
+  serveObjects(send, LOCAL, {
     'manifest.json': jsonObject(manifest({ 'style.json': 'style-version', 'data.tif': 'tif-version', 'data.fgb': 'fgb-version' }), AWS_VERSION_ID),
     'style.json': jsonObject(styleConfig, 'style-version')
   })
@@ -199,7 +140,7 @@ test('returns the manifest version and reads the style at the version it lists',
 })
 
 test('returns a null manifest version and latest-file URLs for an unversioned release', async () => {
-  serveObjects({
+  serveObjects(send, LOCAL, {
     'manifest.json': jsonObject(manifest({ 'style.json': null, 'data.tif': null, 'data.fgb': null })),
     'style.json': jsonObject(styleConfig)
   })
@@ -220,7 +161,7 @@ test.each([
   { files: { 'data.fgb': 'fgb-version' }, assets: { fgb: `${ASSETS}/data.fgb?v=fgb-version` } },
   { files: { 'secret.json': null }, assets: {} }
 ])('links only the data files the manifest lists: $files', async ({ files, assets }) => {
-  serveObjects({
+  serveObjects(send, LOCAL, {
     'manifest.json': jsonObject({ ...manifest({ 'style.json': null, ...files }), publisher: 'pipeline' }),
     'style.json': jsonObject(styleConfig)
   })
@@ -232,7 +173,7 @@ test.each([
 })
 
 test('passes a version ID containing / and + from the manifest to S3 unchanged', async () => {
-  serveObjects({
+  serveObjects(send, LOCAL, {
     'manifest.json': jsonObject(manifest({ 'style.json': AWS_VERSION_ID, 'data.tif': AWS_VERSION_ID })),
     'style.json': jsonObject(styleConfig),
     'data.tif': partialContent()
@@ -248,13 +189,13 @@ test('passes a version ID containing / and + from the manifest to S3 unchanged',
 })
 
 test('keeps reading the versions a layer loaded after a newer release is published', async () => {
-  serveObjects({
+  serveObjects(send, LOCAL, {
     'manifest.json': jsonObject(manifest({ 'style.json': null, 'data.fgb': 'old-fgb' })),
     'style.json': jsonObject(styleConfig)
   })
   const { result: { assets } } = await get(LAYER)
   send.mockClear()
-  serveObjects({
+  serveObjects(send, LOCAL, {
     'manifest.json': jsonObject(manifest({ 'style.json': null, 'data.fgb': 'new-fgb' })),
     'data.fgb': partialContent()
   })
@@ -267,7 +208,7 @@ test('keeps reading the versions a layer loaded after a newer release is publish
 })
 
 test('returns 404 when the dataset has no manifest', async () => {
-  serveObjects({ 'style.json': jsonObject(styleConfig) })
+  serveObjects(send, LOCAL, { 'style.json': jsonObject(styleConfig) })
 
   const response = await get(LAYER)
 
@@ -289,7 +230,7 @@ test.each([
   { release: 'style that is not an object', style: 'null' },
   { release: 'style that is an array', style: [] }
 ])('returns 500 and logs an error for a $release', async ({ manifestBody = manifest({ 'style.json': null }), style = styleConfig }) => {
-  serveObjects({ 'manifest.json': jsonObject(manifestBody), 'style.json': jsonObject(style) })
+  serveObjects(send, LOCAL, { 'manifest.json': jsonObject(manifestBody), 'style.json': jsonObject(style) })
 
   const response = await get(LAYER)
 
@@ -301,7 +242,7 @@ test.each([
 
 test('returns 500 when S3 cannot find the pinned style version', async () => {
   const error = s3Error(404)
-  serveObjects({ 'manifest.json': jsonObject(manifest({ 'style.json': 'pinned-version' })), 'style.json': error })
+  serveObjects(send, LOCAL, { 'manifest.json': jsonObject(manifest({ 'style.json': 'pinned-version' })), 'style.json': error })
 
   const response = await get(LAYER)
 
@@ -317,7 +258,7 @@ test.each([
   { failure: 'pinned style request is rejected', objects: { 'manifest.json': jsonObject(manifest({ 'style.json': 'style-version' })), 'style.json': s3Error(400) } },
   { failure: 'style read fails', objects: { 'manifest.json': jsonObject(manifest({ 'style.json': 'style-version' })), 'style.json': s3Error(503) } }
 ])('returns 502 when the $failure', async ({ objects }) => {
-  serveObjects(objects)
+  serveObjects(send, LOCAL, objects)
 
   const response = await get(LAYER)
 

@@ -1,7 +1,4 @@
-import { FEATURE_VISIBLE_MIN_ZOOM } from './feature/constants.js'
-import { DEFRA_GREEN_DARK, GOVUK_DARK_GREY, withAlpha } from '../../../config/colours.js'
-
-const FEATURE_STROKE_OPACITY = 0.6
+import { GOVUK_DARK_GREY } from '../../../config/colours.js'
 
 export const GRID_SUMMARY = {
   id: 'grid',
@@ -19,13 +16,7 @@ export const FEATURE_SUMMARY = {
   id: 'features',
   label: 'OS features',
   description: 'Real-world boundaries derived from Ordnance Survey.',
-  minZoom: FEATURE_VISIBLE_MIN_ZOOM,
-  symbol: {
-    type: 'line',
-    colour: withAlpha(DEFRA_GREEN_DARK, FEATURE_STROKE_OPACITY),
-    width: 1.5,
-    directions: ['bottom']
-  }
+  layerUrl: '/api/land-model/parcels/layer'
 }
 
 export const SUMMARIES = [

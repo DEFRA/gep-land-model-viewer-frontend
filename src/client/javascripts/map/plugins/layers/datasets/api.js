@@ -22,7 +22,7 @@ import { sourceFor } from './source.js'
  * @property {string | null} creationDate
  */
 /**
- * @typedef {object} DatasetLayer
+ * @typedef {object} LayerResponse
  * @property {string | null} manifestVersion S3 version ID of manifest.json, null when unavailable
  * @property {string} generatedAt When the pipeline published the release
  * @property {{ themes: object[] }} styleConfig
@@ -32,7 +32,7 @@ import { sourceFor } from './source.js'
 async function getJson (url, signal) {
   const response = await authenticatedFetch(url, { signal })
   if (!response.ok) {
-    throw new Error(`Dataset request failed (${response.status})`)
+    throw new Error(`Request failed (${response.status})`)
   }
 
   return response.json()
@@ -48,11 +48,21 @@ export function loadCatalogue (query, signal) {
   return getJson(`/api/datasets?${params}`, signal)
 }
 
-/** @returns {Promise<{ id: string, source: import('./source.js').DatasetSource }>} */
-export async function loadDataset (id, signal) {
-  /** @type {DatasetLayer} */
-  const { styleConfig, assets } = await getJson(`/api/datasets/${encodeURIComponent(id)}/layer`, signal)
+/**
+ * @param {string} id
+ * @param {string} url
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<{ id: string, source: import('./source.js').DatasetSource }>}
+ */
+export async function loadLayer (id, url, signal) {
+  /** @type {LayerResponse} */
+  const { styleConfig, assets } = await getJson(url, signal)
   return { id, source: sourceFor(styleConfig, assets) }
+}
+
+/** @param {string} id */
+export function datasetLayerUrl (id) {
+  return `/api/datasets/${encodeURIComponent(id)}/layer`
 }
 
 /** @returns {Promise<DatasetMetadata>} */

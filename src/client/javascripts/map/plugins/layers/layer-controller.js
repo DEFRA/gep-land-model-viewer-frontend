@@ -15,7 +15,7 @@ function layerZIndexes (layers) {
   return new Map(layers.map(({ id }, index) => [id, step * (layers.length - index)]))
 }
 
-function datasetZoomFloor (layers, layerId) {
+function zoomFloor (layers, layerId) {
   if (layers.some(layer => layer.get('id') === overviewIdFor(layerId))) {
     return undefined
   }
@@ -24,8 +24,8 @@ function datasetZoomFloor (layers, layerId) {
   return minZoom !== undefined && minZoom !== -Infinity ? minZoom + 1 : undefined
 }
 
-function wmsLayerNames (dataset, layers) {
-  if (dataset.source.type !== 'wms') {
+function wmsLayerNames (layerConfig, layers) {
+  if (layerConfig.source.type !== 'wms') {
     return undefined
   }
 
@@ -33,29 +33,29 @@ function wmsLayerNames (dataset, layers) {
   return names ? names.split(',') : undefined
 }
 
-async function createDatasetLayer (dataset, map, style) {
-  const layerId = layerIdFor(dataset)
+async function createMapLayers (layerConfig, map, style) {
+  const layerId = layerIdFor(layerConfig)
 
-  switch (dataset.source.type) {
+  switch (layerConfig.source.type) {
     case 'cog':
-      return createCogLayer(dataset, layerId, style)
+      return createCogLayer(layerConfig, layerId, style)
     case 'fgb':
-      return createFlatGeobufLayer(dataset, layerId, map, style)
+      return createFlatGeobufLayer(layerConfig, layerId, map, style)
     case 'wms':
-      return createWmsLayer(dataset, layerId, style)
+      return createWmsLayer(layerConfig, layerId, style)
     default:
       return null
   }
 }
 
-function metadataFor (dataset, layers) {
-  const metadata = { source: dataset.source, minZoom: datasetZoomFloor(layers, layerIdFor(dataset)) }
-  const layerNames = wmsLayerNames(dataset, layers)
+function metadataFor (layerConfig, layers) {
+  const metadata = { source: layerConfig.source, minZoom: zoomFloor(layers, layerIdFor(layerConfig)) }
+  const layerNames = wmsLayerNames(layerConfig, layers)
 
   return layerNames ? { ...metadata, wmsLayerNames: layerNames } : metadata
 }
 
-function syncDatasetLayers (layers, layerState, zIndex) {
+function syncVisibilityAndOrder (layers, layerState, zIndex) {
   const visible = isLayerStateVisible(layerState)
 
   if (zIndex !== undefined) {
@@ -69,76 +69,76 @@ function syncDatasetLayers (layers, layerState, zIndex) {
   }
 }
 
-function syncDatasetStyle (loadedDataset, layerState) {
-  const { dataset, applyStyle, setOpacity } = loadedDataset
-  const { theme, overrides, styleConfig, opacity } = getLayerStyle({ ...layerState, source: dataset.source })
+function syncStyle (loadedLayer, layerState) {
+  const { layerConfig, applyStyle, setOpacity } = loadedLayer
+  const { theme, overrides, styleConfig, opacity } = getLayerStyle({ ...layerState, source: layerConfig.source })
 
-  if (theme && (theme !== loadedDataset.theme || overrides !== loadedDataset.overrides)) {
+  if (theme && (theme !== loadedLayer.theme || overrides !== loadedLayer.overrides)) {
     applyStyle(styleConfig)
   }
 
-  if (opacity !== loadedDataset.opacity) {
+  if (opacity !== loadedLayer.opacity) {
     setOpacity(opacity)
   }
 
-  loadedDataset.theme = theme
-  loadedDataset.overrides = overrides
-  loadedDataset.opacity = opacity
+  loadedLayer.theme = theme
+  loadedLayer.overrides = overrides
+  loadedLayer.opacity = opacity
 }
 
-export function createLayerController ({ map, summaries, loadDataset, onDatasetLoaded, onDatasetFailed }) {
-  const loadedDatasetsById = new Map()
-  const loadingDatasetIds = new Set()
+export function createLayerController ({ map, drawnLayers, loadLayer, onLayerLoaded, onLayerFailed }) {
+  const loadedLayersById = new Map()
+  const loadingLayerIds = new Set()
   let layerStatesById = new Map()
   let zIndexesById = new Map()
   let disposed = false
   const controller = new AbortController()
 
-  function removeDatasetLayers (layers) {
+  function removeMapLayers (layers) {
     for (const layer of layers) {
       map.removeLayer(layer)
     }
   }
 
-  function notifyDatasetLoaded (id, metadata, layerState) {
+  function notifyLoaded (id, metadata, layerState) {
     if (!layerState || layerState.ready) {
       return
     }
 
-    onDatasetLoaded(id, metadata)
+    onLayerLoaded(id, metadata)
   }
 
-  function notifyDatasetFailed (id, error) {
+  function notifyFailed (id, error) {
     if (disposed || !layerStatesById.has(id)) {
       return
     }
 
     console.error(`Failed to load data layer ${id}`, error)
-    onDatasetFailed(id)
+    onLayerFailed(id)
   }
 
-  async function ensureDatasetLoaded (id) {
-    if (loadedDatasetsById.has(id) || loadingDatasetIds.has(id)) {
+  async function ensureLoaded (id, layerUrl) {
+    if (loadedLayersById.has(id) || loadingLayerIds.has(id)) {
       return
     }
 
-    loadingDatasetIds.add(id)
+    loadingLayerIds.add(id)
 
     try {
-      const dataset = await loadDataset(id, controller.signal)
+      const layerConfig = await loadLayer(id, layerUrl, controller.signal)
       if (disposed) {
         return
       }
 
-      const style = getLayerStyle({ ...layerStatesById.get(id), source: dataset.source })
-      const datasetLayer = await createDatasetLayer(dataset, map, style)
-      if (!datasetLayer?.layers.length) {
+      const style = getLayerStyle({ ...layerStatesById.get(id), source: layerConfig.source })
+      const mapLayers = await createMapLayers(layerConfig, map, style)
+      if (!mapLayers?.layers.length) {
         throw new Error('No OpenLayers layers were created')
       }
 
-      const { layers } = datasetLayer
+      const { layers } = mapLayers
       if (disposed) {
-        removeDatasetLayers(layers)
+        removeMapLayers(layers)
         return
       }
 
@@ -150,35 +150,35 @@ export function createLayerController ({ map, summaries, loadDataset, onDatasetL
         map.addLayer(layer)
       }
 
-      const loadedDataset = {
-        dataset,
-        ...datasetLayer,
+      const loadedLayer = {
+        layerConfig,
+        ...mapLayers,
         theme: style.theme,
         overrides: style.overrides,
         opacity: style.opacity,
-        metadata: metadataFor(dataset, layers)
+        metadata: metadataFor(layerConfig, layers)
       }
-      loadedDatasetsById.set(id, loadedDataset)
+      loadedLayersById.set(id, loadedLayer)
       const layerState = layerStatesById.get(id)
-      syncDatasetStyle(loadedDataset, layerState)
-      syncDatasetLayers(layers, layerState, zIndexesById.get(id))
-      notifyDatasetLoaded(id, loadedDataset.metadata, layerState)
+      syncStyle(loadedLayer, layerState)
+      syncVisibilityAndOrder(layers, layerState, zIndexesById.get(id))
+      notifyLoaded(id, loadedLayer.metadata, layerState)
     } catch (error) {
-      notifyDatasetFailed(id, error)
+      notifyFailed(id, error)
     } finally {
-      loadingDatasetIds.delete(id)
+      loadingLayerIds.delete(id)
     }
   }
 
-  function syncSummaries () {
-    for (const [id, summary] of Object.entries(summaries)) {
+  function syncDrawnLayers () {
+    for (const [id, drawn] of Object.entries(drawnLayers)) {
       const layerState = layerStatesById.get(id)
       const zIndex = zIndexesById.get(id)
 
       if (zIndex !== undefined) {
-        summary.setZIndex(zIndex)
+        drawn.setZIndex(zIndex)
       }
-      summary.setVisible(isLayerStateVisible(layerState))
+      drawn.setVisible(isLayerStateVisible(layerState))
     }
   }
 
@@ -190,18 +190,18 @@ export function createLayerController ({ map, summaries, loadDataset, onDatasetL
     layerStatesById = new Map(layerStates.map(layer => [layer.id, layer]))
     zIndexesById = layerZIndexes(layerStates)
 
-    syncSummaries()
+    syncDrawnLayers()
 
-    for (const [id, loadedDataset] of loadedDatasetsById) {
+    for (const [id, loadedLayer] of loadedLayersById) {
       const layerState = layerStatesById.get(id)
-      syncDatasetStyle(loadedDataset, layerState)
-      syncDatasetLayers(loadedDataset.layers, layerState, zIndexesById.get(id))
-      notifyDatasetLoaded(id, loadedDataset.metadata, layerState)
+      syncStyle(loadedLayer, layerState)
+      syncVisibilityAndOrder(loadedLayer.layers, layerState, zIndexesById.get(id))
+      notifyLoaded(id, loadedLayer.metadata, layerState)
     }
 
-    for (const { id } of layerStates) {
-      if (!Object.hasOwn(summaries, id)) {
-        ensureDatasetLoaded(id)
+    for (const { id, layerUrl } of layerStates) {
+      if (layerUrl) {
+        ensureLoaded(id, layerUrl)
       }
     }
   }
@@ -213,11 +213,11 @@ export function createLayerController ({ map, summaries, loadDataset, onDatasetL
 
     disposed = true
     controller.abort()
-    for (const { layers } of loadedDatasetsById.values()) {
-      removeDatasetLayers(layers)
+    for (const { layers } of loadedLayersById.values()) {
+      removeMapLayers(layers)
     }
-    loadedDatasetsById.clear()
-    loadingDatasetIds.clear()
+    loadedLayersById.clear()
+    loadingLayerIds.clear()
     layerStatesById.clear()
   }
 

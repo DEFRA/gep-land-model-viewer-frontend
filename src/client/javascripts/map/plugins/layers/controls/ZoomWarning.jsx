@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { ZoomIn } from 'lucide-preact'
-import { SUMMARIES } from '../summaries/config.js'
 
 const ZOOM_IN_DURATION = 300
 
@@ -20,15 +19,11 @@ function warningEntries (pluginState) {
   const entries = []
 
   for (const layer of pluginState.layers) {
-    if (layer.hidden || !layer.ready) {
+    if (layer.hidden || !layer.ready || layer.minZoom === undefined) {
       continue
     }
 
-    const summary = SUMMARIES.find(candidate => candidate.id === layer.id)
-    const entry = summary ? { label: summary.label, minZoom: summary.minZoom } : { label: layer.title, minZoom: layer.minZoom }
-    if (entry.minZoom !== undefined) {
-      entries.push(entry)
-    }
+    entries.push({ label: layer.title, minZoom: layer.minZoom })
   }
 
   return entries

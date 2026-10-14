@@ -62,7 +62,7 @@ describe('layers reducer', () => {
       }
     })
     const removed = actions.REMOVE_LAYER(moved, { id: 'peat' })
-    expect(actions.DATASET_LOADING(removed, { id: 'peat' }).layers[0]).toEqual({ id: 'peat', ready: false })
+    expect(actions.DATASET_LOADING(removed, { id: 'peat' }).layers[0]).toEqual({ id: 'peat', layerUrl: '/api/datasets/peat/layer', ready: false })
     expect(actions.SET_LAYER_COLOUR(removed, { themeBand: 1, id: 'peat', part: 'fill', colour: [1, 2, 3, 1] })).toBe(removed)
     expect(actions.SET_LAYER_OPACITY(removed, { id: 'peat', opacity: 0.5 })).toBe(removed)
   })
@@ -88,6 +88,7 @@ describe('layers reducer', () => {
     expect(initialState).toEqual({
       catalogue: { query: '', expandedThemes: [], results: [], total: 0, attempt: 0, status: 'loading' },
       layers: [],
+      failedLayerIds: [],
       editingLayer: null,
       inspection: { status: 'idle', hits: [], hit: null }
     })
@@ -113,42 +114,32 @@ describe('layers reducer', () => {
   test('adds a dataset to the order while it loads', () => {
     const state = actions.DATASET_LOADING(initialState, { id: 'peat' })
 
-    expect(state.layers).toEqual([{ id: 'peat', ready: false }])
+    expect(state.layers).toEqual([{ id: 'peat', layerUrl: '/api/datasets/peat/layer', ready: false }])
   })
 
   test('adds a dataset with its catalogue title and clears its previous error', () => {
-    const catalogue = { ...initialState.catalogue, results: [{ id: 'peat', title: 'Peat', inspireTheme: 'Soil', error: 'Dataset request failed (502)' }] }
-    const state = actions.DATASET_LOADING({ ...initialState, catalogue }, { id: 'peat', title: 'Peat' })
+    const state = actions.DATASET_LOADING({ ...initialState, failedLayerIds: ['peat'] }, { id: 'peat', title: 'Peat' })
 
-    expect(state.layers).toEqual([{ id: 'peat', title: 'Peat', ready: false }])
-    expect(state.catalogue.results[0]).toEqual({ id: 'peat', title: 'Peat', inspireTheme: 'Soil' })
+    expect(state.layers).toEqual([{ id: 'peat', title: 'Peat', layerUrl: '/api/datasets/peat/layer', ready: false }])
+    expect(state.failedLayerIds).toEqual([])
   })
 
   test('commits the loaded source with the layer metadata', () => {
     const loading = actions.DATASET_LOADING(initialState, { id: 'peat', title: 'Peat' })
     const source = { type: 'cog', styleConfig: { themes: [] } }
-    const state = actions.DATASET_LOADED(loading, { id: 'peat', source, minZoom: 8 })
+    const state = actions.LAYER_LOADED(loading, { id: 'peat', source, minZoom: 8 })
 
-    expect(state.layers).toEqual([{ id: 'peat', title: 'Peat', ready: true, source, minZoom: 8 }])
+    expect(state.layers).toEqual([{ id: 'peat', title: 'Peat', layerUrl: '/api/datasets/peat/layer', ready: true, source, minZoom: 8 }])
   })
 
-  test('a failed dataset leaves the map and records its error on the result', () => {
-    const error = 'Missing style config'
-    const catalogue = { ...initialState.catalogue, results: [{ id: 'peat', title: 'Peat', inspireTheme: 'Soil' }] }
-    const loading = actions.DATASET_LOADING({ ...initialState, catalogue, editingLayer: { id: 'peat' } }, { id: 'peat', title: 'Peat' })
-    const state = actions.DATASET_FAILED(loading, { id: 'peat', error })
+  test('a failed dataset leaves the map and stays failed until it is added again', () => {
+    const loading = actions.DATASET_LOADING({ ...initialState, editingLayer: { id: 'peat' } }, { id: 'peat', title: 'Peat' })
+    const state = actions.LAYER_FAILED(loading, { id: 'peat' })
 
     expect(state.layers).toEqual([])
     expect(state.editingLayer).toBeNull()
-    expect(state.catalogue.results[0]).toEqual({ id: 'peat', title: 'Peat', inspireTheme: 'Soil', error })
-  })
-
-  test('a failure for a dataset outside the current results only removes its layer', () => {
-    const loading = actions.DATASET_LOADING(initialState, { id: 'peat', title: 'Peat' })
-    const state = actions.DATASET_FAILED(loading, { id: 'peat', error: 'Dataset request failed (502)' })
-
-    expect(state.layers).toEqual([])
-    expect(state.catalogue.results).toEqual([])
+    expect(state.failedLayerIds).toEqual(['peat'])
+    expect(actions.LAYER_FAILED(state, { id: 'peat' })).toBe(state)
   })
 
   test('adding an existing dataset is an identity operation', () => {
@@ -163,7 +154,7 @@ describe('layers reducer', () => {
 
   test('commits metadata returned by a successful load', () => {
     const loading = actions.DATASET_LOADING(initialState, { id: 'peat' })
-    const state = actions.DATASET_LOADED(loading, {
+    const state = actions.LAYER_LOADED(loading, {
       id: 'peat',
       minZoom: 8,
       wmsLayerNames: ['resolved-layer']
@@ -171,11 +162,12 @@ describe('layers reducer', () => {
 
     expect(state.layers[0]).toEqual({
       id: 'peat',
+      layerUrl: '/api/datasets/peat/layer',
       ready: true,
       minZoom: 8,
       wmsLayerNames: ['resolved-layer']
     })
-    expect(actions.DATASET_LOADED(state, { id: 'peat', minZoom: 9 })).toBe(state)
+    expect(actions.LAYER_LOADED(state, { id: 'peat', minZoom: 9 })).toBe(state)
   })
 
   test('adds and removes summaries from the shared order', () => {
@@ -185,7 +177,7 @@ describe('layers reducer', () => {
       layers: [{ ...added.layers[0], hidden: true }]
     }, { id: 'grid', enabled: false })
 
-    expect(added.layers).toEqual([{ id: 'grid', ready: true }])
+    expect(added.layers).toEqual([{ id: 'grid', title: 'Grid squares', ready: true }])
     expect(removed.layers).toEqual([])
   })
 
@@ -195,7 +187,24 @@ describe('layers reducer', () => {
       layers: [{ ...layer('grid'), hidden: true }, layer('peat')]
     }, { id: 'features', enabled: true })
 
-    expect(state.layers).toEqual([layer('features'), layer('peat')])
+    expect(state.layers).toEqual([
+      { id: 'features', title: 'OS features', layerUrl: '/api/land-model/parcels/layer', ready: false },
+      layer('peat')
+    ])
+  })
+
+  test('a failed summary leaves the map and stays failed until it is enabled again', () => {
+    const enabled = actions.SET_SUMMARY({ ...initialState, layers: [layer('peat')] }, { id: 'features', enabled: true })
+    const failed = actions.LAYER_FAILED(enabled, { id: 'features' })
+    const grid = actions.SET_SUMMARY(failed, { id: 'grid', enabled: true })
+    const retried = actions.SET_SUMMARY(grid, { id: 'features', enabled: true })
+
+    expect(failed.layers).toEqual([layer('peat')])
+    expect(failed.failedLayerIds).toEqual(['features'])
+    expect(grid.failedLayerIds).toEqual(['features'])
+    expect(retried.layers).toEqual([enabled.layers[0], layer('peat')])
+    expect(retried.failedLayerIds).toEqual([])
+    expect(actions.SET_SUMMARY(retried, { id: 'features', enabled: true })).toBe(retried)
   })
 
   test('removal drops load state, order and settings', () => {
@@ -206,7 +215,7 @@ describe('layers reducer', () => {
     }, { id: 'peat' })
 
     expect(removed.layers).toEqual([])
-    expect(actions.DATASET_LOADED(removed, { id: 'peat', minZoom: 8 })).toBe(removed)
+    expect(actions.LAYER_LOADED(removed, { id: 'peat', minZoom: 8 })).toBe(removed)
   })
 
   test('hide and show merge settings for an added entry', () => {

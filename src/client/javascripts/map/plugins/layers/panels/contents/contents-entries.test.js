@@ -24,7 +24,7 @@ const DATASETS = [{
 function createPluginState ({ layers } = {}, datasets = DATASETS) {
   return {
     layers: (layers ?? [
-      { id: 'grid', ready: true },
+      { id: 'grid', title: 'Grid squares', ready: true },
       { id: 'flood', ready: false },
       { id: 'woodland', ready: true, hidden: true }
     ]).map(layer => ({ ...datasets.find(dataset => dataset.id === layer.id), ...layer }))
@@ -35,10 +35,10 @@ describe('Contents entries', () => {
   test('combines added datasets and summaries in display order', () => {
     const entries = getContentsEntries(createPluginState())
 
-    expect(entries.map(({ id, kind, hidden, loading }) => ({ id, kind, hidden, loading }))).toEqual([
-      { id: 'grid', kind: 'summary', hidden: false, loading: false },
-      { id: 'flood', kind: 'dataset', hidden: false, loading: true },
-      { id: 'woodland', kind: 'dataset', hidden: true, loading: false }
+    expect(entries.map(({ id, hidden, loading }) => ({ id, hidden, loading }))).toEqual([
+      { id: 'grid', hidden: false, loading: false },
+      { id: 'flood', hidden: false, loading: true },
+      { id: 'woodland', hidden: true, loading: false }
     ])
     expect(entries[0]).toMatchObject({ label: 'Grid squares', swatch: { type: 'line' } })
     expect(entries[1]).toMatchObject({ label: 'Flood Zones', swatch: { type: 'wms' } })

@@ -1,4 +1,4 @@
-import { loadDataset, loadDatasetMetadata, loadCatalogue } from './api.js'
+import { loadLayer, loadDatasetMetadata, loadCatalogue } from './api.js'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -14,7 +14,7 @@ test('builds the map source from the dataset layer response', async () => {
   }
   stubResponse({ manifestVersion: 'manifest-version', generatedAt: '2026-10-08T14:52:12.304Z', styleConfig, assets })
 
-  const dataset = await loadDataset('dataset')
+  const dataset = await loadLayer('dataset', '/api/datasets/dataset/layer')
 
   expect(dataset).toEqual({
     id: 'dataset',
@@ -27,7 +27,7 @@ test('builds the map source from the dataset layer response', async () => {
 test('rejects map loading when the layer request fails', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })))
 
-  await expect(loadDataset('dataset')).rejects.toThrow('Dataset request failed (500)')
+  await expect(loadLayer('dataset', '/api/datasets/dataset/layer')).rejects.toThrow('Request failed (500)')
 })
 
 test('returns the metadata response body', async () => {
