@@ -1,5 +1,5 @@
 import { GRID_SUMMARY } from '../../summaries/config.js'
-import { getLayerStyle } from '../../datasets/layer-style.js'
+import { getLayerStyle } from '../../data-layers/layer-style.js'
 import { swatchColours, visibleStyleDefinitions } from '../shared/swatch-helpers.js'
 
 /**

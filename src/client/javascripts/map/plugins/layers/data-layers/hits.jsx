@@ -12,7 +12,7 @@ import { DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../../config/colour
 import { EPSG_27700, UNKNOWN_LAYER_LABEL } from '../constants.js'
 import { getSourceUrl, getVisibleWmsLayers } from './layers/wms.js'
 import { queryFgbNearPoint } from './layers/fgb-lookup.js'
-import { DatasetAttributes } from './DatasetAttributes.jsx'
+import { DatasetAttributes } from '../datasets/DatasetAttributes.jsx'
 import { STYLE_VALUE_PROPERTY, visibleClassForBands, visibleClassForFieldValue } from './style-config.js'
 import { getLayerStyle, getLayerTheme } from './layer-style.js'
 import { isLayerStateVisible } from '../reducer.js'
@@ -41,7 +41,7 @@ function createHighlight (map) {
     source,
     style: HIGHLIGHT_STYLE,
     zIndex: SELECTION_Z_INDEX,
-    properties: { id: 'gep-dataset-highlight' }
+    properties: { id: 'gep-layer-highlight' }
   })
   map.addLayer(layer)
 

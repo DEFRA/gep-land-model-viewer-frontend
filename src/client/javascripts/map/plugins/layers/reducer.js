@@ -1,6 +1,6 @@
 import { SUMMARIES } from './summaries/config.js'
 import { datasetLayerUrl } from './datasets/api.js'
-import { colourForDefinition, coloursEqual, getLayerTheme } from './datasets/layer-style.js'
+import { colourForDefinition, coloursEqual, getLayerTheme } from './data-layers/layer-style.js'
 
 const INSPECTION_STATUS = /** @type {const} */ ({
   IDLE: 'idle',
@@ -25,8 +25,8 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @property {string} id
  * @property {boolean} ready
  * @property {string} [title] Catalogue title for a dataset, or a summary's label
- * @property {string} [layerUrl] Layer route for a hosted layer
- * @property {import('./datasets/source.js').DatasetSource} [source] Map source of a hosted layer, set once loaded
+ * @property {string} [layerUrl] Layer route for a data layer
+ * @property {import('./data-layers/source.js').LayerSource} [source] Map source of a data layer, set once loaded
  * @property {number} [minZoom]
  * @property {string[]} [wmsLayerNames]
  * @property {boolean} [hidden]

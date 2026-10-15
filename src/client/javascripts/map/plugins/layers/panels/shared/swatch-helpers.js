@@ -1,5 +1,5 @@
 import { rgbaString } from '../../../../config/colours.js'
-import { editableStyleEntries, hasVisibleFill, hasVisibleStroke } from '../../datasets/style-config.js'
+import { editableStyleEntries, hasVisibleFill, hasVisibleStroke } from '../../data-layers/style-config.js'
 
 /**
  * @typedef {object} StyleDefinition
