@@ -1,28 +1,32 @@
-import { authenticatedFetch } from '../../../../authenticated-fetch.js'
 import { toTaxonomyClass, toSource } from '../model.js'
 
-const PARCELS_URL = '/land-model/parcels.json'
-
 /**
- * @typedef {object} RawParcel
+ * @typedef {object} ParcelProperties
  * @property {string} osid
  * @property {string} toid
- * @property {string | null} land_use_model_code
- * @property {string | null} land_use_model_display_text
- * @property {Record<string, number>} land_cover_intersecting
- * @property {string} dominant_land_cover_model_display_text
- * @property {string} dominant_land_cover_code
- * @property {string} land_cover_source
- * @property {string} land_cover_date
- * @property {Record<string, number>} soil_intersecting
- * @property {string} dominant_soil_model_display_text
- * @property {string} dominant_soil_code
- * @property {string} soil_source
- * @property {string} soil_date
+ * @property {string} [land_cover_dom_code]
+ * @property {string} [land_cover_dom_name]
+ * @property {string} [land_cover_proportions] Percentages by label, as JSON text
+ * @property {string} [land_cover_source]
+ * @property {string} [land_cover_date]
+ * @property {string} [land_use_dom_code]
+ * @property {string} [land_use_dom_name]
+ * @property {string} [land_use_source]
+ * @property {string} [land_use_date]
+ * @property {string} [soil_dom_code]
+ * @property {string} [soil_dom_name]
+ * @property {string} [soil_proportions]
+ * @property {string} [soil_source]
+ * @property {string} [soil_date]
  */
 
-/** @type {Promise<Map<string, import('../model.js').LandModelRecord>> | null} */
-let featuresPromise = null
+/**
+ * @param {string | undefined} value
+ * @returns {Record<string, number> | null}
+ */
+function parseProportions (value) {
+  return value == null ? null : JSON.parse(value)
+}
 
 /** @returns {import('../model.js').TaxonomyTheme | null} */
 function toTaxonomyTheme (intersecting, label, code, sourceName, date) {
@@ -40,57 +44,17 @@ function toTaxonomyTheme (intersecting, label, code, sourceName, date) {
 }
 
 /**
- * @param {RawParcel} raw
+ * @param {ParcelProperties} properties
  * @returns {import('../model.js').LandModelRecord}
  */
-export function toFeatureRecord (raw) {
+export function toFeatureRecord (properties) {
   return {
-    unit: { kind: 'feature', osid: raw.osid, toid: raw.toid },
-    landCover: toTaxonomyTheme(raw.land_cover_intersecting, raw.dominant_land_cover_model_display_text, raw.dominant_land_cover_code, raw.land_cover_source, raw.land_cover_date),
-    landUse: toTaxonomyTheme(null, raw.land_use_model_display_text, raw.land_use_model_code),
+    unit: { kind: 'feature', osid: properties.osid, toid: properties.toid },
+    landCover: toTaxonomyTheme(parseProportions(properties.land_cover_proportions), properties.land_cover_dom_name, properties.land_cover_dom_code, properties.land_cover_source, properties.land_cover_date),
+    landUse: toTaxonomyTheme(null, properties.land_use_dom_name, properties.land_use_dom_code, properties.land_use_source, properties.land_use_date),
     ownership: null,
     landManagement: null,
     protectedAreas: null,
-    soils: toTaxonomyTheme(raw.soil_intersecting, raw.dominant_soil_model_display_text, raw.dominant_soil_code, raw.soil_source, raw.soil_date)
+    soils: toTaxonomyTheme(parseProportions(properties.soil_proportions), properties.soil_dom_name, properties.soil_dom_code, properties.soil_source, properties.soil_date)
   }
-}
-
-/**
- * @param {RawParcel[]} rows
- * @returns {Map<string, import('../model.js').LandModelRecord>}
- */
-export function indexFeatures (rows) {
-  const byOsid = new Map()
-  for (const raw of rows) {
-    byOsid.set(raw.osid, toFeatureRecord(raw))
-  }
-  return byOsid
-}
-
-function loadFeatures () {
-  featuresPromise ??= fetchFeatures()
-  return featuresPromise
-}
-
-async function fetchFeatures () {
-  try {
-    const res = await authenticatedFetch(PARCELS_URL)
-    if (!res.ok) {
-      throw new Error(`Failed to load parcels (${res.status})`)
-    }
-
-    return indexFeatures(await res.json())
-  } catch (err) {
-    featuresPromise = null
-    throw err
-  }
-}
-
-/**
- * @param {string} osid
- * @returns {Promise<import('../model.js').LandModelRecord | null>}
- */
-export async function getFeatureDetails (osid) {
-  const byOsid = await loadFeatures()
-  return byOsid.get(osid) ?? null
 }

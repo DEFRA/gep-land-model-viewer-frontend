@@ -6,7 +6,7 @@ import { fireEvent, render } from '@testing-library/preact'
 import { useReducer } from 'react'
 import { actions, initialState } from '../../reducer.js'
 import { EditLayerForm } from './EditLayerForm.jsx'
-import sssiStyle from '../../datasets/test-helpers/sssi.json'
+import sssiStyle from '../../data-layers/test-helpers/sssi.json'
 import { blurInput } from './test-helpers/preact.js'
 
 const STYLED_DATASET = {

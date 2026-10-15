@@ -218,7 +218,7 @@ describe('LayersPanel', () => {
     expect(input.checked).toBe(true)
     expect(dispatch).toHaveBeenCalledTimes(1)
 
-    act(() => updateState({ type: 'DATASET_LOADED', payload: { id: 'woodland' } }))
+    act(() => updateState({ type: 'LAYER_LOADED', payload: { id: 'woodland' } }))
     expect(input.hasAttribute('aria-disabled')).toBe(false)
     expect(document.activeElement).toBe(input)
     fireEvent.click(input)
@@ -259,7 +259,7 @@ describe('LayersPanel', () => {
     expect(input.getAttribute('aria-disabled')).toBe('true')
     expect(input.closest('.govuk-checkboxes__item').getAttribute('aria-busy')).toBe('true')
 
-    act(() => updateState({ type: 'DATASET_FAILED', payload: { id: 'woodland', error: 'This dataset could not be added. Try again later.' } }))
+    act(() => updateState({ type: 'LAYER_FAILED', payload: { id: 'woodland' } }))
     expect(count('Habitats and biotopes')).toBe('1 of 2 selected')
     const failed = view.container.querySelector('#layer-woodland')
     expect(failed.checked).toBe(false)
@@ -273,14 +273,14 @@ describe('LayersPanel', () => {
     expect(view.container.querySelector('#layer-woodland').hasAttribute('aria-describedby')).toBe(false)
   })
 
-  test('clears dataset errors when a new search replaces the results', () => {
+  test('keeps a dataset failure across searches until it is added again', () => {
     renderPanel({ layers: [{ id: 'woodland', title: 'Ancient Woodland', ready: false }] })
-    act(() => updateState({ type: 'DATASET_FAILED', payload: { id: 'woodland', error: 'This dataset could not be added. Try again later.' } }))
+    act(() => updateState({ type: 'LAYER_FAILED', payload: { id: 'woodland' } }))
 
     fireEvent.input(view.getByRole('searchbox'), { target: { value: 'wood' } })
     receiveResults([DATASETS[2]])
 
-    expect(view.container.querySelector('#layer-woodland-error')).toBeNull()
+    expect(view.container.querySelector('#layer-woodland-error').textContent).toBe('Error: This dataset could not be added. Try again later.')
   })
 
   test('land summaries delegate enabled state and remain mutually exclusive', () => {
@@ -290,6 +290,24 @@ describe('LayersPanel', () => {
     expect(view.container.querySelector('#summary-features').disabled).toBe(true)
     fireEvent.click(view.getByRole('checkbox', { name: 'Grid squares' }))
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_SUMMARY', payload: { id: 'grid', enabled: false } })
+  })
+
+  test('shows a failed land summary error under its checkbox until it is ticked again', () => {
+    renderPanel({ layers: [{ id: 'features', ready: true }] })
+
+    act(() => updateState({ type: 'LAYER_FAILED', payload: { id: 'features' } }))
+    const failed = view.container.querySelector('#summary-features')
+    expect(failed.checked).toBe(false)
+    expect(failed.getAttribute('aria-describedby')).toBe('summary-features-error')
+    const error = view.container.querySelector('#summary-features-error')
+    expect(error.className).toContain('govuk-error-message')
+    expect(error.textContent).toBe('Error: This land summary could not be added. Try again later.')
+
+    fireEvent.click(view.getByRole('checkbox', { name: 'OS features' }))
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_SUMMARY', payload: { id: 'features', enabled: true } })
+    expect(view.container.querySelector('#summary-features').checked).toBe(true)
+    expect(view.container.querySelector('#summary-features-error')).toBeNull()
+    expect(view.container.querySelector('#summary-features').hasAttribute('aria-describedby')).toBe(false)
   })
 
   test('opens summary information on activation and dismisses it with Escape without closing the panel', async () => {

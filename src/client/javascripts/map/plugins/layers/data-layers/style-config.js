@@ -130,7 +130,7 @@ function variableName (classIndex, part) {
 
 /**
  * Complete colour values, including defaults, for an existing vector renderer.
- * @param {object} styleConfig Effective dataset style config
+ * @param {object} styleConfig Effective style config
  * @returns {import('ol/style/flat.js').StyleVariables}
  */
 export function buildColourVariables (styleConfig) {
@@ -166,7 +166,7 @@ function definitionWithVariables (definition, classIndex, variables) {
 
 /**
  * Build vector colour expressions with variables so edits avoid rebuilding the renderer.
- * @param {object} styleConfig Dataset style config
+ * @param {object} styleConfig
  */
 export function buildVectorStyleWithVariables (styleConfig) {
   const variables = buildColourVariables(styleConfig)

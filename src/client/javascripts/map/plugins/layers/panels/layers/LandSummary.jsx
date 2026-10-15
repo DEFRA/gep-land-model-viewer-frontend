@@ -3,9 +3,13 @@ import { Popover } from '@base-ui/react/popover'
 import { Info } from 'lucide-preact'
 import { InfoPopoverPopup } from '../shared/InfoPopover.jsx'
 import { SUMMARIES } from '../../summaries/config.js'
+import { CheckboxError } from './CheckboxError.jsx'
 
-function SummaryRow ({ summary, layer, activeId, onChange }) {
+const FAILED_MESSAGE = 'This land summary could not be added. Try again later.'
+
+function SummaryRow ({ summary, layer, failed, activeId, onChange }) {
   const hidden = Boolean(layer?.hidden)
+  const errorId = failed ? `summary-${summary.id}-error` : undefined
 
   return (
     <div className='app-map__layer-row'>
@@ -17,12 +21,14 @@ function SummaryRow ({ summary, layer, activeId, onChange }) {
           value={summary.id}
           checked={Boolean(layer)}
           disabled={Boolean(activeId) && activeId !== summary.id}
+          aria-describedby={errorId}
           aria-label={hidden ? `${summary.label}, hidden` : undefined}
           onChange={event => onChange(summary.id, event.currentTarget.checked)}
         />
         <label className='govuk-label govuk-checkboxes__label' htmlFor={`summary-${summary.id}`}>
           <span className={hidden ? 'app-map__layers-label--hidden' : undefined}>{summary.label}</span>
         </label>
+        {errorId && <CheckboxError id={errorId}>{FAILED_MESSAGE}</CheckboxError>}
       </div>
       <Popover.Trigger
         className='im-c-map-button app-map__layer-info-button'
@@ -35,7 +41,7 @@ function SummaryRow ({ summary, layer, activeId, onChange }) {
   )
 }
 
-export function LandSummary ({ layers, onChange }) {
+export function LandSummary ({ layers, failedLayerIds, onChange }) {
   const summaryRef = useRef(null)
   const summaries = SUMMARIES.map(summary => ({
     summary,
@@ -61,6 +67,7 @@ export function LandSummary ({ layers, onChange }) {
                       key={summary.id}
                       summary={summary}
                       layer={layer}
+                      failed={failedLayerIds.includes(summary.id)}
                       activeId={activeId}
                       onChange={onChange}
                     />

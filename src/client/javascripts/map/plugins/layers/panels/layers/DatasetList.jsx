@@ -1,8 +1,11 @@
 import { Info } from 'lucide-preact'
+import { CheckboxError } from './CheckboxError.jsx'
 
-function DatasetCheckbox ({ dataset, layer, onChange }) {
+const FAILED_MESSAGE = 'This dataset could not be added. Try again later.'
+
+function DatasetCheckbox ({ dataset, layer, failed, onChange }) {
   const loading = Boolean(layer && !layer.ready)
-  const errorId = dataset.error ? `layer-${dataset.id}-error` : undefined
+  const errorId = failed ? `layer-${dataset.id}-error` : undefined
 
   return (
     <div className='govuk-checkboxes__item' aria-busy={loading ? 'true' : undefined}>
@@ -25,16 +28,12 @@ function DatasetCheckbox ({ dataset, layer, onChange }) {
       <label className='govuk-label govuk-checkboxes__label' htmlFor={`layer-${dataset.id}`}>
         <span className={layer?.hidden ? 'app-map__layers-label--hidden' : undefined}>{dataset.title}</span>
       </label>
-      {errorId && (
-        <p id={errorId} className='govuk-error-message govuk-checkboxes__hint govuk-!-font-size-16'>
-          <span className='govuk-visually-hidden'>Error:</span> {dataset.error}
-        </p>
-      )}
+      {errorId && <CheckboxError id={errorId}>{FAILED_MESSAGE}</CheckboxError>}
     </div>
   )
 }
 
-export function DatasetList ({ datasets, layers, legend, onChange, onInfo }) {
+export function DatasetList ({ datasets, layers, failedLayerIds, legend, onChange, onInfo }) {
   return (
     <fieldset className='govuk-fieldset'>
       <legend className='govuk-visually-hidden'>{legend}</legend>
@@ -44,6 +43,7 @@ export function DatasetList ({ datasets, layers, legend, onChange, onInfo }) {
             <DatasetCheckbox
               dataset={dataset}
               layer={layers.find(layer => layer.id === dataset.id)}
+              failed={failedLayerIds.includes(dataset.id)}
               onChange={event => onChange(dataset, event.currentTarget.checked)}
             />
             <button

@@ -26,7 +26,7 @@ function themeCount (selected, total) {
 
 export function LayersPanel ({ pluginState, services, appState }) {
   const { dispatch } = pluginState
-  const { catalogue, layers } = /** @type {import('../../reducer.js').LayersState} */ (pluginState)
+  const { catalogue, layers, failedLayerIds } = /** @type {import('../../reducer.js').LayersState} */ (pluginState)
   const { query, results, expandedThemes } = catalogue
   const { announce } = services
   const searchInputRef = useRef(null)
@@ -79,7 +79,7 @@ export function LayersPanel ({ pluginState, services, appState }) {
         Layers
       </h2>
       <div className='app-map__layers-scroll'>
-        <LandSummary layers={layers} onChange={handleSummaryChange} />
+        <LandSummary layers={layers} failedLayerIds={failedLayerIds} onChange={handleSummaryChange} />
 
         <h3 className='govuk-heading-s govuk-!-margin-bottom-2'>Datasets</h3>
         <p className='govuk-body-s app-map__layers-description govuk-!-margin-bottom-4'>Add datasets to the map.</p>
@@ -105,7 +105,7 @@ export function LayersPanel ({ pluginState, services, appState }) {
 
           {term
             ? results.length > 0 && (
-              <DatasetList datasets={results} layers={layers} legend='Search results' onChange={handleDatasetChange} onInfo={handleDatasetInfo} />
+              <DatasetList datasets={results} layers={layers} failedLayerIds={failedLayerIds} legend='Search results' onChange={handleDatasetChange} onInfo={handleDatasetInfo} />
             )
             : datasetThemes.map(datasetTheme => {
               const themeDatasets = results.filter(dataset => dataset.inspireTheme === datasetTheme)
@@ -129,7 +129,7 @@ export function LayersPanel ({ pluginState, services, appState }) {
                     </span>
                   </summary>
                   <div className='govuk-details__text'>
-                    <DatasetList datasets={themeDatasets} layers={layers} legend={datasetTheme} onChange={handleDatasetChange} onInfo={handleDatasetInfo} />
+                    <DatasetList datasets={themeDatasets} layers={layers} failedLayerIds={failedLayerIds} legend={datasetTheme} onChange={handleDatasetChange} onInfo={handleDatasetInfo} />
                   </div>
                 </details>
               )

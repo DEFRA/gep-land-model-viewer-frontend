@@ -40,7 +40,7 @@ function waitForMetadata (source) {
   })
 }
 
-async function createCogDatasetLayer (options, styleConfig) {
+async function createCogMapLayers (options, styleConfig) {
   await waitForMetadata(options.source)
   const layer = new WebGLTileLayer({ ...options, style: cogStyleFor(styleConfig) })
 
@@ -52,17 +52,17 @@ async function createCogDatasetLayer (options, styleConfig) {
 }
 
 /**
- * Creates a WebGL tile layer for a Cloud Optimised GeoTIFF dataset.
+ * Creates a WebGL tile layer for a Cloud Optimised GeoTIFF.
  *
- * @param {object} dataset Dataset definition with a cog source
+ * @param {object} layerConfig Layer config with a cog source
  * @param {string} layerId Map layer id
  * @param {object} presentation Resolved layer style and opacity
- * @returns Dataset layer with raster styling and opacity controls
+ * @returns Map layers with raster styling and opacity controls
  */
-export async function createCogLayer (dataset, layerId, { styleConfig, opacity }) {
-  const { url } = dataset.source
+export async function createCogLayer (layerConfig, layerId, { styleConfig, opacity }) {
+  const { url } = layerConfig.source
 
-  return createCogDatasetLayer({
+  return createCogMapLayers({
     properties: { id: layerId },
     source: new GeoTIFF({ sources: [{ url }], normalize: false, interpolate: false }),
     opacity
@@ -77,7 +77,7 @@ export async function createCogLayer (dataset, layerId, { styleConfig, opacity }
  * @param {object} options
  * @param {object} options.styleConfig Resolved style theme
  * @param {string} options.className Shared WebGL canvas class
- * @returns Dataset layer for the raster overview
+ * @returns Map layers for the raster overview
  */
 export async function createCogOverviewLayer (overview, layerId, { styleConfig, className }) {
   const source = new GeoTIFF({
@@ -91,7 +91,7 @@ export async function createCogOverviewLayer (overview, layerId, { styleConfig, 
     transition: 0
   })
 
-  return createCogDatasetLayer({
+  return createCogMapLayers({
     properties: { id: layerId },
     source,
     opacity: 1,

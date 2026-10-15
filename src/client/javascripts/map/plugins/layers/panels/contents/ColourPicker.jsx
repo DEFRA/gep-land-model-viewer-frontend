@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { HexColorPicker } from 'react-colorful'
 import { RGBA_ALPHA_INDEX, colourForHex, hexForColour, normaliseHex } from '../../../../config/colours.js'
 import { ErrorMessage } from '../../../../components/ErrorMessage.jsx'
-import { colourForDefinition } from '../../datasets/layer-style.js'
-import { hasVisibleFill, hasVisibleStroke } from '../../datasets/style-config.js'
+import { colourForDefinition } from '../../data-layers/layer-style.js'
+import { hasVisibleFill, hasVisibleStroke } from '../../data-layers/style-config.js'
 import { StyleSwatch } from '../shared/StyleSwatch.jsx'
 
 const COLOUR_PARTS = { fill: 'Fill', stroke: 'Outline' }

@@ -1,0 +1,30 @@
+{
+  "themes": [
+    {
+      "label": "OS features",
+      "type": "uniform",
+      "band": 1,
+      "classes": [
+        {
+          "bandValue": 1,
+          "label": "OS feature",
+          "fill": [
+            0,
+            133,
+            49,
+            0.12
+          ],
+          "stroke": {
+            "color": [
+              0,
+              106,
+              39,
+              0.6
+            ],
+            "width": 1.5
+          }
+        }
+      ]
+    }
+  ]
+}

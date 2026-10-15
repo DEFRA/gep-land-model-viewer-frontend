@@ -7,9 +7,9 @@ import { ContentsPanelContent } from './ContentsPanelContent.jsx'
 import { useReducer } from 'react'
 import { actions, initialState } from '../../reducer.js'
 import { KeyPanel } from '../key/KeyPanel.jsx'
-import sssiStyle from '../../datasets/test-helpers/sssi.json'
+import sssiStyle from '../../data-layers/test-helpers/sssi.json'
 import { blurInput } from './test-helpers/preact.js'
-import { THEMED_DATASET } from '../../datasets/test-helpers/themed-dataset.js'
+import { THEMED_DATASET } from '../../data-layers/test-helpers/themed-dataset.js'
 
 const STYLED_DATASET = {
   id: 'styled',
@@ -51,7 +51,7 @@ let dispatch
 function contentsState ({ layers, ...overrides } = {}) {
   return {
     layers: (layers ?? [
-      { id: 'grid', ready: true },
+      { id: 'grid', title: 'Grid squares', ready: true },
       { id: 'flood', ready: true },
       { id: 'woodland', ready: true, hidden: true }
     ]).map(layer => ({ ...DATASETS.find(dataset => dataset.id === layer.id), ...layer })),
@@ -182,7 +182,7 @@ describe('ContentsPanel', () => {
     expect(view.queryByRole('button', { name: /^Edit colour for/ })).toBeNull()
   })
 
-  test('summary menus disable Edit layer', () => {
+  test('the grid menu disables Edit layer', () => {
     const view = renderPanel()
     fireEvent.click(view.getByRole('button', { name: 'Layer actions for Grid squares' }))
 

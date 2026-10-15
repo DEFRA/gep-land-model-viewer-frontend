@@ -1,4 +1,4 @@
-import { mapStyles, OS_ATTRIBUTION, APGB_ATTRIBUTION, OS_NGD_STYLE_IDS, OS_NGD_TILESET_URL } from './map-styles.js'
+import { mapStyles, OS_ATTRIBUTION, APGB_ATTRIBUTION } from './map-styles.js'
 
 describe('#mapStyles', () => {
   test('exports an array of map styles', () => {
@@ -44,17 +44,5 @@ describe('#mapStyles', () => {
   test('aerial style uses the APGB attribution', () => {
     const aerial = mapStyles.find(s => s.id === 'apgb-aerial')
     expect(aerial.attribution).toBe(APGB_ATTRIBUTION)
-  })
-})
-
-describe('#OS_NGD_STYLE_IDS', () => {
-  test('lists every NGD style and excludes the raster style', () => {
-    expect(OS_NGD_STYLE_IDS).toEqual(['os-outdoor-ngd', 'os-road-ngd', 'os-light-ngd', 'os-bw-ngd'])
-  })
-})
-
-describe('#OS_NGD_TILESET_URL', () => {
-  test('points at the NGD tileset under the proxy', () => {
-    expect(OS_NGD_TILESET_URL).toBe('/os/ngd/collections/ngd-base/tiles/27700')
   })
 })

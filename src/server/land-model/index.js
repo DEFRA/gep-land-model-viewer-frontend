@@ -2,11 +2,12 @@ import Boom from '@hapi/boom'
 import Accept from '@hapi/accept'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import parcelRoutes from './parcel-routes.js'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 const staticDir = path.join(dirname, 'static')
 
-const ALLOWED_FILES = new Set(['parcels', 'grids'])
+const ALLOWED_FILES = new Set(['grids'])
 
 function acceptsBrotli (request) {
   return Accept.encoding(request.headers['accept-encoding'], ['br']) === 'br'
@@ -38,6 +39,7 @@ export const landModel = {
             .header('cache-control', 'private, no-cache')
         }
       })
+      server.route(parcelRoutes)
     }
   }
 }

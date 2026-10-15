@@ -4,7 +4,7 @@ import { createServer } from '../server.js'
 import { statusCodes } from '../common/constants/status-codes.js'
 import { mockAuthCredentials } from '../common/test-helpers/auth.js'
 
-const parcelsUrl = '/land-model/parcels.json'
+const gridsUrl = '/land-model/grids.json'
 
 describe('#landModel', () => {
   let server
@@ -21,7 +21,7 @@ describe('#landModel', () => {
   test('serves brotli-compressed JSON from the static directory', async () => {
     const { rawPayload, statusCode, headers } = await server.inject({
       method: 'GET',
-      url: parcelsUrl,
+      url: gridsUrl,
       auth: mockAuthCredentials,
       headers: {
         'accept-encoding': 'br'
@@ -33,13 +33,13 @@ describe('#landModel', () => {
     expect(statusCode).toBe(statusCodes.ok)
     expect(headers['content-type']).toMatch(/application\/json/)
     expect(headers['content-encoding']).toBe('br')
-    expect(json).toMatch(/^\[\{"osid":/)
+    expect(json).toMatch(/^\{"metadata":/)
   })
 
   test('caches privately but revalidates each request', async () => {
     const { headers } = await server.inject({
       method: 'GET',
-      url: parcelsUrl,
+      url: gridsUrl,
       auth: mockAuthCredentials,
       headers: {
         'accept-encoding': 'br'

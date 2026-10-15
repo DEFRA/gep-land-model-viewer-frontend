@@ -29,7 +29,7 @@ beforeEach(() => {
 
 describe('ZoomWarning', () => {
   test('warns when an enabled summary is not drawn at this zoom, and announces it', () => {
-    renderWarning({ pluginState: { layers: [{ id: 'features', ready: true }] } })
+    renderWarning({ zoom: 6, pluginState: { layers: [{ id: 'features', title: 'OS features', ready: true, minZoom: 7 }] } })
 
     expect(view.container.querySelector('.app-map__zoom-warning').textContent).toBe('Zoom in to see OS features')
     expect(services.announce).toHaveBeenCalledWith('Zoom in to see OS features')
@@ -47,10 +47,11 @@ describe('ZoomWarning', () => {
 
   test('groups several out-of-range layers into one warning', () => {
     renderWarning({
+      zoom: 6,
       pluginState: {
         layers: [
           { id: 'grid', ready: true },
-          { id: 'features', ready: true },
+          { id: 'features', title: 'OS features', ready: true, minZoom: 7 },
           { id: 'woodland', title: 'Ancient Woodland', ready: true, minZoom: 10 }
         ]
       }
@@ -91,7 +92,7 @@ describe('ZoomWarning', () => {
       pluginState: {
         layers: [
           { id: 'grid', ready: true, hidden: true },
-          { id: 'features', ready: true, hidden: true },
+          { id: 'features', title: 'OS features', ready: true, minZoom: 7, hidden: true },
           { id: 'woodland', ready: true, minZoom: 10, hidden: true }
         ]
       }
@@ -102,7 +103,7 @@ describe('ZoomWarning', () => {
   })
 
   test('takes up no room when an enabled layer is drawn at its minimum zoom', () => {
-    renderWarning({ zoom: 10, pluginState: { layers: [{ id: 'features', ready: true }] } })
+    renderWarning({ zoom: 7, pluginState: { layers: [{ id: 'features', title: 'OS features', ready: true, minZoom: 7 }] } })
 
     expect(view.container.querySelector('.app-map__zoom-warning')).toBeNull()
     expect(services.announce).not.toHaveBeenCalled()
