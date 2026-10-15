@@ -1,16 +1,16 @@
-import { getLayerStyle } from './datasets/layer-style.js'
-import { THEMED_DATASET } from './datasets/test-helpers/themed-dataset.js'
+import { getLayerStyle } from './data-layers/layer-style.js'
+import { THEMED_DATASET } from './data-layers/test-helpers/themed-dataset.js'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { SELECTION_Z_INDEX } from '../../config/layers.js'
-import sssiStyle from './datasets/test-helpers/sssi.json'
+import sssiStyle from './data-layers/test-helpers/sssi.json'
 
-vi.mock('./datasets/layers/cog.js', () => ({ createCogLayer: vi.fn() }))
-vi.mock('./datasets/layers/fgb.js', () => ({ createFlatGeobufLayer: vi.fn() }))
-vi.mock('./datasets/layers/wms.js', () => ({ createWmsLayer: vi.fn() }))
+vi.mock('./data-layers/layers/cog.js', () => ({ createCogLayer: vi.fn() }))
+vi.mock('./data-layers/layers/fgb.js', () => ({ createFlatGeobufLayer: vi.fn() }))
+vi.mock('./data-layers/layers/wms.js', () => ({ createWmsLayer: vi.fn() }))
 
-const { createFlatGeobufLayer } = await import('./datasets/layers/fgb.js')
-const { createCogLayer } = await import('./datasets/layers/cog.js')
-const { createWmsLayer } = await import('./datasets/layers/wms.js')
+const { createFlatGeobufLayer } = await import('./data-layers/layers/fgb.js')
+const { createCogLayer } = await import('./data-layers/layers/cog.js')
+const { createWmsLayer } = await import('./data-layers/layers/wms.js')
 const { createLayerController } = await import('./layer-controller.js')
 
 const WOODLAND = {

@@ -1,5 +1,5 @@
 import { visibleStyleDefinitions } from '../shared/swatch-helpers.js'
-import { getLayerStyle } from '../../datasets/layer-style.js'
+import { getLayerStyle } from '../../data-layers/layer-style.js'
 
 /**
  * @typedef {{ id: string, label: string } & (

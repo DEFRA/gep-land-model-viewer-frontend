@@ -22,7 +22,7 @@ async function checkFgbSignature (url) {
   }
 }
 
-// Datasets state the first zoom that draws. OL hides a layer at its minZoom, so
+// Sources state the first zoom that draws. OL hides a layer at its minZoom, so
 // step back one to make that level the first that renders.
 function exclusiveMinZoomFor (firstZoom) {
   if (firstZoom === undefined) {
@@ -82,14 +82,14 @@ function registerSharedCanvasOpacity (layers, initialOpacity) {
 /**
  * Creates a FlatGeobuf detail layer and its optional COG overview.
  *
- * @param {object} dataset Dataset definition with an fgb source
+ * @param {object} layerConfig Layer config with an fgb source
  * @param {string} layerId Map layer id for the detail layer
  * @param {import('ol/Map.js').default} map Map that will own the layers
  * @param {object} presentation Resolved layer style and opacity
- * @returns Dataset layer containing the detail layer and optional overview
+ * @returns Map layers containing the detail layer and optional overview
  */
-export async function createFlatGeobufLayer (dataset, layerId, map, { styleConfig, opacity }) {
-  const { url, minZoom, overview } = dataset.source
+export async function createFlatGeobufLayer (layerConfig, layerId, map, { styleConfig, opacity }) {
+  const { url, minZoom, overview } = layerConfig.source
   await checkFgbSignature(url)
 
   let themeBand = styleConfig.band
@@ -110,7 +110,7 @@ export async function createFlatGeobufLayer (dataset, layerId, map, { styleConfi
     variables,
     // Consecutive WebGL layers with the same className share a canvas:
     // https://openlayers.org/en/latest/examples/webgl-layer-swipe.html
-    // Opaque detail pixels replace the COG before dataset opacity is applied.
+    // Opaque detail pixels replace the COG before layer opacity is applied.
     opacity: overview ? 1 : opacity,
     className: compositeClassName
   })

@@ -7,9 +7,9 @@ import { ContentsPanelContent } from './ContentsPanelContent.jsx'
 import { useReducer } from 'react'
 import { actions, initialState } from '../../reducer.js'
 import { KeyPanel } from '../key/KeyPanel.jsx'
-import sssiStyle from '../../datasets/test-helpers/sssi.json'
+import sssiStyle from '../../data-layers/test-helpers/sssi.json'
 import { blurInput } from './test-helpers/preact.js'
-import { THEMED_DATASET } from '../../datasets/test-helpers/themed-dataset.js'
+import { THEMED_DATASET } from '../../data-layers/test-helpers/themed-dataset.js'
 
 const STYLED_DATASET = {
   id: 'styled',

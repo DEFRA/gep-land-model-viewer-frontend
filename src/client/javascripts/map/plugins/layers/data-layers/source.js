@@ -2,9 +2,9 @@ const FGB_MIN_ZOOM = 7
 export const DEFAULT_OPACITY = 0.5
 
 /**
- * The data URL and default display settings for a dataset.
+ * The data URL and default display settings for a data layer.
  *
- * @typedef {object} DatasetSource
+ * @typedef {object} LayerSource
  * @property {'cog' | 'fgb' | 'wms'} type Data format or service type
  * @property {string} url Data asset URL or WMS service URL
  * @property {number} [opacity] Default layer opacity from 0 to 1
@@ -12,14 +12,14 @@ export const DEFAULT_OPACITY = 0.5
  * @property {number} [minZoom] First visible zoom level for FlatGeobuf detail
  * @property {{ type: 'cog', url: string }} [overview] COG underlay for a FlatGeobuf source
  * @property {string[]} [layers] WMS layer names. Fetched from capabilities when omitted or empty
- * @property {string} [attribution] Credit displayed while the dataset is visible
+ * @property {string} [attribution] Credit displayed while the layer is visible
  */
 
 /**
- * Builds a source from the dataset's style config and available data assets.
+ * Builds a source from the layer's style config and available data assets.
  * @param {{ themes: object[] }} styleConfig Original themed style config
  * @param {{ fgb?: string, cog?: string }} assets Available data asset URLs
- * @returns {DatasetSource}
+ * @returns {LayerSource}
  */
 export function sourceFor (styleConfig, assets) {
   if (!styleConfig.themes?.length) {

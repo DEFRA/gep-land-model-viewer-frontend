@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/preact'
-import { THEMED_DATASET } from './datasets/test-helpers/themed-dataset.js'
+import { THEMED_DATASET } from './data-layers/test-helpers/themed-dataset.js'
 
 vi.mock('./summaries/grid/index.jsx', () => ({ createGridSummary: vi.fn() }))
 vi.mock('./summaries/feature/index.jsx', () => ({ featureHitOptions: { label: vi.fn() } }))
-vi.mock('./datasets/hits.jsx', () => ({ createLayerHits: vi.fn() }))
+vi.mock('./data-layers/hits.jsx', () => ({ createLayerHits: vi.fn() }))
 vi.mock('./inspection/index.js', () => ({ createInspection: vi.fn() }))
-vi.mock('./datasets/attribution.js', () => ({ getAttribution: vi.fn(() => '© Ordnance Survey | Natural England') }))
+vi.mock('./data-layers/attribution.js', () => ({ getAttribution: vi.fn(() => '© Ordnance Survey | Natural England') }))
 vi.mock('./datasets/use-catalogue.js', () => ({ useCatalogue: vi.fn() }))
 vi.mock('./datasets/use-linked-dataset.js', () => ({ useLinkedDataset: vi.fn() }))
 
@@ -15,9 +15,9 @@ vi.mock('./layer-controller.js', () => ({ createLayerController: vi.fn() }))
 
 const { createGridSummary } = await import('./summaries/grid/index.jsx')
 const { featureHitOptions } = await import('./summaries/feature/index.jsx')
-const { createLayerHits } = await import('./datasets/hits.jsx')
+const { createLayerHits } = await import('./data-layers/hits.jsx')
 const { createInspection } = await import('./inspection/index.js')
-const { getAttribution } = await import('./datasets/attribution.js')
+const { getAttribution } = await import('./data-layers/attribution.js')
 const { createLayerController } = await import('./layer-controller.js')
 const { useCatalogue } = await import('./datasets/use-catalogue.js')
 const { useLinkedDataset } = await import('./datasets/use-linked-dataset.js')

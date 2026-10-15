@@ -1,8 +1,8 @@
 import { SELECTION_Z_INDEX, layerIdFor, overviewIdFor } from '../../config/layers.js'
-import { createCogLayer } from './datasets/layers/cog.js'
-import { createFlatGeobufLayer } from './datasets/layers/fgb.js'
-import { createWmsLayer } from './datasets/layers/wms.js'
-import { getLayerStyle } from './datasets/layer-style.js'
+import { createCogLayer } from './data-layers/layers/cog.js'
+import { createFlatGeobufLayer } from './data-layers/layers/fgb.js'
+import { createWmsLayer } from './data-layers/layers/wms.js'
+import { getLayerStyle } from './data-layers/layer-style.js'
 import { isLayerStateVisible } from './reducer.js'
 
 // OpenLayers render order, bottom to top:
