@@ -10,8 +10,8 @@ import { InfoPanel } from './panels/info/InfoPanel.jsx'
 import { DatasetInfoPanel } from './panels/dataset-info/DatasetInfoPanel.jsx'
 import { ZoomWarning } from './controls/ZoomWarning.jsx'
 import { CONTENTS_PANEL_ID, DATASET_INFO_PANEL_ID, INFO_PANEL_ID } from './constants.js'
-import { editableStyleEntries } from './datasets/style-config.js'
-import { getLayerStyle } from './datasets/layer-style.js'
+import { editableStyleEntries } from './data-layers/style-config.js'
+import { getLayerStyle } from './data-layers/layer-style.js'
 
 function contentsPanelTitle ({ pluginState, appState }) {
   const { editingLayer, layers } = pluginState

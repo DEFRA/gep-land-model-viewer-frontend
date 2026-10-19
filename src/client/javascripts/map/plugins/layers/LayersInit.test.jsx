@@ -1,28 +1,23 @@
 // @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/preact'
-import { THEMED_DATASET } from './datasets/test-helpers/themed-dataset.js'
-
-vi.mock('@defra/interactive-map', () => ({
-  EVENTS: { MAP_STYLE_CHANGE: 'map:stylechange' }
-}))
+import { THEMED_DATASET } from './data-layers/test-helpers/themed-dataset.js'
 
 vi.mock('./summaries/grid/index.jsx', () => ({ createGridSummary: vi.fn() }))
-vi.mock('./summaries/feature/index.jsx', () => ({ createFeatureSummary: vi.fn() }))
-vi.mock('./datasets/hits.jsx', () => ({ createDatasetHits: vi.fn() }))
+vi.mock('./summaries/feature/index.jsx', () => ({ featureHitOptions: { label: vi.fn() } }))
+vi.mock('./data-layers/hits.jsx', () => ({ createLayerHits: vi.fn() }))
 vi.mock('./inspection/index.js', () => ({ createInspection: vi.fn() }))
-vi.mock('./datasets/attribution.js', () => ({ getAttribution: vi.fn(() => '© Ordnance Survey | Natural England') }))
+vi.mock('./data-layers/attribution.js', () => ({ getAttribution: vi.fn(() => '© Ordnance Survey | Natural England') }))
 vi.mock('./datasets/use-catalogue.js', () => ({ useCatalogue: vi.fn() }))
 vi.mock('./datasets/use-linked-dataset.js', () => ({ useLinkedDataset: vi.fn() }))
 
 vi.mock('./layer-controller.js', () => ({ createLayerController: vi.fn() }))
 
-const { EVENTS } = await import('@defra/interactive-map')
 const { createGridSummary } = await import('./summaries/grid/index.jsx')
-const { createFeatureSummary } = await import('./summaries/feature/index.jsx')
-const { createDatasetHits } = await import('./datasets/hits.jsx')
+const { featureHitOptions } = await import('./summaries/feature/index.jsx')
+const { createLayerHits } = await import('./data-layers/hits.jsx')
 const { createInspection } = await import('./inspection/index.js')
-const { getAttribution } = await import('./datasets/attribution.js')
+const { getAttribution } = await import('./data-layers/attribution.js')
 const { createLayerController } = await import('./layer-controller.js')
 const { useCatalogue } = await import('./datasets/use-catalogue.js')
 const { useLinkedDataset } = await import('./datasets/use-linked-dataset.js')
@@ -35,12 +30,10 @@ let view
 let attributions
 let olMap
 let grid
-let features
-let datasetHits
+let layerHits
 let inspection
 let layerController
 let services
-let listeners
 let refs
 let dispatch
 
@@ -82,8 +75,7 @@ beforeEach(() => {
 
   olMap = {}
   grid = { getHits: vi.fn(), clearSelection: vi.fn(), setVisible: vi.fn(), setZIndex: vi.fn(), dispose: vi.fn() }
-  features = { getHits: vi.fn(), clearSelection: vi.fn(), setMapStyle: vi.fn(), setVisible: vi.fn(), setZIndex: vi.fn(), dispose: vi.fn() }
-  datasetHits = { getHits: vi.fn(), clearSelection: vi.fn(), dispose: vi.fn() }
+  layerHits = { getHits: vi.fn(), clearSelection: vi.fn(), dispose: vi.fn() }
   inspection = {
     selectHit: vi.fn(),
     showHitList: vi.fn(),
@@ -94,21 +86,16 @@ beforeEach(() => {
     sync: vi.fn(),
     dispose: vi.fn()
   }
-  listeners = new Map()
   services = {
     announce: vi.fn(),
     hints: { show: vi.fn() },
-    eventBus: {
-      on: vi.fn((event, handler) => listeners.set(event, handler)),
-      off: vi.fn((event) => listeners.delete(event))
-    }
+    eventBus: {}
   }
   refs = {}
   dispatch = vi.fn()
 
   vi.mocked(createGridSummary).mockReturnValue(grid)
-  vi.mocked(createFeatureSummary).mockReturnValue(features)
-  vi.mocked(createDatasetHits).mockReturnValue(datasetHits)
+  vi.mocked(createLayerHits).mockReturnValue(layerHits)
   vi.mocked(createInspection).mockReturnValue(inspection)
   vi.mocked(createLayerController).mockReturnValue(layerController)
 })
@@ -121,7 +108,7 @@ describe('LayersInit', () => {
   test('identify reads current layer state and reconciles on theme changes without recreating sources', () => {
     const initial = { ...WOODLAND, ready: true }
     renderInit({ pluginState: pluginState({ layers: [initial] }) })
-    const getLayers = createDatasetHits.mock.calls[0][1]
+    const getLayers = createLayerHits.mock.calls[0][1]
     expect(getLayers()).toEqual([initial])
     inspection.reconcile.mockClear()
 
@@ -129,7 +116,7 @@ describe('LayersInit', () => {
     view.rerender(<LayersInit {...props({ pluginState: pluginState({ layers: [switched] }) })} />)
     expect(getLayers()).toEqual([switched])
     expect(inspection.reconcile).toHaveBeenCalledOnce()
-    expect(createDatasetHits).toHaveBeenCalledOnce()
+    expect(createLayerHits).toHaveBeenCalledOnce()
 
     inspection.reconcile.mockClear()
     const edited = { ...switched, styleOverridesByTheme: { 2: { classes: [{ fill: [255, 0, 0, 1] }] } } }
@@ -144,35 +131,34 @@ describe('LayersInit', () => {
     expect(createInspection).toHaveBeenCalledWith({
       map: olMap,
       eventBus: services.eventBus,
-      sources: [datasetHits, grid, features],
+      sources: [layerHits, grid],
       getInspectionState: expect.any(Function),
       dispatch,
       appDispatch: expect.any(Function),
       announce: services.announce
     })
     expect(createGridSummary).toHaveBeenCalledWith(services.eventBus, olMap)
-    expect(createFeatureSummary).toHaveBeenCalledWith(olMap)
-    expect(createDatasetHits).toHaveBeenCalledWith(olMap, expect.any(Function))
+    expect(createLayerHits).toHaveBeenCalledWith(olMap, expect.any(Function), { features: featureHitOptions })
     expect(createLayerController).toHaveBeenCalledWith({
       map: olMap,
-      summaries: { grid, features },
-      loadDataset: expect.any(Function),
-      onDatasetLoaded: expect.any(Function),
-      onDatasetFailed: expect.any(Function)
+      drawnLayers: { grid },
+      loadLayer: expect.any(Function),
+      onLayerLoaded: expect.any(Function),
+      onLayerFailed: expect.any(Function)
     })
     expect(refs.inspection.current).toBe(inspection)
   })
 
   test('commits dataset loading outcomes and shows a hint for failures', () => {
     renderInit({ pluginState: pluginState({ layers: [{ id: 'woodland', title: 'Ancient Woodland', ready: false }] }) })
-    const { onDatasetLoaded, onDatasetFailed } = createLayerController.mock.calls[0][0]
+    const { onLayerLoaded, onLayerFailed } = createLayerController.mock.calls[0][0]
 
-    onDatasetLoaded('woodland', { source: WOODLAND.source, minZoom: 9 })
-    onDatasetFailed('woodland')
+    onLayerLoaded('woodland', { source: WOODLAND.source, minZoom: 9 })
+    onLayerFailed('woodland')
 
     expect(dispatch.mock.calls).toEqual([
-      [{ type: 'DATASET_LOADED', payload: { id: 'woodland', source: WOODLAND.source, minZoom: 9 } }],
-      [{ type: 'DATASET_FAILED', payload: { id: 'woodland', error: 'This dataset could not be added. Try again later.' } }]
+      [{ type: 'LAYER_LOADED', payload: { id: 'woodland', source: WOODLAND.source, minZoom: 9 } }],
+      [{ type: 'LAYER_FAILED', payload: { id: 'woodland' } }]
     ])
     expect(services.hints.show).toHaveBeenCalledWith('Ancient Woodland could not be added')
   })
@@ -200,15 +186,6 @@ describe('LayersInit', () => {
 
     expect(createInspection).not.toHaveBeenCalled()
     expect(createGridSummary).not.toHaveBeenCalled()
-  })
-
-  test('points the feature summary at the current basemap and follows completed swaps', () => {
-    renderInit()
-
-    expect(features.setMapStyle).toHaveBeenCalledWith('os-outdoor-ngd')
-    features.setMapStyle.mockClear()
-    listeners.get(EVENTS.MAP_STYLE_CHANGE)({ mapStyleId: 'os-outdoor-raster' })
-    expect(features.setMapStyle).toHaveBeenCalledWith('os-outdoor-raster')
   })
 
   test('writes the derived attribution', () => {
@@ -251,12 +228,10 @@ describe('LayersInit', () => {
 
     view.unmount()
 
-    expect(datasetHits.dispose).toHaveBeenCalled()
+    expect(layerHits.dispose).toHaveBeenCalled()
     expect(grid.dispose).toHaveBeenCalled()
-    expect(features.dispose).toHaveBeenCalled()
     expect(inspection.dispose).toHaveBeenCalled()
     expect(layerController.dispose).toHaveBeenCalled()
     expect(refs.inspection.current).toBeNull()
-    expect(services.eventBus.off).toHaveBeenCalledWith(EVENTS.MAP_STYLE_CHANGE, expect.any(Function))
   })
 })

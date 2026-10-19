@@ -35,18 +35,18 @@ export async function fetchWmsLayerNames (wmsUrl) {
 }
 
 /**
- * Creates an image layer for a WMS dataset, discovering the layer names via
- * GetCapabilities when the dataset does not state them.
+ * Creates an image layer for a WMS source, discovering the layer names via
+ * GetCapabilities when the source does not state them.
  *
- * @param {object} dataset Dataset definition with a wms source
+ * @param {object} layerConfig Layer config with a wms source
  * @param {string} layerId Map layer id
  * @param {object} presentation Resolved layer opacity
- * @returns Dataset layer, or null when no queryable layers were found
+ * @returns Map layers, or null when no queryable layers were found
  */
-export async function createWmsLayer (dataset, layerId, { opacity }) {
-  const layerNames = dataset.source.layers?.length
-    ? dataset.source.layers
-    : await fetchWmsLayerNames(dataset.source.url)
+export async function createWmsLayer (layerConfig, layerId, { opacity }) {
+  const layerNames = layerConfig.source.layers?.length
+    ? layerConfig.source.layers
+    : await fetchWmsLayerNames(layerConfig.source.url)
 
   if (!layerNames.length) {
     return null
@@ -62,9 +62,9 @@ export async function createWmsLayer (dataset, layerId, { opacity }) {
   const layer = new ImageLayer({
     properties: { id: layerId, wms: true },
     source: new ImageWMS({
-      url: dataset.source.url,
+      url: layerConfig.source.url,
       params,
-      attributions: dataset.source.attribution,
+      attributions: layerConfig.source.attribution,
       ratio: 1.5,
       crossOrigin: 'anonymous'
     }),

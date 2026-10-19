@@ -1,7 +1,7 @@
 import Validate from '@hapi/validate'
 import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
-import { config } from '../../../config/config.js'
-import { statusCodes } from '../../common/constants/status-codes.js'
+import { config } from '../../../../config/config.js'
+import { statusCodes } from '../../constants/status-codes.js'
 
 const TIMEOUT = 10_000
 

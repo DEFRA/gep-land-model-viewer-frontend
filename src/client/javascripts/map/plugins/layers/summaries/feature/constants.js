@@ -1,1 +1,0 @@
-export const FEATURE_VISIBLE_MIN_ZOOM = 10

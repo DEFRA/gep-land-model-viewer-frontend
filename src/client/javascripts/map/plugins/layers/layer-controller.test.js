@@ -1,16 +1,16 @@
-import { getLayerStyle } from './datasets/layer-style.js'
-import { THEMED_DATASET } from './datasets/test-helpers/themed-dataset.js'
+import { getLayerStyle } from './data-layers/layer-style.js'
+import { THEMED_DATASET } from './data-layers/test-helpers/themed-dataset.js'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { SELECTION_Z_INDEX } from '../../config/layers.js'
-import sssiStyle from './datasets/test-helpers/sssi.json'
+import sssiStyle from './data-layers/test-helpers/sssi.json'
 
-vi.mock('./datasets/layers/cog.js', () => ({ createCogLayer: vi.fn() }))
-vi.mock('./datasets/layers/fgb.js', () => ({ createFlatGeobufLayer: vi.fn() }))
-vi.mock('./datasets/layers/wms.js', () => ({ createWmsLayer: vi.fn() }))
+vi.mock('./data-layers/layers/cog.js', () => ({ createCogLayer: vi.fn() }))
+vi.mock('./data-layers/layers/fgb.js', () => ({ createFlatGeobufLayer: vi.fn() }))
+vi.mock('./data-layers/layers/wms.js', () => ({ createWmsLayer: vi.fn() }))
 
-const { createFlatGeobufLayer } = await import('./datasets/layers/fgb.js')
-const { createCogLayer } = await import('./datasets/layers/cog.js')
-const { createWmsLayer } = await import('./datasets/layers/wms.js')
+const { createFlatGeobufLayer } = await import('./data-layers/layers/fgb.js')
+const { createCogLayer } = await import('./data-layers/layers/cog.js')
+const { createWmsLayer } = await import('./data-layers/layers/wms.js')
 const { createLayerController } = await import('./layer-controller.js')
 
 const WOODLAND = {
@@ -28,6 +28,8 @@ const PEAT = {
   title: 'Peaty soil depth',
   source: { type: 'cog', url: '/peat.tif', opacity: 0.5 }
 }
+
+const url = id => `/api/datasets/${id}/layer`
 
 function layer (id, { minZoom = -Infinity, layerNames } = {}) {
   let visible = true
@@ -57,24 +59,24 @@ function deferred () {
   return { promise, resolve: resolvePromise }
 }
 
-function harness ({ datasets = [WOODLAND], summaries = {}, ...options } = {}) {
+function harness ({ datasets = [WOODLAND], drawnLayers = {}, ...options } = {}) {
   const map = {
     addLayer: vi.fn(),
     removeLayer: vi.fn()
   }
-  const loadDataset = vi.fn(async id => datasets.find(dataset => dataset.id === id))
-  const onDatasetLoaded = vi.fn()
-  const onDatasetFailed = vi.fn()
+  const loadLayer = vi.fn(async id => datasets.find(dataset => dataset.id === id))
+  const onLayerLoaded = vi.fn()
+  const onLayerFailed = vi.fn()
   const controller = createLayerController({
     map,
-    summaries,
-    loadDataset,
+    drawnLayers,
+    loadLayer,
     ...options,
-    onDatasetLoaded,
-    onDatasetFailed
+    onLayerLoaded,
+    onLayerFailed
   })
 
-  return { controller, map, loadDataset, onDatasetLoaded, onDatasetFailed }
+  return { controller, map, loadLayer, onLayerLoaded, onLayerFailed }
 }
 
 beforeEach(() => {
@@ -90,13 +92,13 @@ describe('layer controller', () => {
     const dataset = THEMED_DATASET
     const datasetLayer = createDatasetLayer([layer('gep-themed')])
     createFlatGeobufLayer.mockResolvedValue(datasetLayer)
-    const { controller, onDatasetLoaded } = harness({ datasets: [dataset] })
-    controller.sync([{ id: dataset.id, ready: false }])
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+    const { controller, onLayerLoaded } = harness({ datasets: [dataset] })
+    controller.sync([{ id: dataset.id, layerUrl: url(dataset.id), ready: false }])
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
 
-    controller.sync([{ id: dataset.id, ready: true, themeBand: 2 }])
+    controller.sync([{ id: dataset.id, layerUrl: url(dataset.id), ready: true, themeBand: 2 }])
     expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(dataset.source.styleConfig.themes[1])
-    controller.sync([{ id: dataset.id, ready: true, themeBand: 1 }])
+    controller.sync([{ id: dataset.id, layerUrl: url(dataset.id), ready: true, themeBand: 1 }])
     expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(dataset.source.styleConfig.themes[0])
     expect(datasetLayer.applyStyle).toHaveBeenCalledTimes(2)
     expect(createFlatGeobufLayer).toHaveBeenCalledOnce()
@@ -107,8 +109,8 @@ describe('layer controller', () => {
     const pending = deferred()
     const datasetLayer = createDatasetLayer([layer('gep-themed')])
     createFlatGeobufLayer.mockReturnValue(pending.promise)
-    const { controller, map, onDatasetLoaded } = harness({ datasets: [dataset] })
-    const initial = { id: dataset.id, ready: false, themeBand: 2, opacity: 0.3 }
+    const { controller, map, onLayerLoaded } = harness({ datasets: [dataset] })
+    const initial = { id: dataset.id, layerUrl: url(dataset.id), ready: false, themeBand: 2, opacity: 0.3 }
     controller.sync([initial])
     await vi.waitFor(() => expect(createFlatGeobufLayer).toHaveBeenCalledWith(dataset, 'gep-themed', map, getLayerStyle({ ...dataset, ...initial })))
 
@@ -120,7 +122,7 @@ describe('layer controller', () => {
     }
     controller.sync([latest])
     pending.resolve(datasetLayer)
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
 
     expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(getLayerStyle({ ...dataset, ...latest }).styleConfig)
     expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.6)
@@ -131,14 +133,15 @@ describe('layer controller', () => {
     const dataset = { ...WOODLAND, source: { ...WOODLAND.source, styleConfig: sssiStyle, opacity: 0.7 } }
     const datasetLayer = createDatasetLayer([layer('gep-woodland'), layer('gep-woodland-overview')])
     createFlatGeobufLayer.mockResolvedValue(datasetLayer)
-    const { controller, onDatasetLoaded } = harness({ datasets: [dataset] })
-    controller.sync([{ id: 'woodland', ready: false }])
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+    const { controller, onLayerLoaded } = harness({ datasets: [dataset] })
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
     expect(datasetLayer.applyStyle).not.toHaveBeenCalled()
     expect(datasetLayer.setOpacity).not.toHaveBeenCalled()
 
     const edited = {
       id: 'woodland',
+      layerUrl: url('woodland'),
       ready: true,
       styleOverridesByTheme: { 1: { classes: [{ fill: [255, 0, 0, 1], stroke: { color: [0, 0, 0, 1] } }] } },
       opacity: 0.4
@@ -159,13 +162,13 @@ describe('layer controller', () => {
     expect(datasetLayer.applyStyle).toHaveBeenCalledOnce()
     expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.6)
 
-    controller.sync([{ id: 'woodland', ready: true }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: true }])
     expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(sssiStyle.themes[0])
     expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.7)
 
     controller.sync([edited])
     controller.sync([])
-    controller.sync([{ id: 'woodland', ready: false }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
     expect(datasetLayer.applyStyle).toHaveBeenLastCalledWith(sssiStyle.themes[0])
     expect(datasetLayer.setOpacity).toHaveBeenLastCalledWith(0.7)
     expect(createFlatGeobufLayer).toHaveBeenCalledOnce()
@@ -174,12 +177,13 @@ describe('layer controller', () => {
   test('lazily creates a dataset once, adds it hidden and reports its metadata', async () => {
     const mapLayer = layer('gep-woodland', { minZoom: 8 })
     createFlatGeobufLayer.mockResolvedValue(createDatasetLayer([mapLayer]))
-    const { controller, map, onDatasetLoaded } = harness()
+    const { controller, map, loadLayer, onLayerLoaded } = harness()
 
-    controller.sync([{ id: 'woodland', ready: false }])
-    controller.sync([{ id: 'woodland', ready: false }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
 
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledWith('woodland', { source: WOODLAND.source, minZoom: 9 }))
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledWith('woodland', { source: WOODLAND.source, minZoom: 9 }))
+    expect(loadLayer).toHaveBeenCalledWith('woodland', url('woodland'), expect.any(AbortSignal))
     expect(createFlatGeobufLayer).toHaveBeenCalledTimes(1)
     expect(mapLayer.setVisible).toHaveBeenCalledWith(false)
     expect(mapLayer.setVisible.mock.invocationCallOrder[0]).toBeLessThan(map.addLayer.mock.invocationCallOrder[0])
@@ -189,11 +193,11 @@ describe('layer controller', () => {
   test('reports resolved WMS layer names as reducer metadata', async () => {
     const wmsLayer = layer('gep-flood', { layerNames: 'zone_2,zone_3' })
     createWmsLayer.mockResolvedValue(createDatasetLayer([wmsLayer]))
-    const { controller, onDatasetLoaded } = harness({ datasets: [FLOOD] })
+    const { controller, onLayerLoaded } = harness({ datasets: [FLOOD] })
 
-    controller.sync([{ id: 'flood', ready: false }])
+    controller.sync([{ id: 'flood', layerUrl: url('flood'), ready: false }])
 
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledWith('flood', {
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledWith('flood', {
       source: FLOOD.source,
       minZoom: undefined,
       wmsLayerNames: ['zone_2', 'zone_3']
@@ -203,11 +207,11 @@ describe('layer controller', () => {
   test('creates a COG dataset through its layer factory', async () => {
     const cogLayer = layer('gep-peat')
     createCogLayer.mockResolvedValue(createDatasetLayer([cogLayer]))
-    const { controller, map, onDatasetLoaded } = harness({ datasets: [PEAT] })
+    const { controller, map, onLayerLoaded } = harness({ datasets: [PEAT] })
 
-    controller.sync([{ id: 'peat', ready: false }])
+    controller.sync([{ id: 'peat', layerUrl: url('peat'), ready: false }])
 
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
     expect(createCogLayer).toHaveBeenCalledWith(PEAT, 'gep-peat', getLayerStyle(PEAT))
     expect(map.addLayer).toHaveBeenCalledWith(cogLayer)
   })
@@ -215,11 +219,11 @@ describe('layer controller', () => {
   test('reports a WMS dataset with no queryable layers as failed', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     createWmsLayer.mockResolvedValue(null)
-    const { controller, map, onDatasetFailed } = harness({ datasets: [FLOOD] })
+    const { controller, map, onLayerFailed } = harness({ datasets: [FLOOD] })
 
-    controller.sync([{ id: 'flood', ready: false }])
+    controller.sync([{ id: 'flood', layerUrl: url('flood'), ready: false }])
 
-    await vi.waitFor(() => expect(onDatasetFailed).toHaveBeenCalledWith('flood'))
+    await vi.waitFor(() => expect(onLayerFailed).toHaveBeenCalledWith('flood'))
     expect(map.addLayer).not.toHaveBeenCalled()
     expect(console.error).toHaveBeenCalledWith(
       'Failed to load data layer flood',
@@ -232,16 +236,16 @@ describe('layer controller', () => {
     const overview = layer('gep-woodland-overview')
     createFlatGeobufLayer.mockResolvedValue(createDatasetLayer([detail, overview]))
     const grid = { setVisible: vi.fn(), setZIndex: vi.fn() }
-    const { controller, onDatasetLoaded } = harness({ summaries: { grid } })
+    const { controller, loadLayer, onLayerLoaded } = harness({ drawnLayers: { grid } })
     const loading = [
-      { id: 'woodland', ready: false },
+      { id: 'woodland', layerUrl: url('woodland'), ready: false },
       { id: 'grid', ready: true }
     ]
 
     controller.sync(loading)
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
     controller.sync([
-      { id: 'woodland', ready: true },
+      { id: 'woodland', layerUrl: url('woodland'), ready: true },
       { id: 'grid', ready: true }
     ])
 
@@ -251,10 +255,11 @@ describe('layer controller', () => {
     expect(overview.setZIndex).toHaveBeenLastCalledWith(SELECTION_Z_INDEX - 1)
     expect(grid.setVisible).toHaveBeenLastCalledWith(true)
     expect(grid.setZIndex).toHaveBeenLastCalledWith((SELECTION_Z_INDEX - 1) / 2)
+    expect(loadLayer).toHaveBeenCalledOnce()
 
     controller.sync([
       { id: 'grid', ready: true },
-      { id: 'woodland', ready: true }
+      { id: 'woodland', layerUrl: url('woodland'), ready: true }
     ])
 
     expect(detail.setZIndex).toHaveBeenLastCalledWith((SELECTION_Z_INDEX - 1) / 2)
@@ -265,38 +270,38 @@ describe('layer controller', () => {
   test('hides removed layers and reuses them when the dataset is added again', async () => {
     const mapLayer = layer('gep-woodland')
     createFlatGeobufLayer.mockResolvedValue(createDatasetLayer([mapLayer]))
-    const { controller, onDatasetLoaded } = harness()
+    const { controller, onLayerLoaded } = harness()
 
-    controller.sync([{ id: 'woodland', ready: false }])
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
-    controller.sync([{ id: 'woodland', ready: true }])
-    controller.sync([{ id: 'woodland', ready: true, hidden: true }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: true }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: true, hidden: true }])
     expect(mapLayer.setVisible).toHaveBeenLastCalledWith(false)
 
     controller.sync([])
-    const readded = [{ id: 'woodland', ready: false }]
+    const readded = [{ id: 'woodland', layerUrl: url('woodland'), ready: false }]
     controller.sync(readded)
 
     expect(createFlatGeobufLayer).toHaveBeenCalledTimes(1)
-    expect(onDatasetLoaded).toHaveBeenCalledTimes(2)
+    expect(onLayerLoaded).toHaveBeenCalledTimes(2)
   })
 
   test('removal during loading leaves the completed dataset cached and hidden', async () => {
     const pending = deferred()
     const mapLayer = layer('gep-woodland')
     createFlatGeobufLayer.mockReturnValue(pending.promise)
-    const { controller, map, onDatasetLoaded } = harness()
+    const { controller, map, onLayerLoaded } = harness()
 
-    controller.sync([{ id: 'woodland', ready: false }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
     controller.sync([])
     pending.resolve(createDatasetLayer([mapLayer]))
 
     await vi.waitFor(() => expect(map.addLayer).toHaveBeenCalledWith(mapLayer))
     expect(mapLayer.getVisible()).toBe(false)
-    expect(onDatasetLoaded).not.toHaveBeenCalled()
+    expect(onLayerLoaded).not.toHaveBeenCalled()
 
-    controller.sync([{ id: 'woodland', ready: false }])
-    expect(onDatasetLoaded).toHaveBeenCalledOnce()
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
+    expect(onLayerLoaded).toHaveBeenCalledOnce()
     expect(createFlatGeobufLayer).toHaveBeenCalledTimes(1)
   })
 
@@ -304,15 +309,15 @@ describe('layer controller', () => {
     const pending = deferred()
     const mapLayer = layer('gep-woodland')
     createFlatGeobufLayer.mockReturnValue(pending.promise)
-    const { controller, onDatasetLoaded } = harness()
+    const { controller, onLayerLoaded } = harness()
 
-    controller.sync([{ id: 'woodland', ready: false }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
     controller.sync([])
-    controller.sync([{ id: 'woodland', ready: false }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
     await vi.waitFor(() => expect(createFlatGeobufLayer).toHaveBeenCalledTimes(1))
 
     pending.resolve(createDatasetLayer([mapLayer]))
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
 
     expect(mapLayer.getVisible()).toBe(false)
     expect(createFlatGeobufLayer).toHaveBeenCalledTimes(1)
@@ -322,30 +327,30 @@ describe('layer controller', () => {
     const pending = deferred()
     const mapLayer = layer('gep-woodland')
     createFlatGeobufLayer.mockReturnValue(pending.promise)
-    const { controller, map, onDatasetLoaded, onDatasetFailed } = harness()
+    const { controller, map, onLayerLoaded, onLayerFailed } = harness()
 
-    controller.sync([{ id: 'woodland', ready: false }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
     await vi.waitFor(() => expect(createFlatGeobufLayer).toHaveBeenCalledOnce())
     controller.dispose()
     pending.resolve(createDatasetLayer([mapLayer]))
 
     await vi.waitFor(() => expect(map.removeLayer).toHaveBeenCalledWith(mapLayer))
     expect(map.addLayer).not.toHaveBeenCalled()
-    expect(onDatasetLoaded).not.toHaveBeenCalled()
-    expect(onDatasetFailed).not.toHaveBeenCalled()
+    expect(onLayerLoaded).not.toHaveBeenCalled()
+    expect(onLayerFailed).not.toHaveBeenCalled()
   })
 
   test('final disposal removes each created dataset layer once', async () => {
     const detail = layer('gep-woodland')
     const overview = layer('gep-woodland-overview')
     createFlatGeobufLayer.mockResolvedValue(createDatasetLayer([detail, overview]))
-    const { controller, map, onDatasetLoaded } = harness()
+    const { controller, map, onLayerLoaded } = harness()
 
-    controller.sync([{ id: 'woodland', ready: false }])
-    await vi.waitFor(() => expect(onDatasetLoaded).toHaveBeenCalledOnce())
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
     controller.dispose()
     controller.dispose()
-    controller.sync([{ id: 'woodland', ready: true }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: true }])
 
     expect(map.removeLayer.mock.calls).toEqual([[detail], [overview]])
     expect(createFlatGeobufLayer).toHaveBeenCalledTimes(1)
@@ -355,32 +360,32 @@ describe('layer controller', () => {
 describe('loading dataset definitions', () => {
   test('reports a failed request', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    const loadDataset = vi.fn().mockRejectedValue(new Error('Dataset request failed (502)'))
-    const { controller, onDatasetFailed } = harness({ loadDataset })
+    const loadLayer = vi.fn().mockRejectedValue(new Error('Request failed (502)'))
+    const { controller, onLayerFailed } = harness({ loadLayer })
 
-    controller.sync([{ id: 'woodland', ready: false }])
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
 
-    await vi.waitFor(() => expect(onDatasetFailed).toHaveBeenCalledWith('woodland'))
+    await vi.waitFor(() => expect(onLayerFailed).toHaveBeenCalledWith('woodland'))
     expect(console.error).toHaveBeenCalledWith(
       'Failed to load data layer woodland',
-      expect.objectContaining({ message: 'Dataset request failed (502)' })
+      expect.objectContaining({ message: 'Request failed (502)' })
     )
   })
 
   test('cancels a pending request on disposal without building the layer', async () => {
     const pending = deferred()
-    const loadDataset = vi.fn(() => pending.promise)
-    const { controller, onDatasetLoaded, onDatasetFailed } = harness({ loadDataset })
+    const loadLayer = vi.fn(() => pending.promise)
+    const { controller, onLayerLoaded, onLayerFailed } = harness({ loadLayer })
 
-    controller.sync([{ id: 'woodland', ready: false }])
-    const signal = loadDataset.mock.calls[0][1]
+    controller.sync([{ id: 'woodland', layerUrl: url('woodland'), ready: false }])
+    const signal = loadLayer.mock.calls[0][2]
     controller.dispose()
     pending.resolve(WOODLAND)
     await pending.promise
 
     expect(signal.aborted).toBe(true)
     expect(createFlatGeobufLayer).not.toHaveBeenCalled()
-    expect(onDatasetLoaded).not.toHaveBeenCalled()
-    expect(onDatasetFailed).not.toHaveBeenCalled()
+    expect(onLayerLoaded).not.toHaveBeenCalled()
+    expect(onLayerFailed).not.toHaveBeenCalled()
   })
 })

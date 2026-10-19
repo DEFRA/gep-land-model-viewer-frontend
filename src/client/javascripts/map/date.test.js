@@ -6,8 +6,13 @@ describe('toDate', () => {
     expect(toDate('08/03/2023')).toEqual(new Date(2023, 2, 8))
   })
 
+  test('parses a year for annual products', () => {
+    expect(toDate('2024')).toEqual(new Date(2024, 0, 1))
+  })
+
   test('rejects anything else', () => {
     expect(toDate('2023-03-08')).toBeNull()
+    expect(toDate('24')).toBeNull()
     expect(toDate('')).toBeNull()
     expect(toDate(null)).toBeNull()
   })

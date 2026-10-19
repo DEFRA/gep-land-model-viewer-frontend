@@ -1,18 +1,17 @@
 import { useEffect, useRef } from 'react'
-import { EVENTS } from '@defra/interactive-map'
 import { createGridSummary } from './summaries/grid/index.jsx'
-import { createFeatureSummary } from './summaries/feature/index.jsx'
-import { createDatasetHits } from './datasets/hits.jsx'
+import { featureHitOptions } from './summaries/feature/index.jsx'
+import { createLayerHits } from './data-layers/hits.jsx'
 import { createInspection } from './inspection/index.js'
-import { getAttribution } from './datasets/attribution.js'
+import { getAttribution } from './data-layers/attribution.js'
 import { createLayerController } from './layer-controller.js'
 import { inspectableLayers } from './reducer.js'
 import { useCatalogue } from './datasets/use-catalogue.js'
 import { useLinkedDataset } from './datasets/use-linked-dataset.js'
-import { loadDataset } from './datasets/api.js'
+import { loadLayer } from './data-layers/api.js'
+import { FEATURE_SUMMARY, GRID_SUMMARY } from './summaries/config.js'
 
 const ATTRIBUTIONS_SELECTOR = '.im-c-attributions'
-const DATASET_FAILED_MESSAGE = 'This dataset could not be added. Try again later.'
 
 export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, appState, services }) {
   useCatalogue(pluginState)
@@ -39,13 +38,13 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
 
     const { map } = mapProvider
     const grid = createGridSummary(services.eventBus, map)
-    const features = createFeatureSummary(map)
-    const summaries = { grid, features }
-    const datasetHits = createDatasetHits(map, () => layersRef.current)
+    const layerHits = createLayerHits(map, () => layersRef.current, {
+      [FEATURE_SUMMARY.id]: featureHitOptions
+    })
     const inspection = createInspection({
       map,
       eventBus: services.eventBus,
-      sources: [datasetHits, grid, features],
+      sources: [layerHits, grid],
       getInspectionState: () => inspectionStateRef.current,
       dispatch: pluginState.dispatch,
       appDispatch: appState.dispatch,
@@ -53,15 +52,15 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     })
     const layerController = createLayerController({
       map,
-      summaries,
-      loadDataset,
-      onDatasetLoaded: (id, metadata) => pluginState.dispatch({
-        type: 'DATASET_LOADED',
+      drawnLayers: { [GRID_SUMMARY.id]: grid },
+      loadLayer,
+      onLayerLoaded: (id, metadata) => pluginState.dispatch({
+        type: 'LAYER_LOADED',
         payload: { id, ...metadata }
       }),
-      onDatasetFailed: (id) => {
+      onLayerFailed: (id) => {
         const title = layersRef.current.find(layer => layer.id === id)?.title
-        pluginState.dispatch({ type: 'DATASET_FAILED', payload: { id, error: DATASET_FAILED_MESSAGE } })
+        pluginState.dispatch({ type: 'LAYER_FAILED', payload: { id } })
         services.hints.show(`${title} could not be added`)
       }
     })
@@ -69,18 +68,11 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     layerControllerRef.current = layerController
     inspectionRef.current = inspection
 
-    const syncFeatureSource = ({ mapStyleId }) => features.setMapStyle(mapStyleId)
-
-    syncFeatureSource({ mapStyleId: mapState.mapStyle.id })
-    services.eventBus.on(EVENTS.MAP_STYLE_CHANGE, syncFeatureSource)
-
     return () => {
-      services.eventBus.off(EVENTS.MAP_STYLE_CHANGE, syncFeatureSource)
       layerController.dispose()
       inspection.dispose()
-      datasetHits.dispose()
+      layerHits.dispose()
       grid.dispose()
-      features.dispose()
       layerControllerRef.current = null
       inspectionRef.current = null
     }
