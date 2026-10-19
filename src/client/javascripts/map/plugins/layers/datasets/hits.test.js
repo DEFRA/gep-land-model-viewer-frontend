@@ -270,8 +270,8 @@ describe('#createDatasetHits', () => {
     source.dispose()
   })
 
-  test('a detail FlatGeobuf feature yields a hit with its properties', async () => {
-    const feature = stubFeature({ geometry: {}, A_pred: 'Bog', area: 12 })
+  test('a detail FlatGeobuf feature yields a hit with its dataset properties only', async () => {
+    const feature = stubFeature({ geometry: {}, A_pred: 'Bog', area: 12, styleValue: 'Bog' })
     const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland') }] })
 
     const hits = await getHits(map)

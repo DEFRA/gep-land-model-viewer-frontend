@@ -4,6 +4,7 @@ vi.mock('flatgeobuf/lib/mjs/ol.js', () => ({
   deserialize: vi.fn()
 }))
 
+const { default: Feature } = await import('ol/Feature.js')
 const { default: VectorSource } = await import('ol/source/Vector.js')
 const { deserialize } = await import('flatgeobuf/lib/mjs/ol.js')
 const { createFgbLoadController } = await import('./fgb-loader.js')
@@ -46,7 +47,8 @@ function detailHarness (ready = true) {
 function sourceHarness () {
   return {
     removeLoadedExtent: vi.fn(),
-    changed: vi.fn()
+    changed: vi.fn(),
+    refresh: vi.fn()
   }
 }
 
@@ -154,8 +156,28 @@ describe('#createFgbLoadController', () => {
     expect(detail.layer.un).toHaveBeenCalled()
   })
 
+  test('copies the style field to the style value property', async () => {
+    const feature = new Feature({ _mode: 'Arable' })
+    deserialize.mockReturnValueOnce(streamOf([feature]))
+    const { loader } = createFgbLoadController(sourceHarness(), URL, detailHarness().layer, '_mode')
+
+    await loader(EXTENT, 10, projection)
+
+    expect(feature.get('styleValue')).toBe('Arable')
+  })
+
+  test('reloads the source only when the style field changes', () => {
+    const source = sourceHarness()
+    const controller = createFgbLoadController(source, URL, detailHarness().layer, 'lucode')
+
+    controller.setStyleField('lucode')
+    expect(source.refresh).not.toHaveBeenCalled()
+
+    controller.setStyleField('county')
+    expect(source.refresh).toHaveBeenCalledOnce()
+  })
+
   test('OpenLayers adds a completed extent as one batch', async () => {
-    const { default: Feature } = await import('ol/Feature.js')
     const features = Array.from({ length: 2001 }, (_, index) => new Feature({ index }))
     deserialize.mockReturnValueOnce(streamOf(features))
     vi.spyOn(performance, 'now').mockReturnValue(0)

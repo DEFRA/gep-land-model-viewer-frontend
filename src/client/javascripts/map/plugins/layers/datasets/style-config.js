@@ -66,9 +66,13 @@ export function buildCogColourExpression (styleConfig) {
   return branches
 }
 
+// Fixed field name for style value property avoiding invalid shader identifiers.
+// e.g `_mode` generated the invalid identifier `v_prop__mode` (no double underscore allowed).
+export const STYLE_VALUE_PROPERTY = 'styleValue'
+
 function matchExpressionFor (styleConfig, valueFor) {
   /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
-  const expression = ['match', ['get', styleConfig.field]]
+  const expression = ['match', ['get', STYLE_VALUE_PROPERTY]]
   for (const definition of styleConfig.classes) {
     for (const fieldValue of definition.fieldValues) {
       expression.push(fieldValue, valueFor(definition))
@@ -84,7 +88,7 @@ function rangeExpressionFor (styleConfig, valueFor) {
   }
 
   /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
-  const value = ['get', styleConfig.field]
+  const value = ['get', STYLE_VALUE_PROPERTY]
   /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
   const expression = ['case', ['<', value, styleConfig.minValue], valueFor(styleConfig.default)]
   for (const definition of styleConfig.classes) {

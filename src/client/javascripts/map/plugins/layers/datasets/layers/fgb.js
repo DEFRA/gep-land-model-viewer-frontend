@@ -127,7 +127,7 @@ export async function createFlatGeobufLayer (dataset, layerId, map, { styleConfi
     layers = [detail]
   }
 
-  const loadController = createFgbLoadController(source, url, detail)
+  const loadController = createFgbLoadController(source, url, detail, styleConfig.field)
   source.setLoader(loadController.loader)
   registerLoadRecovery(map, detail, loadController)
 
@@ -141,6 +141,7 @@ export async function createFlatGeobufLayer (dataset, layerId, map, { styleConfi
         detail.updateStyleVariables(nextVariables)
         detail.setStyle(nextStyle)
         themeBand = next.band
+        loadController.setStyleField(next.field)
       }
       overviewLayer?.applyStyle(next)
     },
