@@ -1,11 +1,13 @@
 import { getDifference, intersects } from 'ol/extent.js'
 import { deserialize } from 'flatgeobuf/lib/mjs/ol.js'
 import { EPSG_27700 } from '../../constants.js'
+import { STYLE_VALUE_PROPERTY } from '../style-config.js'
 
 /**
  * @typedef {object} FgbLoadController
  * @property {import('ol/featureloader.js').FeatureLoader} loader
  * @property {(extent: import('ol/extent.js').Extent) => boolean} retryFailedExtents
+ * @property {(field: string|undefined) => void} setStyleField
  */
 
 // Yield after roughly half a 60 Hz frame so input and rendering get a turn.
@@ -69,9 +71,10 @@ function removeExtentFromFailures (failures, extent) {
  * @param {import('ol/source/Vector.js').default} source
  * @param {string} url
  * @param {import('ol/layer/WebGLVector.js').default} detailLayer
+ * @param {string} [styleField] Field copied to the style value property
  * @returns {FgbLoadController}
  */
-export function createFgbLoadController (source, url, detailLayer) {
+export function createFgbLoadController (source, url, detailLayer, styleField) {
   /** @type {{extent: import('ol/extent.js').Extent, retryGranted: boolean}[]} */
   let failures = []
 
@@ -97,6 +100,9 @@ export function createFgbLoadController (source, url, detailLayer) {
       })
 
       for await (const feature of stream) {
+        if (styleField !== undefined) {
+          feature.set(STYLE_VALUE_PROPERTY, feature.get(styleField))
+        }
         features.push(feature)
 
         if (performance.now() - sliceStarted >= LOAD_TIME_SLICE_MS) {
@@ -132,5 +138,15 @@ export function createFgbLoadController (source, url, detailLayer) {
     return true
   }
 
-  return { loader, retryFailedExtents }
+  function setStyleField (field) {
+    if (field === styleField) {
+      return
+    }
+
+    styleField = field
+    // Must reload to use the latest style field as we have the spatial index off for performance reasons
+    source.refresh()
+  }
+
+  return { loader, retryFailedExtents, setStyleField }
 }

@@ -134,7 +134,7 @@ describe('vector style rules', () => {
   test('a match style expands grouped fieldValues and ignores COG bandValue', () => {
     expect(buildVectorStyle(matchStyle())).toEqual({
       'fill-color': [
-        'match', ['get', 'category'],
+        'match', ['get', 'styleValue'],
         'Bog', BOG,
         'Standing Water', WATER,
         'Canal', WATER,
@@ -147,9 +147,9 @@ describe('vector style rules', () => {
     expect(buildVectorStyle(classCodedRangeStyle())).toEqual({
       'fill-color': [
         'case',
-        ['<', ['get', 'depth'], 0], OUTSIDE_RANGE,
-        ['<=', ['get', 'depth'], 20], [204, 204, 255, 1],
-        ['<=', ['get', 'depth'], 500], [20, 20, 227, 1],
+        ['<', ['get', 'styleValue'], 0], OUTSIDE_RANGE,
+        ['<=', ['get', 'styleValue'], 20], [204, 204, 255, 1],
+        ['<=', ['get', 'styleValue'], 500], [20, 20, 227, 1],
         OUTSIDE_RANGE
       ]
     })
@@ -197,13 +197,13 @@ describe('vector style rules', () => {
     const style = buildVectorStyle(styleConfig)
 
     expect(style['stroke-color']).toEqual([
-      'match', ['get', 'category'],
+      'match', ['get', 'styleValue'],
       'Bog', [0, 0, 0, 1],
       'Water', [255, 0, 0, 1],
       [4, 5, 6, 1]
     ])
     expect(style['stroke-width']).toEqual([
-      'match', ['get', 'category'],
+      'match', ['get', 'styleValue'],
       'Bog', 1,
       'Water', 3,
       2
@@ -234,19 +234,19 @@ describe('vector style rules', () => {
     const style = buildVectorStyle(styleConfig)
 
     expect(style['fill-color']).toEqual([
-      'match', ['get', 'category'],
+      'match', ['get', 'styleValue'],
       'Bog', BOG,
       'Water', TRANSPARENT,
       TRANSPARENT
     ])
     expect(style['stroke-color']).toEqual([
-      'match', ['get', 'category'],
+      'match', ['get', 'styleValue'],
       'Bog', [0, 0, 0, 1],
       'Water', TRANSPARENT,
       TRANSPARENT
     ])
     expect(style['stroke-width']).toEqual([
-      'match', ['get', 'category'],
+      'match', ['get', 'styleValue'],
       'Bog', 1,
       'Water', 0,
       0
@@ -282,7 +282,7 @@ describe('WebGL vector colour variables', () => {
       default_fill: 'rgba(100, 110, 120, 0.5)'
     })
     expect(style['fill-color']).toEqual([
-      'match', ['get', 'category'],
+      'match', ['get', 'styleValue'],
       'Land', ['var', 'class_0_fill'],
       'Hidden', [0, 0, 0, 0],
       'Edge', [0, 0, 0, 0],

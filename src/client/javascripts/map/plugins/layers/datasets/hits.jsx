@@ -13,7 +13,7 @@ import { EPSG_27700, UNKNOWN_LAYER_LABEL } from '../constants.js'
 import { getSourceUrl, getVisibleWmsLayers } from './layers/wms.js'
 import { queryFgbNearPoint } from './layers/fgb-lookup.js'
 import { DatasetAttributes } from './DatasetAttributes.jsx'
-import { visibleClassForBands, visibleClassForFieldValue } from './style-config.js'
+import { STYLE_VALUE_PROPERTY, visibleClassForBands, visibleClassForFieldValue } from './style-config.js'
 import { getLayerStyle, getLayerTheme } from './layer-style.js'
 import { isLayerStateVisible } from '../reducer.js'
 
@@ -251,7 +251,7 @@ function attributesForClass (styleConfig, classDefinition) {
 function featureProperties (feature) {
   const geometryName = feature.getGeometryName?.()
   return Object.fromEntries(
-    Object.entries(feature.getProperties()).filter(([key]) => key !== geometryName)
+    Object.entries(feature.getProperties()).filter(([key]) => key !== geometryName && key !== STYLE_VALUE_PROPERTY)
   )
 }
 
