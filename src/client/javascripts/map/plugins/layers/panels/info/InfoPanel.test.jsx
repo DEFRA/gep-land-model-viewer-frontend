@@ -5,10 +5,6 @@ import { InfoPanel } from './InfoPanel.jsx'
 import { Section } from '../../summaries/components/Section.jsx'
 import { DatasetAttributes } from '../../datasets/DatasetAttributes.jsx'
 
-const map = {
-  getView: () => ({ setCenter: vi.fn(), setZoom: vi.fn() })
-}
-
 const FIND_GEO_DATA_URL = 'https://find-geo-data.example.test/'
 
 const INITIAL_INSPECTION = {
@@ -30,7 +26,7 @@ let selectHit
 let showHitList
 let renderHit
 
-function renderPanel (inspection = INITIAL_INSPECTION, { sections = new Map(), panelMap = map } = {}) {
+function renderPanel (inspection = INITIAL_INSPECTION, { sections = new Map() } = {}) {
   const refs = {
     inspection: { current: { selectHit, showHitList, renderHit } },
     inspectionSections: { current: sections }
@@ -40,7 +36,7 @@ function renderPanel (inspection = INITIAL_INSPECTION, { sections = new Map(), p
     useRef: key => refs[key]
   }
 
-  view = render(<InfoPanel pluginState={pluginState} pluginConfig={{ findGeoDataUrl: FIND_GEO_DATA_URL }} mapProvider={{ map: panelMap }} />)
+  view = render(<InfoPanel pluginState={pluginState} pluginConfig={{ findGeoDataUrl: FIND_GEO_DATA_URL }} />)
   return view
 }
 
@@ -126,25 +122,6 @@ describe('InfoPanel', () => {
     view.unmount()
     renderPanel(inspection)
     expect(view.container.querySelector('details').open).toBe(true)
-  })
-
-  test('the sample area control recentres the map', async () => {
-    const setCenter = vi.fn()
-    const setZoom = vi.fn()
-    const sampleMap = { getView: () => ({ setCenter, setZoom }) }
-    const { OutsideSampleArea } = await import('../../summaries/components/OutsideSampleArea.jsx')
-    const selectedHit = {
-      id: 0,
-      label: 'Grid square',
-      details: null
-    }
-    renderHit.mockReturnValue(<OutsideSampleArea typeLabel='grid square' />)
-    const inspection = { ...INITIAL_INSPECTION, status: 'detail-ready', hits: [selectedHit], hit: selectedHit }
-    renderPanel(inspection, { panelMap: sampleMap })
-
-    click(view.container.querySelector('.app-link-button'))
-    expect(setCenter).toHaveBeenCalledWith([465000, 475000])
-    expect(setZoom).toHaveBeenCalledWith(11)
   })
 
   test('dataset attributes link to the full dataset on search and find', () => {

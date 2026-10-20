@@ -6,11 +6,7 @@ import { grid10mRecord, grid100mRecord, grid1kmRecord, featureRecord, featureMul
 import { LandSummaryView } from './LandSummaryView.jsx'
 
 function mount (record, sections = new Map(), extra = {}) {
-  const goToSampleArea = vi.fn()
-  return {
-    ...render(<InfoPanelContext.Provider value={{ sections, goToSampleArea }}><LandSummaryView record={record} {...extra} /></InfoPanelContext.Provider>),
-    goToSampleArea
-  }
+  return render(<InfoPanelContext.Provider value={{ sections }}><LandSummaryView record={record} {...extra} /></InfoPanelContext.Provider>)
 }
 
 function section (view, title) {
@@ -300,12 +296,10 @@ describe('LandSummaryView', () => {
   })
 
   test('shows Not available for every section when there is no record', () => {
-    const missing = mount(null, new Map(), { unit: featureRecord.unit, outsideSampleArea: true })
+    const missing = mount(null, new Map(), { unit: featureRecord.unit })
     expect(missing.container.querySelectorAll('.app-map__summary-message')).toHaveLength(6)
     expect([...missing.container.querySelectorAll('.app-map__summary-message')].every(node => node.textContent === 'Not available')).toBe(true)
     expect(missing.container.querySelectorAll('.app-map__summary-definition a')).toHaveLength(6)
-    fireEvent.click(missing.getByRole('button', { name: 'Go to the sample area' }))
-    expect(missing.goToSampleArea).toHaveBeenCalledOnce()
     missing.unmount()
   })
 

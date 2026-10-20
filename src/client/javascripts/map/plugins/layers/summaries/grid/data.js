@@ -1,96 +1,139 @@
-import { authenticatedFetch } from '../../../../authenticated-fetch.js'
 import { toTaxonomyClass, toSource } from '../model.js'
+import { toLandModelRecord } from '../land-model-properties.js'
+import { readCellValues } from './cell-values.js'
+import { readCellProperties } from './cell-properties.js'
 
-const GRIDS_URL = '/land-model/grids.json'
+// 10m cells are read from the COG and coarser cells from the FGB for their size.
+const COG_CELL_SIZE = 10
 
-// The current sample file contains only 10m summaries.
-export const SAMPLE_CELL_SIZE = 10
+/**
+ * @typedef {object} SectionDescription
+ * @property {{ name?: string, date?: string }} [source] date is dd/MM/yyyy or yyyy
+ * @property {Record<string, FieldDescription>} fields The section's fields by model property
+ * @typedef {object} FieldDescription
+ * @property {number} band One-based COG band
+ * @property {ClassDescription[]} [classes] Absent where the band holds the value itself
+ * @typedef {{ bandValue: number, code?: string, label: string }} ClassDescription
+ */
 
-const BNG_REF = 0
-const LAND_USE = 1
-const LAND_USE_CODE = 2
-const LAND_COVER = 3
-const LAND_COVER_CODE = 4
-const SOIL = 5
-const SOIL_CODE = 6
+/** @typedef {Record<string, SectionDescription>} Bands The grid COG's bands, keyed by summary section */
 
-/** @typedef {{ landCover?: import('../model.js').Source, soils?: import('../model.js').Source }} GridMetadata */
-/** @typedef {{ metadata: GridMetadata, lookups: Record<string, string[]>, byBngRef: Map<string, any[]> }} IndexedGrids */
-/** @type {Promise<IndexedGrids> | null} */
-let gridsPromise = null
-
-function resolve (table, index) {
-  return index == null ? null : table[index]
+/**
+ * @param {SectionDescription} description
+ * @returns {{ source?: import('../model.js').Source }}
+ */
+function sourceOf (description) {
+  const source = toSource(description.source?.name, description.source?.date)
+  return source ? { source } : {}
 }
 
-/** @returns {import('../model.js').TaxonomyTheme | null} */
-function toDominantTheme (label, code, source) {
-  if (label == null) {
+/**
+ * @param {FieldDescription | undefined} field
+ * @param {ArrayLike<number>} values
+ * @returns {ClassDescription | undefined}
+ */
+function classOf (field, values) {
+  return field?.classes?.find(candidate => candidate.bandValue === values[field.band - 1])
+}
+
+/**
+ * @param {SectionDescription} description
+ * @param {ClassDescription} definition The dominant class
+ * @returns {import('../model.js').TaxonomyTheme}
+ */
+function toTheme (description, definition) {
+  return { dominant: toTaxonomyClass(definition.label, definition.code), ...sourceOf(description) }
+}
+
+/**
+ * @param {SectionDescription | undefined} description
+ * @param {ArrayLike<number>} values
+ * @returns {import('../model.js').TaxonomyTheme | null}
+ */
+function toDominantTheme (description, values) {
+  const definition = classOf(description?.fields.dominant, values)
+  if (!definition) {
     return null
   }
 
-  return { dominant: toTaxonomyClass(label, code), ...(source ? { source } : {}) }
+  return toTheme(description, definition)
 }
 
 /**
- * @param {any[]} row
- * @param {Record<string, string[]>} lookups
- * @param {GridMetadata} metadata
+ * @param {SectionDescription | undefined} description
+ * @param {ArrayLike<number>} values
+ * @returns {import('../model.js').Ownership | null}
+ */
+function toOwnership (description, values) {
+  if (!description) {
+    return null
+  }
+
+  const inspireId = values[description.fields.inspireId.band - 1]
+  const titleDescriptor = classOf(description.fields.titleDescriptor, values)?.label
+  return {
+    titles: inspireId ? [{ inspireId: String(inspireId), ...(titleDescriptor ? { titleDescriptor } : {}) }] : [],
+    ...sourceOf(description)
+  }
+}
+
+/**
+ * @param {SectionDescription | undefined} description
+ * @param {ArrayLike<number>} values
+ * @returns {import('../model.js').LandManagement | null}
+ */
+function toLandManagement (description, values) {
+  if (!description) {
+    return null
+  }
+
+  const pseudoSbi = values[description.fields.pseudoSbi.band - 1]
+  return { records: pseudoSbi ? [{ pseudoSbi: String(pseudoSbi) }] : [], ...sourceOf(description) }
+}
+
+/**
+ * @param {SectionDescription | undefined} description
+ * @param {ArrayLike<number>} values
+ * @returns {import('../model.js').ProtectedAreas | null}
+ */
+function toProtectedAreas (description, values) {
+  if (!description) {
+    return null
+  }
+
+  return { count: values[description.fields.count.band - 1], ...sourceOf(description) }
+}
+
+/**
+ * @param {import('../model.js').GridUnit} unit
+ * @param {ArrayLike<number>} values The cell's COG band values, first band first
+ * @param {Bands} bands
  * @returns {import('../model.js').LandModelRecord}
  */
-export function toGridRecord (row, lookups, metadata) {
+export function toGridRecord (unit, values, bands) {
   return {
-    unit: { kind: 'grid', bngRef: row[BNG_REF], cellSize: SAMPLE_CELL_SIZE },
-    landCover: toDominantTheme(resolve(lookups.land_cover, row[LAND_COVER]), resolve(lookups.land_cover_code, row[LAND_COVER_CODE]), metadata.landCover),
-    landUse: toDominantTheme(resolve(lookups.land_use, row[LAND_USE]), resolve(lookups.land_use_code, row[LAND_USE_CODE])),
-    ownership: null,
-    landManagement: null,
-    protectedAreas: null,
-    soils: toDominantTheme(resolve(lookups.soil, row[SOIL]), resolve(lookups.soil_code, row[SOIL_CODE]), metadata.soils)
+    unit,
+    landCover: toDominantTheme(bands.landCover, values),
+    landUse: toDominantTheme(bands.landUse, values),
+    ownership: toOwnership(bands.ownership, values),
+    landManagement: toLandManagement(bands.landManagement, values),
+    protectedAreas: toProtectedAreas(bands.protectedAreas, values),
+    soils: toDominantTheme(bands.soils, values)
   }
 }
 
 /**
- * @param {{ metadata: object, lookups: Record<string, string[]>, rows: any[][] }} data
- * @returns {IndexedGrids}
- */
-export function indexGrids ({ metadata: raw, lookups, rows }) {
-  const metadata = {
-    landCover: toSource(raw.land_cover_source, raw.land_cover_date),
-    soils: toSource(raw.soil_source, raw.soil_date)
-  }
-  const byBngRef = new Map()
-  for (const row of rows) {
-    byBngRef.set(row[BNG_REF], row)
-  }
-  return { metadata, lookups, byBngRef }
-}
-
-function loadGrids () {
-  gridsPromise ??= fetchGrids()
-  return gridsPromise
-}
-
-async function fetchGrids () {
-  try {
-    const res = await authenticatedFetch(GRIDS_URL)
-    if (!res.ok) {
-      throw new Error(`Failed to load grids (${res.status})`)
-    }
-
-    return indexGrids(await res.json())
-  } catch (err) {
-    gridsPromise = null
-    throw err
-  }
-}
-
-/**
- * @param {string} bngRef
+ * @param {import('../model.js').GridUnit} unit
+ * @param {import('ol/extent.js').Extent} extent The cell's bounds
+ * @param {import('./api.js').GridSource} source The grid layer's source
  * @returns {Promise<import('../model.js').LandModelRecord | null>}
  */
-export async function getGridDetails (bngRef) {
-  const { metadata, lookups, byBngRef } = await loadGrids()
-  const row = byBngRef.get(bngRef)
-  return row ? toGridRecord(row, lookups, metadata) : null
+export async function getGridDetails (unit, extent, { url, bands, fgbs }) {
+  if (unit.cellSize === COG_CELL_SIZE) {
+    const values = await readCellValues(url, extent)
+    return values ? toGridRecord(unit, values, bands) : null
+  }
+
+  const properties = await readCellProperties(fgbs[unit.cellSize], unit.bngRef, extent)
+  return properties ? toLandModelRecord(unit, properties) : null
 }

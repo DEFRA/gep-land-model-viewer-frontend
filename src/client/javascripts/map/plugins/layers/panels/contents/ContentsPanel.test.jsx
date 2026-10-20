@@ -182,13 +182,6 @@ describe('ContentsPanel', () => {
     expect(view.queryByRole('button', { name: /^Edit colour for/ })).toBeNull()
   })
 
-  test('the grid menu disables Edit layer', () => {
-    const view = renderPanel()
-    fireEvent.click(view.getByRole('button', { name: 'Layer actions for Grid squares' }))
-
-    expect(view.getByRole('menuitem', { name: 'Edit layer' }).getAttribute('aria-disabled')).toBe('true')
-  })
-
   test('supports full-row keyboard dragging and commits the resulting order', async () => {
     const view = renderPanel()
     const { rows, reorderButton } = prepareKeyboardDrag(view)

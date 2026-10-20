@@ -29,6 +29,11 @@ describe('#createGridSummary', () => {
   let mockGridLayer
   let olMap
   let zoom
+  const layerSource = {
+    url: '/api/land-model/grid/layer/assets/10.tif?v=1',
+    bands: {},
+    fgbs: { 100000: '/api/land-model/grid/layer/assets/100000.fgb?v=2' }
+  }
 
   beforeEach(() => {
     zoom = 12
@@ -45,7 +50,7 @@ describe('#createGridSummary', () => {
   })
 
   function registeredSource () {
-    const summary = createGridSummary(eventBus, olMap)
+    const summary = createGridSummary(eventBus, olMap, () => [{ id: 'grid', ready: true, source: layerSource }])
     summary.setVisible(true)
     return summary
   }
@@ -135,21 +140,21 @@ describe('#createGridSummary', () => {
     expect(mockGridLayer.highlightCell).not.toHaveBeenCalled()
   })
 
-  test('loadDetails fetches grid details by bng_ref', async () => {
+  test('loadDetails gets the cell\'s details using its bounds and the grid layer\'s source', async () => {
     const source = registeredSource()
 
-    await source.getHits([418725, 385137])[0].loadDetails({ signal: null })
+    await source.getHits([418725, 385137])[0].loadDetails()
 
-    expect(getGridDetails).toHaveBeenCalledWith('SK18728513')
+    expect(getGridDetails).toHaveBeenCalledWith({ kind: 'grid', bngRef: 'SK18728513', cellSize: 10 }, [418720, 385130, 418730, 385140], layerSource)
   })
 
-  test('coarse cells load no details and are not shown as outside the sample area', async () => {
+  test('loadDetails reads coarse cells too', async () => {
     zoom = 0
     const hit = registeredSource().getHits([418725, 385137])[0]
 
-    expect(await hit.loadDetails({ signal: null })).toBeNull()
-    expect(getGridDetails).not.toHaveBeenCalled()
-    expect(hit.render(null).props.outsideSampleArea).toBe(false)
+    await hit.loadDetails()
+
+    expect(getGridDetails).toHaveBeenCalledWith({ kind: 'grid', bngRef: 'SK', cellSize: 100000 }, [400000, 300000, 500000, 400000], layerSource)
   })
 
   test('renders the clicked cell with no record when details are missing', () => {
@@ -159,7 +164,6 @@ describe('#createGridSummary', () => {
 
     expect(rendered.props.unit).toEqual({ kind: 'grid', bngRef: 'SK18728513', cellSize: 10 })
     expect(rendered.props.record).toBeNull()
-    expect(rendered.props.outsideSampleArea).toBe(true)
   })
 
   test('keeps the clicked cell after the zoom changes', () => {
@@ -171,7 +175,6 @@ describe('#createGridSummary', () => {
     expect(rendered.props.unit.cellSize).toBe(10)
     expect(rendered.props.unit.bngRef).toBe('SK18728513')
     expect(rendered.props.record).toBe(grid10mRecord)
-    expect(rendered.props.outsideSampleArea).toBe(false)
   })
 
   test('clearSelection clears the cell highlight', () => {

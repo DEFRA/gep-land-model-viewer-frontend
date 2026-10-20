@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import { fn } from 'storybook/test'
 import { InfoPanelContext } from '../../panels/info/context.js'
 import {
   grid10mRecord,
@@ -24,12 +23,10 @@ function panelTitle (unit) {
  * @typedef {object} SummaryStoryArgs
  * @property {import('../model.js').LandModelRecord | null} record
  * @property {import('../model.js').GridUnit | import('../model.js').FeatureUnit} [unit]
- * @property {boolean} [outsideSampleArea]
- * @property {() => void} [goToSampleArea]
  */
 
 /** @param {SummaryStoryArgs} props */
-function SummaryPanel ({ record, unit, outsideSampleArea, goToSampleArea }) {
+function SummaryPanel ({ record, unit }) {
   const sections = useRef(new Map())
   const selectedUnit = unit ?? record.unit
   const title = panelTitle(selectedUnit)
@@ -40,8 +37,8 @@ function SummaryPanel ({ record, unit, outsideSampleArea, goToSampleArea }) {
         <section className='im-c-panel' aria-label={title}>
           <h2 className='im-c-panel__heading'>{title}</h2>
           <div className='im-c-panel__body app-map__info-panel'>
-            <InfoPanelContext.Provider value={{ sections: sections.current, goToSampleArea }}>
-              <LandSummaryView record={record} unit={selectedUnit} outsideSampleArea={outsideSampleArea} />
+            <InfoPanelContext.Provider value={{ sections: sections.current }}>
+              <LandSummaryView record={record} unit={selectedUnit} />
             </InfoPanelContext.Provider>
           </div>
         </section>
@@ -53,11 +50,9 @@ function SummaryPanel ({ record, unit, outsideSampleArea, goToSampleArea }) {
 const meta = /** @type {import('@storybook/preact-vite').Meta<SummaryStoryArgs>} */ ({
   title: 'Land summary',
   component: LandSummaryView,
-  args: { record: grid10mRecord, outsideSampleArea: false, goToSampleArea: fn() },
+  args: { record: grid10mRecord },
   argTypes: {
-    record: { control: 'object' },
-    outsideSampleArea: { control: 'boolean' },
-    goToSampleArea: { control: false }
+    record: { control: 'object' }
   },
   render: (args, context) => <SummaryPanel key={context.id} {...args} />
 })
@@ -82,7 +77,7 @@ export const ZeroCounts = /** @type {Story} */ ({ name: 'Zero counts', args: { r
 
 export const UnavailableSections = /** @type {Story} */ ({ name: 'Unavailable sections', args: { record: partialRecord } })
 
-export const OutsideSampleArea = /** @type {Story} */ ({
-  name: 'Outside sample area',
-  args: { record: null, unit: grid10mRecord.unit, outsideSampleArea: true }
+export const NoRecord = /** @type {Story} */ ({
+  name: 'No record',
+  args: { record: null, unit: grid10mRecord.unit }
 })

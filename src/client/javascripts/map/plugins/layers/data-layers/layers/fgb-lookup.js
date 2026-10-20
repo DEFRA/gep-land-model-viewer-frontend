@@ -58,7 +58,7 @@ async function scanForMatch (url, rect, coordinate, signal) {
   let nearestDistanceSquared = Infinity
   let count = 0
 
-  for await (const feature of deserialize(url, rect)) {
+  for await (const feature of deserialize(url, { rect })) {
     signal?.throwIfAborted()
     const geometry = format.readGeometry(feature.geometry)
     if (geometry.intersectsCoordinate(coordinate)) {

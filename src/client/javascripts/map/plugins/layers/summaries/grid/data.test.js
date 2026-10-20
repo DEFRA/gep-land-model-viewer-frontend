@@ -1,65 +1,116 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { toGridRecord, indexGrids } from './data.js'
+import { describe, test, expect, vi } from 'vitest'
 
-function testLookups () {
+vi.mock('./cell-values.js', () => ({ readCellValues: vi.fn() }))
+vi.mock('./cell-properties.js', () => ({ readCellProperties: vi.fn() }))
+
+const { readCellValues } = await import('./cell-values.js')
+const { readCellProperties } = await import('./cell-properties.js')
+const { toGridRecord, getGridDetails } = await import('./data.js')
+
+const UNIT = { kind: 'grid', bngRef: 'SE60007003', cellSize: 10 }
+const COARSE_UNIT = { kind: 'grid', bngRef: 'SE699700', cellSize: 100 }
+
+function testBands () {
   return {
-    land_use: ['Agriculture', 'Dwellings'],
-    land_use_code: ['U011', 'U071'],
-    land_cover: ['Cropped land', 'Improved grass'],
-    land_cover_code: ['C010', 'C021'],
-    soil: ['Surface-water gley soils', 'Brown soils'],
-    soil_code: ['S070', 'S050']
+    landCover: {
+      source: { name: 'UKCEH LCM2024', date: '2024' },
+      fields: {
+        dominant: {
+          band: 1,
+          classes: [
+            { bandValue: 1, code: 'C010', label: 'Cropped land' },
+            { bandValue: 2, code: 'C021', label: 'Improved grass' }
+          ]
+        }
+      }
+    },
+    landUse: {
+      source: { name: 'OS NGD', date: '24/09/2024' },
+      fields: {
+        dominant: {
+          band: 2,
+          classes: [
+            { bandValue: 1, code: 'U011', label: 'Agriculture' },
+            { bandValue: 2, code: 'U071', label: 'Dwellings' }
+          ]
+        }
+      }
+    },
+    soils: {
+      source: { name: 'Cranfield Soils Data', date: '05/10/2023' },
+      fields: {
+        dominant: {
+          band: 3,
+          classes: [
+            { bandValue: 1, code: 'S050', label: 'Brown soils' },
+            { bandValue: 2, code: 'S070', label: 'Surface-water gley soils' }
+          ]
+        }
+      }
+    },
+    ownership: {
+      source: { name: 'HM Land Registry' },
+      fields: {
+        inspireId: { band: 4 },
+        titleDescriptor: { band: 5, classes: [{ bandValue: 1, label: 'Freehold' }, { bandValue: 2, label: 'Leasehold' }] }
+      }
+    },
+    landManagement: { source: { name: 'RPA', date: '2022' }, fields: { pseudoSbi: { band: 6 } } },
+    protectedAreas: { source: { name: 'Natural England / JNCC', date: '2025' }, fields: { count: { band: 7 } } }
   }
 }
 
-function compactRow (overrides = {}) {
-  const row = ['SE60007003', 1, 0, 0, 1, 1, 0]
-  for (const [index, value] of Object.entries(overrides)) {
-    row[Number.parseInt(index)] = value
-  }
-  return row
-}
-
-function okResponse (data) {
-  return vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(data) }))
-}
-
-function testMetadata () {
+function testProperties () {
   return {
+    bng_ref: 'SE699700',
+    land_cover_dom_code: 'C021',
+    land_cover_dom_name: 'Improved grass',
+    land_cover_proportions: '{"Improved grass":76,"Cropped land":24}',
     land_cover_source: 'UKCEH LCM2024',
-    land_cover_date: '28/04/2015',
-    soil_source: 'Cranfield Soils Data',
-    soil_date: '28/04/2026'
+    land_cover_date: '2024',
+    land_use_dom_code: 'U011',
+    land_use_dom_name: 'Agriculture',
+    land_use_proportions: '{"Agriculture":82.5}'
   }
-}
-
-function wireFormat (rows = [compactRow()]) {
-  return { metadata: testMetadata(), lookups: testLookups(), rows }
 }
 
 describe('#toGridRecord', () => {
-  test('maps lookup labels and codes, including index 0', () => {
-    const { metadata, lookups } = indexGrids(wireFormat())
-    const summary = toGridRecord(compactRow(), lookups, metadata)
+  test('maps class labels and codes', () => {
+    const record = toGridRecord(UNIT, [2, 2, 1], testBands())
 
-    expect(summary.unit).toEqual({ kind: 'grid', bngRef: 'SE60007003', cellSize: 10 })
-    expect(summary.landUse.dominant).toEqual({ label: 'Dwellings', code: 'U011' })
-    expect(summary.landCover.dominant).toEqual({ label: 'Cropped land', code: 'C021' })
-    expect(summary.soils.dominant).toEqual({ label: 'Brown soils', code: 'S070' })
+    expect(record.unit).toBe(UNIT)
+    expect(record.landUse.dominant).toEqual({ label: 'Dwellings', code: 'U071' })
+    expect(record.landCover.dominant).toEqual({ label: 'Improved grass', code: 'C021' })
+    expect(record.soils.dominant).toEqual({ label: 'Brown soils', code: 'S050' })
   })
 
   test('maps source metadata', () => {
-    const { metadata, lookups } = indexGrids(wireFormat())
-    const record = toGridRecord(compactRow(), lookups, metadata)
+    const record = toGridRecord(UNIT, [1, 1, 1], testBands())
 
-    expect(record.landCover.source).toEqual({ name: 'UKCEH LCM2024', updated: new Date(2015, 3, 28) })
-    expect(record.soils.source).toEqual({ name: 'Cranfield Soils Data', updated: new Date(2026, 3, 28) })
-    expect(record.landUse).not.toHaveProperty('source')
+    expect(record.landCover.source).toEqual({ name: 'UKCEH LCM2024', updated: new Date(2024, 0, 1) })
+    expect(record.landUse.source).toEqual({ name: 'OS NGD', updated: new Date(2024, 8, 24) })
+    expect(record.soils.source).toEqual({ name: 'Cranfield Soils Data', updated: new Date(2023, 9, 5) })
+  })
+
+  test('takes the INSPIRE ID, pseudo SBI and protected area count from their bands\' values', () => {
+    const record = toGridRecord(UNIT, [1, 1, 1, 47540258, 2, 107132256, 2], testBands())
+
+    expect(record.ownership).toEqual({ titles: [{ inspireId: '47540258', titleDescriptor: 'Leasehold' }], source: { name: 'HM Land Registry' } })
+    expect(record.landManagement).toEqual({ records: [{ pseudoSbi: '107132256' }], source: { name: 'RPA', updated: new Date(2022, 0, 1) } })
+    expect(record.protectedAreas).toEqual({ count: 2, source: { name: 'Natural England / JNCC', updated: new Date(2025, 0, 1) } })
+  })
+
+  test('has no ownership titles, pseudo SBIs or protected areas where their bands are 0', () => {
+    const record = toGridRecord(UNIT, [1, 1, 1, 0, 0, 0, 0], testBands())
+
+    expect(record.ownership.titles).toEqual([])
+    expect(record.landManagement.records).toEqual([])
+    expect(record.protectedAreas.count).toBe(0)
   })
 
   test('returns null for themes with no data', () => {
-    const { metadata, lookups } = indexGrids(wireFormat())
-    const record = toGridRecord(compactRow({ 1: null, 2: null }), lookups, metadata)
+    const { ownership, landManagement, protectedAreas, ...bands } = testBands()
+    const record = toGridRecord(UNIT, [1, 0, 1], bands)
 
     for (const key of ['landUse', 'ownership', 'landManagement', 'protectedAreas']) {
       expect(record[key]).toBeNull()
@@ -67,66 +118,49 @@ describe('#toGridRecord', () => {
   })
 })
 
-describe('#indexGrids', () => {
-  test('indexes rows by BNG reference', () => {
-    const second = compactRow({ 0: 'SE60017003' })
-    const { byBngRef } = indexGrids(wireFormat([compactRow(), second]))
-
-    expect(byBngRef.size).toBe(2)
-    expect(byBngRef.get('SE60017003')).toBe(second)
-  })
-})
-
 describe('#getGridDetails', () => {
-  beforeEach(() => {
-    vi.resetModules()
+  const source = {
+    url: '/api/land-model/grid/layer/assets/10.tif?v=1',
+    bands: testBands(),
+    fgbs: { 100: '/api/land-model/grid/layer/assets/100.fgb?v=2', 1000: '/api/land-model/grid/layer/assets/1000.fgb?v=3' }
+  }
+  const extent = [460000, 470030, 460010, 470040]
+  const coarseExtent = [469900, 470000, 470000, 470100]
+
+  test('reads a 10m cell from the COG', async () => {
+    readCellValues.mockResolvedValue([1, 2, 1])
+
+    const record = await getGridDetails(UNIT, extent, source)
+
+    expect(readCellValues).toHaveBeenCalledWith(source.url, extent)
+    expect(record.landUse.dominant.label).toBe('Dwellings')
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
+  test('returns null beyond the COG', async () => {
+    readCellValues.mockResolvedValue(null)
+
+    await expect(getGridDetails(UNIT, extent, source)).resolves.toBeNull()
   })
 
-  test('returns the record matching the BNG reference', async () => {
-    vi.stubGlobal('fetch', okResponse(wireFormat()))
-    const { getGridDetails } = await import('./data.js')
+  test('reads a coarser cell from the FGB for its size', async () => {
+    readCellProperties.mockResolvedValue(testProperties())
 
-    const cell = await getGridDetails('SE60007003')
+    const record = await getGridDetails(COARSE_UNIT, coarseExtent, source)
 
-    expect(cell.unit.bngRef).toBe('SE60007003')
-    expect(cell.landUse.dominant.label).toBe('Dwellings')
+    expect(readCellProperties).toHaveBeenCalledWith(source.fgbs[100], 'SE699700', coarseExtent)
+    expect(record.unit).toBe(COARSE_UNIT)
+    expect(record.landCover).toEqual({
+      dominant: { label: 'Improved grass', code: 'C021' },
+      intersections: [{ label: 'Improved grass', percentage: 76 }, { label: 'Cropped land', percentage: 24 }],
+      source: { name: 'UKCEH LCM2024', updated: new Date(2024, 0, 1) }
+    })
+    expect(record.landUse.intersections).toEqual([{ label: 'Agriculture', percentage: 82.5 }])
+    expect(record.soils).toBeNull()
   })
 
-  test('returns null for an unknown bng_ref', async () => {
-    vi.stubGlobal('fetch', okResponse(wireFormat()))
-    const { getGridDetails } = await import('./data.js')
+  test('returns null when the FGB has no point for the cell', async () => {
+    readCellProperties.mockResolvedValue(null)
 
-    expect(await getGridDetails('XX00000000')).toBeNull()
-  })
-
-  test('fetches the file only once across lookups', async () => {
-    const second = compactRow({ 0: 'SE60017003' })
-    const fetchMock = okResponse(wireFormat([compactRow(), second]))
-    vi.stubGlobal('fetch', fetchMock)
-    const { getGridDetails } = await import('./data.js')
-
-    await getGridDetails('SE60007003')
-    await getGridDetails('SE60017003')
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-  })
-
-  test('does not cache a failed load, so the next lookup retries', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: false, status: 500 })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(wireFormat()) })
-    vi.stubGlobal('fetch', fetchMock)
-    const { getGridDetails } = await import('./data.js')
-
-    await expect(getGridDetails('SE60007003')).rejects.toThrow()
-    const cell = await getGridDetails('SE60007003')
-
-    expect(cell.landUse.dominant.label).toBe('Dwellings')
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    await expect(getGridDetails(COARSE_UNIT, coarseExtent, source)).resolves.toBeNull()
   })
 })

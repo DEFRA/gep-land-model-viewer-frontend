@@ -280,15 +280,6 @@
   @include govuk-font-size($size: 16);
 }
 
-.app-map__summary-outside-sample {
-  margin-top: 0;
-  margin-bottom: govuk-spacing(4);
-
-  .govuk-body {
-    margin-bottom: govuk-spacing(2);
-  }
-}
-
 @include govuk-media-query($until: tablet) {
   .app-map__summary-list .govuk-summary-list__row {
     grid-template-columns: minmax(85px, 45%) minmax(0, 1fr);

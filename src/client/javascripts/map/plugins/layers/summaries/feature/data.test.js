@@ -17,12 +17,12 @@ function parcelProperties (overrides = {}) {
     land_cover_dom_name: 'Improved grass',
     land_cover_dom_code: 'C021',
     land_cover_source: 'UKCEH LCM2024',
-    land_cover_date: '28/04/2015',
+    land_cover_date: '2024',
     soil_proportions: '{"Brown soils":100}',
     soil_dom_name: 'Brown soils',
     soil_dom_code: 'S050',
     soil_source: 'Cranfield Soils Data',
-    soil_date: '28/04/2026',
+    soil_date: '05/10/2023',
     ...overrides
   }
 }
@@ -52,8 +52,8 @@ describe('#toFeatureRecord', () => {
   test('maps source metadata', () => {
     const record = toFeatureRecord(parcelProperties())
 
-    expect(record.landCover.source).toEqual({ name: 'UKCEH LCM2024', updated: new Date(2015, 3, 28) })
-    expect(record.soils.source).toEqual({ name: 'Cranfield Soils Data', updated: new Date(2026, 3, 28) })
+    expect(record.landCover.source).toEqual({ name: 'UKCEH LCM2024', updated: new Date(2024, 0, 1) })
+    expect(record.soils.source).toEqual({ name: 'Cranfield Soils Data', updated: new Date(2023, 9, 5) })
   })
 
   test('keeps the dominant class when there are no intersections', () => {

@@ -15,7 +15,6 @@ import { swatchColours, visibleStyleDefinitions } from '../shared/swatch-helpers
  * @property {string} label
  * @property {boolean} hidden
  * @property {boolean} loading
- * @property {boolean} editable
  * @property {ContentsSwatch} swatch
  */
 
@@ -41,7 +40,6 @@ function styleSwatch (layer) {
  */
 export function getContentsEntries (pluginState) {
   return pluginState.layers.map(layer => {
-    // TODO: remove when the grid is hosted and has a style.
     const isGrid = layer.id === GRID_SUMMARY.id
 
     return {
@@ -49,7 +47,6 @@ export function getContentsEntries (pluginState) {
       label: layer.title,
       hidden: Boolean(layer.hidden),
       loading: !layer.ready,
-      editable: !isGrid,
       swatch: isGrid ? /** @type {ContentsSwatch} */ (GRID_SUMMARY.symbol) : styleSwatch(layer)
     }
   })

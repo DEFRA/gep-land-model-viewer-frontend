@@ -177,7 +177,7 @@ describe('layers reducer', () => {
       layers: [{ ...added.layers[0], hidden: true }]
     }, { id: 'grid', enabled: false })
 
-    expect(added.layers).toEqual([{ id: 'grid', title: 'Grid squares', ready: true }])
+    expect(added.layers).toEqual([{ id: 'grid', title: 'Grid squares', layerUrl: '/api/land-model/grid/layer', ready: false }])
     expect(removed.layers).toEqual([])
   })
 

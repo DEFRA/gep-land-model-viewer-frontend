@@ -8,6 +8,9 @@ import { isLayerStateVisible } from './reducer.js'
 // OpenLayers render order, bottom to top:
 // [basemap, ...Contents rows from bottom to top, fixed selection layers]
 const MAX_MANAGED_LAYER_Z_INDEX = SELECTION_Z_INDEX - 1
+// Puts a drawn layer, such as the grid's lines, above its own row's data
+// layer and below the row above
+const DRAWN_LAYER_Z_OFFSET = 0.5
 
 function layerZIndexes (layers) {
   const step = MAX_MANAGED_LAYER_Z_INDEX / Math.max(layers.length, 1)
@@ -176,7 +179,7 @@ export function createLayerController ({ map, drawnLayers, loadLayer, onLayerLoa
       const zIndex = zIndexesById.get(id)
 
       if (zIndex !== undefined) {
-        drawn.setZIndex(zIndex)
+        drawn.setZIndex(zIndex + DRAWN_LAYER_Z_OFFSET)
       }
       drawn.setVisible(isLayerStateVisible(layerState))
     }

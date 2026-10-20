@@ -1,11 +1,16 @@
 import { getJson, getManifest } from './client.js'
 
 /**
+ * @typedef {string | { [key: string]: AssetFiles }} AssetFiles A filename, or asset files grouped by key
+ * @typedef {string | { [key: string]: AssetUrls }} AssetUrls An asset URL, or asset URLs grouped by key
+ */
+
+/**
  * @typedef {object} LayerResponse
  * @property {string | null} manifestVersion S3 version ID of manifest.json, null when unavailable
  * @property {string} generatedAt When the pipeline published the release
  * @property {object} styleConfig The release's style.json
- * @property {Record<string, string>} assets Asset URLs, with a version parameter when the manifest supplies one
+ * @property {Record<string, AssetUrls>} assets Asset URLs, with a version parameter when the manifest supplies one
  */
 
 /**
@@ -18,22 +23,38 @@ function assetUrl (path, version) {
 }
 
 /**
- * @param {string} prefix Object key prefix of the layer's files
- * @param {Record<string, string>} assetFiles Asset filenames by type
+ * @param {Record<string, AssetFiles>} assetFiles
+ * @param {Record<string, string | null>} files File versions from the manifest
  * @param {string} assetsPath URL path of the layer's asset route
- * @returns {Promise<LayerResponse | null>} null when the prefix has no manifest
+ * @returns {Record<string, AssetUrls>} URLs of the assets the manifest lists
  */
-export async function getLayer (prefix, assetFiles, assetsPath) {
+function assetUrls (assetFiles, files, assetsPath) {
+  return Object.fromEntries(Object.entries(assetFiles)
+    .filter(([, file]) => typeof file !== 'string' || Object.hasOwn(files, file))
+    .map(([type, file]) => [
+      type,
+      typeof file === 'string' ? assetUrl(`${assetsPath}/${file}`, files[file]) : assetUrls(file, files, assetsPath)
+    ]))
+}
+
+/**
+ * @param {string} prefix Object key prefix of the layer's files
+ * @param {Record<string, AssetFiles>} assetFiles Asset filenames by type
+ * @param {string} assetsPath URL path of the layer's asset route
+ * @param {Record<string, string>} [jsonFiles] Further JSON files to return by key, read at their manifest versions
+ * @returns {Promise<(LayerResponse & Record<string, unknown>) | null>} null when the prefix has no manifest
+ */
+export async function getLayer (prefix, assetFiles, assetsPath, jsonFiles = {}) {
   const release = await getManifest(prefix)
   if (!release) {
     return null
   }
 
   const { manifestVersion, generatedAt, files } = release
-  const styleConfig = await getJson(prefix, 'style.json', files['style.json'])
-  const assets = Object.fromEntries(Object.entries(assetFiles)
-    .filter(([, filename]) => Object.hasOwn(files, filename))
-    .map(([type, filename]) => [type, assetUrl(`${assetsPath}/${filename}`, files[filename])]))
+  const [styleConfig, json] = await Promise.all([
+    getJson(prefix, 'style.json', files['style.json']),
+    Promise.all(Object.entries(jsonFiles).map(async ([key, filename]) => [key, await getJson(prefix, filename, files[filename])]))
+  ])
 
-  return { manifestVersion, generatedAt, styleConfig, assets }
+  return { manifestVersion, generatedAt, styleConfig, ...Object.fromEntries(json), assets: assetUrls(assetFiles, files, assetsPath) }
 }

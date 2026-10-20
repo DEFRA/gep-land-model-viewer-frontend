@@ -3,9 +3,6 @@ import { InfoPanelContext } from './context.js'
 import { LinkButton } from '../../../../components/LinkButton.jsx'
 import { INSPECTION_STATUS } from '../../reducer.js'
 
-const SAMPLE_CENTER = [465000, 475000]
-const SAMPLE_ZOOM = 11
-
 function Message ({ children }) {
   return <p className='govuk-body govuk-hint app-map__info-panel-message'>{children}</p>
 }
@@ -64,23 +61,17 @@ function PanelBody ({ status, hits, hit, onSelectHit, onBack, renderHit }) {
   return null
 }
 
-export function InfoPanel ({ pluginState, pluginConfig, mapProvider }) {
+export function InfoPanel ({ pluginState, pluginConfig }) {
   const sectionsRef = pluginState.useRef('inspectionSections')
   sectionsRef.current ??= new Map()
   const sections = sectionsRef.current
   const inspectionRef = pluginState.useRef('inspection')
   /** @type {import('../../reducer.js').InspectionState} */
   const inspection = pluginState.inspection
-  const map = mapProvider.map
   const isLoading = inspection.status === INSPECTION_STATUS.SEARCHING || inspection.status === INSPECTION_STATUS.DETAIL_LOADING
-  const goToSampleArea = () => {
-    const view = map.getView()
-    view.setCenter(SAMPLE_CENTER)
-    view.setZoom(SAMPLE_ZOOM)
-  }
 
   return (
-    <InfoPanelContext.Provider value={{ sections, goToSampleArea, findGeoDataUrl: pluginConfig.findGeoDataUrl }}>
+    <InfoPanelContext.Provider value={{ sections, findGeoDataUrl: pluginConfig.findGeoDataUrl }}>
       <div className='app-map__info-panel' aria-busy={isLoading ? 'true' : undefined}>
         <PanelBody
           status={inspection.status}

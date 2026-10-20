@@ -57,6 +57,17 @@ describe('getKeyEntries', () => {
     }))).toEqual([])
   })
 
+  test('excludes the grid', () => {
+    expect(getKeyEntries({
+      layers: [{
+        id: 'grid',
+        title: 'Grid squares',
+        ready: true,
+        source: { type: 'cog', styleConfig: { themes: [{ label: 'Grid squares', type: 'uniform', band: 1, classes: [{ bandValue: 1, label: 'Grid square', fill: [0, 133, 49, 1] }] }] } }
+      }]
+    })).toEqual([])
+  })
+
   test('omits a WMS entry whose loading result has no layer names', () => {
     expect(getKeyEntries(createPluginState({
       layers: [{ id: 'flood', ready: true }]

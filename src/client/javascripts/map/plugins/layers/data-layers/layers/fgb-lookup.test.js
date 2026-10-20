@@ -47,7 +47,7 @@ describe('#queryFgbNearPoint', () => {
 
     await queryFgbNearPoint(URL, POINT, RESOLUTION)
 
-    expect(deserialize).toHaveBeenCalledWith(URL, { minX: 4, minY: 4, maxX: 16, maxY: 16 })
+    expect(deserialize).toHaveBeenCalledWith(URL, { rect: { minX: 4, minY: 4, maxX: 16, maxY: 16 } })
   })
 
   test('escalates the search box when nothing matches', async () => {
@@ -59,7 +59,7 @@ describe('#queryFgbNearPoint', () => {
 
     expect(match).toBe(CONTAINING)
     expect(deserialize).toHaveBeenCalledTimes(2)
-    expect(deserialize.mock.calls[1][1]).toEqual({ minX: -6, minY: -6, maxX: 26, maxY: 26 })
+    expect(deserialize.mock.calls[1][1]).toEqual({ rect: { minX: -6, minY: -6, maxX: 26, maxY: 26 } })
   })
 
   test('returns the nearest candidate once a tolerance reaches it', async () => {
