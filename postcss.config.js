@@ -1,6 +1,5 @@
 import autoprefixer from 'autoprefixer'
 import cssnano from 'cssnano'
-import cssnanoPresetDefault from 'cssnano-preset-default'
 
 export default {
   plugins: [
@@ -11,9 +10,9 @@ export default {
 
     // Apply CSS optimisations
     cssnano({
-      preset: cssnanoPresetDefault({
+      preset: ['default', {
         env: 'stylesheets'
-      })
+      }]
     })
   ]
 }
