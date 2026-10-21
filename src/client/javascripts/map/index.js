@@ -30,7 +30,7 @@ const map = new InteractiveMap(MAP_ID, {
   maxZoom: MAX_ZOOM,
   containerHeight: '100%',
   enableZoomControls: true,
-  enableMoveControls: false,
+  enableMapControls: false,
   plugins: [
     searchPlugin({
       osNamesURL: '/os/names/find?query={query}',

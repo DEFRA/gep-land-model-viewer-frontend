@@ -17,47 +17,71 @@ updates:
 
     # Group packages into shared PR
     groups:
+      test-tools:
+        patterns:
+          - '@testing-library/*'
+          - '@vitest/*'
+          - 'jsdom'
+          - 'vite'
+          - 'vitest'
+          - 'vitest-*'
+
+      storybook:
+        patterns:
+          - '@storybook/*'
+          - 'storybook'
+
+      css-tools:
+        patterns:
+          - 'autoprefixer'
+          - 'cssnano'
+          - 'cssnano-*'
+          - 'postcss-*'
+          - 'sass-*'
+
       dev-tools:
         patterns:
           - '@babel/*'
           - '@emnapi/*'
-          - '@vitest/*'
-          - 'autoprefixer'
+          - '@prefresh/*'
+          - 'audit-ci'
           - 'babel-loader'
           - 'cheerio'
           - 'clean-webpack-plugin'
           - 'copy-webpack-plugin'
-          - 'cssnano'
-          - 'cssnano-*'
           - 'husky'
-          - 'jsdom'
           - 'nodemon'
           - 'npm-run-all*'
-          - 'postcss-*'
-          - 'sass-*'
           - 'source-map-loader'
           - 'terser-webpack-plugin'
-          - 'vitest'
-          - 'vitest-*'
           - 'webpack'
           - 'webpack-*'
 
       map:
         patterns:
           - '@arcgis/*'
+          - '@defra/interactive-map'
           - 'flatgeobuf'
+          - 'geotiff'
           - 'ol'
           - 'pmtiles'
           - 'proj4'
 
       frontend:
         patterns:
+          - '@base-ui/*'
+          - '@dnd-kit/*'
+          - '@lucide/*'
           - 'govuk-*'
+          - 'lucide-preact'
+          - 'preact'
+          - 'react-colorful'
 
       lint:
         patterns:
           - 'eslint'
           - 'eslint-*'
+          - 'globals'
           - 'neostandard'
           - 'stylelint'
           - 'stylelint-*'
@@ -70,6 +94,8 @@ updates:
           - 'pino-*'
 
       defra:
+        exclude-patterns:
+          - '@defra/interactive-map'
         patterns:
           - '@defra/*'
 
@@ -95,13 +121,17 @@ updates:
           - 'undici'
 
     ignore:
-      # eslint 10 not yet supported by neostandard
+      # neostandard 0.13 supports ESLint 9 and supplies the JSX logic checks
       - dependency-name: 'eslint'
         versions: ['>=10']
 
-      # stylelint 17 not yet supported by stylelint-config-gds
-      - dependency-name: 'stylelint'
-        versions: ['>=17']
+      # 0.14 temporarily removes JSX logic checks, review again after 0.14.x
+      - dependency-name: 'neostandard'
+        versions: ['>=0.14.0 <0.15.0']
+
+      # interactive-map requires Preact 10, keep one shared instance
+      - dependency-name: 'preact'
+        versions: ['>=11']
 
       # global-agent v4 broke TLS under Node 24 corporate proxies
       - dependency-name: 'global-agent'

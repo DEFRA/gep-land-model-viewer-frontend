@@ -62,7 +62,9 @@ describe('map entry point', () => {
       mapStyle: { id: 'outdoor', label: 'Outdoor', url: '/style.json' },
       zoom: 7,
       minZoom: 0,
-      maxZoom: 13
+      maxZoom: 13,
+      enableZoomControls: true,
+      enableMapControls: false
     })
     expect(options.plugins.map(plugin => plugin.id)).toEqual([
       'search',
