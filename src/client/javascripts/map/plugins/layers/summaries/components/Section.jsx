@@ -18,9 +18,11 @@ export function Section ({ sectionKey, title, preview, children }) {
       </summary>
       <div className='app-map__summary-detail'>
         {children}
-        <p className='app-map__summary-definition'>
-          <a className='govuk-link' href={definition.href} target='_blank' rel='noopener noreferrer'>{definition.label}<span className='govuk-visually-hidden'> (opens in a new tab)</span></a>
-        </p>
+        {definition && (
+          <p className='app-map__summary-definition'>
+            <a className='govuk-link' href={definition.href} target='_blank' rel='noopener noreferrer'>{definition.label}<span className='govuk-visually-hidden'> (opens in a new tab)</span></a>
+          </p>
+        )}
       </div>
     </details>
   )
