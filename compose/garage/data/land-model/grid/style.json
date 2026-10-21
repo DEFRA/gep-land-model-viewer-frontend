@@ -1,0 +1,22 @@
+{
+  "opacity": 0.01,
+  "themes": [
+    {
+      "label": "Grid squares",
+      "type": "uniform",
+      "band": 1,
+      "classes": [
+        {
+          "bandValue": 1,
+          "label": "Grid square",
+          "fill": [
+            0,
+            133,
+            49,
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}

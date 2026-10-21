@@ -106,7 +106,10 @@ export default {
 
       // Use Preact for React imports from interactive-map and local plugins.
       react: 'preact/compat',
-      'react-dom': 'preact/compat'
+      'react-dom': 'preact/compat',
+
+      // Leave out the decoder flatgeobuf only loads for Zstandard-compressed FGBs, which we don't serve.
+      '@bokuweb/zstd-wasm': false
     }
   },
   module: {
@@ -114,6 +117,8 @@ export default {
       {
         test: /\.(js|jsx|mjs|scss)$/,
         loader: 'source-map-loader',
+        // flatgeobuf's source maps point at TypeScript files its package doesn't ship.
+        exclude: /node_modules[\\/]flatgeobuf[\\/]/,
         enforce: 'pre'
       },
       {

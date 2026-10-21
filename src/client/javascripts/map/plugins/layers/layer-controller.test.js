@@ -254,7 +254,7 @@ describe('layer controller', () => {
     expect(detail.setZIndex).toHaveBeenLastCalledWith(SELECTION_Z_INDEX - 1)
     expect(overview.setZIndex).toHaveBeenLastCalledWith(SELECTION_Z_INDEX - 1)
     expect(grid.setVisible).toHaveBeenLastCalledWith(true)
-    expect(grid.setZIndex).toHaveBeenLastCalledWith((SELECTION_Z_INDEX - 1) / 2)
+    expect(grid.setZIndex).toHaveBeenLastCalledWith((SELECTION_Z_INDEX - 1) / 2 + 0.5)
     expect(loadLayer).toHaveBeenCalledOnce()
 
     controller.sync([
@@ -264,7 +264,21 @@ describe('layer controller', () => {
 
     expect(detail.setZIndex).toHaveBeenLastCalledWith((SELECTION_Z_INDEX - 1) / 2)
     expect(overview.setZIndex).toHaveBeenLastCalledWith((SELECTION_Z_INDEX - 1) / 2)
-    expect(grid.setZIndex).toHaveBeenLastCalledWith(SELECTION_Z_INDEX - 1)
+    expect(grid.setZIndex).toHaveBeenLastCalledWith(SELECTION_Z_INDEX - 0.5)
+  })
+
+  test('puts a drawn layer above the data layer in its own row', async () => {
+    const cog = layer('gep-grid')
+    createCogLayer.mockResolvedValue(createDatasetLayer([cog]))
+    const grid = { setVisible: vi.fn(), setZIndex: vi.fn() }
+    const gridLayer = { id: 'grid', title: 'Grid squares', source: { type: 'cog', url: '/10.tif', opacity: 0.01 } }
+    const { controller, onLayerLoaded } = harness({ datasets: [gridLayer], drawnLayers: { grid } })
+
+    controller.sync([{ id: 'grid', layerUrl: '/api/land-model/grid/layer', ready: false }])
+    await vi.waitFor(() => expect(onLayerLoaded).toHaveBeenCalledOnce())
+
+    expect(cog.setZIndex).toHaveBeenLastCalledWith(SELECTION_Z_INDEX - 1)
+    expect(grid.setZIndex).toHaveBeenLastCalledWith(SELECTION_Z_INDEX - 0.5)
   })
 
   test('hides removed layers and reuses them when the dataset is added again', async () => {

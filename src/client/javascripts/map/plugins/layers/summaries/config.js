@@ -4,6 +4,7 @@ export const GRID_SUMMARY = {
   id: 'grid',
   label: 'Grid squares',
   description: 'Uniform squares based on the British National Grid.',
+  layerUrl: '/api/land-model/grid/layer',
   symbol: {
     type: 'line',
     colour: GOVUK_DARK_GREY,

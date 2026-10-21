@@ -48,7 +48,7 @@ function waitForRenderer (detailLayer) {
  * @returns {AsyncGenerator<import('ol/Feature.js').default>}
  */
 function deserializeFgb (url, rect, { nocache, headers, dataProjection, featureProjection } = {}) {
-  const stream = deserialize(url, rect, undefined, nocache, headers, false, dataProjection, featureProjection)
+  const stream = deserialize(url, { rect, nocache, headers, dataProjection, featureProjection })
   return /** @type {AsyncGenerator<import('ol/Feature.js').default>} */ (stream)
 }
 

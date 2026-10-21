@@ -17,7 +17,7 @@ export const DEFAULT_OPACITY = 0.5
 
 /**
  * Builds a source from the layer's style config and available data assets.
- * @param {{ themes: object[] }} styleConfig Original themed style config
+ * @param {{ themes: object[], opacity?: number }} styleConfig Original themed style config, with an optional default opacity
  * @param {{ fgb?: string, cog?: string }} assets Available data asset URLs
  * @returns {LayerSource}
  */
@@ -26,7 +26,7 @@ export function sourceFor (styleConfig, assets) {
     throw new Error('Missing style themes')
   }
 
-  const source = { opacity: DEFAULT_OPACITY, styleConfig }
+  const source = { opacity: styleConfig.opacity ?? DEFAULT_OPACITY, styleConfig }
 
   if (assets.fgb) {
     return { ...source, type: 'fgb', url: assets.fgb, minZoom: FGB_MIN_ZOOM, overview: assets.cog && { type: 'cog', url: assets.cog } }

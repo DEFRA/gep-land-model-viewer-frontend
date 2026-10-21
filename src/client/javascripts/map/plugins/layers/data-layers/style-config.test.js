@@ -91,9 +91,13 @@ describe('class-coded COG rules', () => {
   })
 
   test('visible false makes a COG class transparent', () => {
-    expect(buildCogColourExpression(uniformStyle({ visible: false }))).toEqual([
+    const style = matchStyle()
+    style.classes[0].visible = false
+
+    expect(buildCogColourExpression(style)).toEqual([
       'case',
       ['==', ['band', 1], 1], TRANSPARENT,
+      ['==', ['band', 1], 2], WATER,
       TRANSPARENT
     ])
   })
@@ -106,6 +110,16 @@ describe('class-coded COG rules', () => {
       ['==', ['band', 5], 3], OUTSIDE_RANGE,
       TRANSPARENT
     ])
+  })
+})
+
+describe('uniform COG rules', () => {
+  test('a uniform COG colours every pixel with its fill', () => {
+    expect(buildCogColourExpression(uniformStyle())).toEqual([178, 102, 204, 1])
+  })
+
+  test('a hidden uniform COG is transparent', () => {
+    expect(buildCogColourExpression(uniformStyle({ visible: false }))).toEqual(TRANSPARENT)
   })
 })
 
@@ -383,6 +397,10 @@ describe('hit classification rules', () => {
     expect(classForCogValue(styleConfig, 3)?.label).toBe('Other')
     expect(classForCogValue(styleConfig, 1.9999998)).toBeNull()
     expect(classForCogValue(styleConfig, 99)).toBeNull()
+  })
+
+  test('a uniform COG identifies a pixel whatever its value', () => {
+    expect(visibleClassForBands(uniformStyle(), new Float32Array([7, 255]), { bandCount: 2, hasAlpha: true })?.label).toBe('Site')
   })
 
   test('a COG class with no visible fill cannot be identified', () => {

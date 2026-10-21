@@ -1,5 +1,5 @@
-const coverSource = { name: 'UKCEH LCM2024', updated: new Date(2015, 3, 28) }
-const soilSource = { name: 'Cranfield Soils Data', updated: new Date(2026, 3, 28) }
+const coverSource = { name: 'UKCEH LCM2024', updated: new Date(2024, 0, 1) }
+const soilSource = { name: 'Cranfield Soils Data', updated: new Date(2023, 9, 5) }
 const ownershipSource = { name: 'HM Land Registry' }
 const managementSource = { name: 'Rural Payments Agency' }
 const protectionSource = { name: 'Natural England', updated: new Date(2025, 0, 1) }

@@ -39,12 +39,16 @@ function classCodedDefinitions (styleConfig) {
 }
 
 /**
- * Builds a WebGL tile colour expression for a class-coded or source-value COG.
+ * Builds a WebGL tile colour expression for a uniform, class-coded or source-value COG.
  *
  * @param {object} styleConfig Resolved style theme
  * @returns {import('ol/expr/expression.js').EncodedExpression}
  */
 export function buildCogColourExpression (styleConfig) {
+  if (styleConfig.type === 'uniform') {
+    return fillFor(styleConfig.classes[0])
+  }
+
   /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
   const branches = ['case']
   // Sources retain the file's band order; OpenLayers handles nodata alpha.
@@ -254,6 +258,9 @@ export function visibleClassForFieldValue (styleConfig, value) {
  * @returns {object|null} The class/default definition, or null when unmatched
  */
 export function classForCogValue (styleConfig, value) {
+  if (styleConfig.type === 'uniform') {
+    return styleConfig.classes[0]
+  }
   if (styleConfig.type === 'range' && !isClassCodedCog(styleConfig)) {
     return rangeClassForValue(styleConfig, value)
   }

@@ -12,6 +12,8 @@ vi.mock('./datasets/use-catalogue.js', () => ({ useCatalogue: vi.fn() }))
 vi.mock('./datasets/use-linked-dataset.js', () => ({ useLinkedDataset: vi.fn() }))
 
 vi.mock('./layer-controller.js', () => ({ createLayerController: vi.fn() }))
+vi.mock('./data-layers/api.js', () => ({ loadLayer: vi.fn() }))
+vi.mock('./summaries/grid/api.js', () => ({ loadGridLayer: vi.fn() }))
 
 const { createGridSummary } = await import('./summaries/grid/index.jsx')
 const { featureHitOptions } = await import('./summaries/feature/index.jsx')
@@ -19,6 +21,8 @@ const { createLayerHits } = await import('./data-layers/hits.jsx')
 const { createInspection } = await import('./inspection/index.js')
 const { getAttribution } = await import('./data-layers/attribution.js')
 const { createLayerController } = await import('./layer-controller.js')
+const { loadLayer } = await import('./data-layers/api.js')
+const { loadGridLayer } = await import('./summaries/grid/api.js')
 const { useCatalogue } = await import('./datasets/use-catalogue.js')
 const { useLinkedDataset } = await import('./datasets/use-linked-dataset.js')
 const { LayersInit } = await import('./LayersInit.jsx')
@@ -125,6 +129,14 @@ describe('LayersInit', () => {
     expect(inspection.reconcile).not.toHaveBeenCalled()
   })
 
+  test('leaves the grid out of the layer hits, as it identifies its own cells', () => {
+    const woodland = { ...WOODLAND, ready: true }
+    renderInit({ pluginState: pluginState({ layers: [{ id: 'grid', title: 'Grid squares', ready: true }, woodland] }) })
+
+    const getLayers = createLayerHits.mock.calls[0][1]
+    expect(getLayers()).toEqual([woodland])
+  })
+
   test('composes the fixed inspection sources directly', () => {
     renderInit()
 
@@ -137,7 +149,7 @@ describe('LayersInit', () => {
       appDispatch: expect.any(Function),
       announce: services.announce
     })
-    expect(createGridSummary).toHaveBeenCalledWith(services.eventBus, olMap)
+    expect(createGridSummary).toHaveBeenCalledWith(services.eventBus, olMap, expect.any(Function))
     expect(createLayerHits).toHaveBeenCalledWith(olMap, expect.any(Function), { features: featureHitOptions })
     expect(createLayerController).toHaveBeenCalledWith({
       map: olMap,
@@ -147,6 +159,18 @@ describe('LayersInit', () => {
       onLayerFailed: expect.any(Function)
     })
     expect(refs.inspection.current).toBe(inspection)
+  })
+
+  test('loads the grid with its own loader and every other layer with the shared one', () => {
+    renderInit()
+    const { loadLayer: load } = createLayerController.mock.calls[0][0]
+    const signal = new AbortController().signal
+
+    load('grid', '/api/land-model/grid/layer', signal)
+    load('woodland', '/api/datasets/woodland/layer', signal)
+
+    expect(loadGridLayer).toHaveBeenCalledExactlyOnceWith('grid', '/api/land-model/grid/layer', signal)
+    expect(loadLayer).toHaveBeenCalledExactlyOnceWith('woodland', '/api/datasets/woodland/layer', signal)
   })
 
   test('commits dataset loading outcomes and shows a hint for failures', () => {

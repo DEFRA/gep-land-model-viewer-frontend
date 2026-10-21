@@ -14,6 +14,12 @@ test.each([
   }
 })
 
+test('takes the default opacity from the style config when it sets one', () => {
+  const source = sourceFor({ opacity: 0.01, themes: [{ band: 1 }] }, { cog: '/grid.tif' })
+
+  expect(source.opacity).toBe(0.01)
+})
+
 test.each([
   { styleConfig: {}, assets: { cog: '/peat.tif' }, message: 'Missing style themes' },
   { styleConfig: { themes: [] }, assets: { cog: '/peat.tif' }, message: 'Missing style themes' },

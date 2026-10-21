@@ -82,16 +82,11 @@ describe('#createFgbLoadController', () => {
 
     expect(loaded).toBeInstanceOf(Promise)
     await expect(loaded).resolves.toEqual(features)
-    expect(deserialize).toHaveBeenCalledWith(
-      URL,
-      { minX: 100, minY: 200, maxX: 300, maxY: 400 },
-      undefined,
-      undefined,
-      undefined,
-      false,
-      'EPSG:27700',
-      'EPSG:27700'
-    )
+    expect(deserialize).toHaveBeenCalledWith(URL, {
+      rect: { minX: 100, minY: 200, maxX: 300, maxY: 400 },
+      dataProjection: 'EPSG:27700',
+      featureProjection: 'EPSG:27700'
+    })
   })
 
   test('uses scheduler.yield when decoding spends its time slice', async () => {

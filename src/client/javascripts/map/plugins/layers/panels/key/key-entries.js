@@ -1,5 +1,6 @@
 import { visibleStyleDefinitions } from '../shared/swatch-helpers.js'
 import { getLayerStyle } from '../../data-layers/layer-style.js'
+import { GRID_SUMMARY } from '../../summaries/config.js'
 
 /**
  * @typedef {{ id: string, label: string } & (
@@ -34,6 +35,10 @@ export function getKeyEntries (pluginState) {
   for (const layer of pluginState.layers) {
     if (!layer.source || layer.hidden || !layer.ready) {
       continue
+    }
+
+    if (layer.id === GRID_SUMMARY.id) {
+      continue // grid has no fill possible yet
     }
 
     const { styleConfig } = getLayerStyle(layer)

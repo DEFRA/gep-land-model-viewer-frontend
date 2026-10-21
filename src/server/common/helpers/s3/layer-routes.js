@@ -8,6 +8,14 @@ import { getLayer } from './layer.js'
 const logger = createLogger()
 
 /**
+ * @param {Record<string, import('./layer.js').AssetFiles>} assetFiles
+ * @returns {string[]}
+ */
+function filenamesOf (assetFiles) {
+  return Object.values(assetFiles).flatMap(file => typeof file === 'string' ? [file] : filenamesOf(file))
+}
+
+/**
  * @param {number} status
  * @param {string} error
  * @returns {import('@hapi/hapi').Lifecycle.Method}
@@ -32,11 +40,12 @@ export function unavailable (service, error, h) {
  * @param {string} options.path Path of the layer route. Its assets are served below it
  * @param {Record<string, import('@hapi/validate').Schema>} [options.params]
  * @param {(params: Record<string, string>) => string} options.prefixFor Object key prefix of the layer's files
- * @param {Record<string, string>} options.assetFiles Asset filenames by type
+ * @param {Record<string, import('./layer.js').AssetFiles>} options.assetFiles Asset filenames by type
+ * @param {Record<string, string>} [options.jsonFiles] Further JSON files the layer route returns by key
  * @param {string} options.name Names the layer in errors, such as 'Dataset'
  * @param {string} options.service Names the service when S3 fails
  */
-export function createLayerRoutes ({ path, params, prefixFor, assetFiles, name, service }) {
+export function createLayerRoutes ({ path, params, prefixFor, assetFiles, jsonFiles, name, service }) {
   /** @type {import('@hapi/hapi').ServerRoute<{ Params: Record<string, string> }>} */
   const layerRoute = {
     method: 'GET',
@@ -53,7 +62,7 @@ export function createLayerRoutes ({ path, params, prefixFor, assetFiles, name, 
     },
     async handler (request, h) {
       try {
-        const layer = await getLayer(prefixFor(request.params), assetFiles, `${request.path}/assets`)
+        const layer = await getLayer(prefixFor(request.params), assetFiles, `${request.path}/assets`, jsonFiles)
         if (!layer) {
           return h.response({ error: `${name} layer not found` }).code(statusCodes.notFound)
         }
@@ -80,7 +89,7 @@ export function createLayerRoutes ({ path, params, prefixFor, assetFiles, name, 
       validate: {
         params: Validate.object({
           ...params,
-          filename: Validate.string().valid(...Object.values(assetFiles)).required()
+          filename: Validate.string().valid(...filenamesOf(assetFiles)).required()
         }),
         query: Validate.object({ v: VERSION_ID_SCHEMA }),
         failAction: failWith(statusCodes.notFound, `${name} file not found`)

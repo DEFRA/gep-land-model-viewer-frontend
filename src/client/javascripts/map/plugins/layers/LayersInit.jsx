@@ -9,6 +9,7 @@ import { inspectableLayers } from './reducer.js'
 import { useCatalogue } from './datasets/use-catalogue.js'
 import { useLinkedDataset } from './datasets/use-linked-dataset.js'
 import { loadLayer } from './data-layers/api.js'
+import { loadGridLayer } from './summaries/grid/api.js'
 import { FEATURE_SUMMARY, GRID_SUMMARY } from './summaries/config.js'
 
 const ATTRIBUTIONS_SELECTOR = '.im-c-attributions'
@@ -37,8 +38,9 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     }
 
     const { map } = mapProvider
-    const grid = createGridSummary(services.eventBus, map)
-    const layerHits = createLayerHits(map, () => layersRef.current, {
+    const grid = createGridSummary(services.eventBus, map, () => layersRef.current)
+    // The grid identifies its own cells.
+    const layerHits = createLayerHits(map, () => layersRef.current.filter(layer => layer.id !== GRID_SUMMARY.id), {
       [FEATURE_SUMMARY.id]: featureHitOptions
     })
     const inspection = createInspection({
@@ -53,7 +55,7 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     const layerController = createLayerController({
       map,
       drawnLayers: { [GRID_SUMMARY.id]: grid },
-      loadLayer,
+      loadLayer: (id, url, signal) => id === GRID_SUMMARY.id ? loadGridLayer(id, url, signal) : loadLayer(id, url, signal),
       onLayerLoaded: (id, metadata) => pluginState.dispatch({
         type: 'LAYER_LOADED',
         payload: { id, ...metadata }
