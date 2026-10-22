@@ -1,13 +1,19 @@
 // @vitest-environment jsdom
-import { describe, test, expect } from 'vitest'
+import { describe, test, expect, vi } from 'vitest'
 import { render, fireEvent } from '@testing-library/preact'
 import { InfoPanelContext } from '../../panels/info/context.js'
 import { Section } from './Section.jsx'
 
-function mount (sections, title = 'Soils') {
+vi.mock('../definitions.js', () => ({
+  SUMMARY_DEFINITIONS: {
+    soils: { label: 'Soil definitions', href: '/land-model/gep-land-model.pdf#page=29' }
+  }
+}))
+
+function mount (sections, title = 'Soils', sectionKey = 'soils') {
   return render(
     <InfoPanelContext.Provider value={{ sections }}>
-      <Section sectionKey='soils' title={title} preview='Brown soils'>content</Section>
+      <Section sectionKey={sectionKey} title={title} preview='Brown soils'>content</Section>
     </InfoPanelContext.Provider>
   )
 }
@@ -35,6 +41,12 @@ describe('Section', () => {
     expect(link.getAttribute('href')).toBe('/land-model/gep-land-model.pdf#page=29')
     expect(link.getAttribute('target')).toBe('_blank')
     expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    view.unmount()
+  })
+
+  test('omits the guide link when the section has no definition', () => {
+    const view = mount(new Map(), 'Ownership', 'ownership')
+    expect(view.queryByRole('link')).toBeNull()
     view.unmount()
   })
 })

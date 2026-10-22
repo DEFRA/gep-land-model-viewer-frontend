@@ -131,6 +131,10 @@
   overflow-wrap: anywhere;
 }
 
+.app-map__summary-detail > :last-child .govuk-summary-list__row:last-child {
+  border-bottom: 0;
+}
+
 .app-map__summary-list {
   margin: 0;
 
