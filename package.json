@@ -112,7 +112,7 @@
     "npm-run-all2": "9.0.3",
     "postcss-load-config": "6.0.1",
     "postcss-loader": "8.2.1",
-    "sass-embedded": "1.106.0",
+    "sass-embedded": "1.106.1",
     "sass-loader": "17.0.1",
     "source-map-loader": "5.0.0",
     "storybook": "10.6.3",
