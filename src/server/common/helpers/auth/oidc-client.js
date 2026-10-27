@@ -1,4 +1,4 @@
-import { logExternalCall, createLogger } from '../logging/logger.js'
+import { createLogger, logExternalCall } from '../logging/logger.js'
 import * as openid from 'openid-client'
 
 import { config } from '../../../../config/config.js'
@@ -89,7 +89,7 @@ const oidcClient = {
        */
       async function refresh (token) {
         const oidcConfig = await getConfig()
-        return logExternalCall('OIDC', 'refresh token', () => openid.refreshTokenGrant(oidcConfig, token, { scope }))
+        return logExternalCall('OIDC', 'refreshTokenGrant', () => openid.refreshTokenGrant(oidcConfig, token, { scope }))
       }
 
       server.decorate('server', 'oidc', { getConfig, refresh, scope })

@@ -1,4 +1,4 @@
-import { logExternalCall, createLogger } from '../../logging/logger.js'
+import { createLogger, logExternalCall } from '../../logging/logger.js'
 import jwt from '@hapi/jwt'
 import {
   CognitoIdentityClient,

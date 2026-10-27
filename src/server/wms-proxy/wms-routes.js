@@ -1,4 +1,4 @@
-import { externalFetch, createLogger } from '../common/helpers/logging/logger.js'
+import { createLogger, logExternalCall } from '../common/helpers/logging/logger.js'
 import { statusCodes } from '../common/constants/status-codes.js'
 import { config } from '../../config/config.js'
 import {
@@ -10,7 +10,6 @@ import {
 } from '../common/helpers/fetch-proxy.js'
 
 const logger = createLogger()
-const fetchUpstream = externalFetch('WMS')
 
 const WMS_ROUTE_PATH = '/wms'
 
@@ -52,7 +51,7 @@ const wmsProxyHandler = {
 
     try {
       const startTime = Date.now()
-      const res = await fetchUpstream(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
+      const res = await logExternalCall('WMS', 'fetch', () => fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) }))
       const duration = Date.now() - startTime
 
       logger.debug(`WMS proxy request: ${service} (${duration}ms)`)

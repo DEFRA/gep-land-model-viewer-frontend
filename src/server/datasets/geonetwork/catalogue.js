@@ -1,4 +1,4 @@
-import { logExternalCall, createLogger } from '../../common/helpers/logging/logger.js'
+import { createLogger, logExternalCall } from '../../common/helpers/logging/logger.js'
 import { request } from 'undici'
 import { config } from '../../../config/config.js'
 import { statusCodes } from '../../common/constants/status-codes.js'
@@ -47,7 +47,7 @@ const RECORDS_ONLY = { term: { isTemplate: 'n' } }
  */
 async function searchRecords (body) {
   const url = `${config.get('geonetwork.apiUrl').replace(/\/$/, '')}/search/records/_search`
-  const response = await logExternalCall('GeoNetwork', 'search records', () => request(url, {
+  const response = await logExternalCall('GeoNetwork', 'search', () => request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify(body),
@@ -123,7 +123,7 @@ export async function queryDatasets (q) {
     sort: q ? [{ _score: 'desc' }] : [{ [fields.title.sort.field]: 'asc' }]
   })
 
-  logger.debug({ returned: result.hits.hits.length, total: result.hits.total.value }, 'Dataset search completed')
+  logger.debug({ resultCount: result.hits.hits.length, total: result.hits.total.value }, 'Metadata search completed')
 
   return {
     results: result.hits.hits.map(mapSearchHit),
@@ -144,7 +144,7 @@ export async function getDatasetMetadata (id) {
     query: { bool: { filter: [RECORDS_ONLY, { ids: { values: [id] } }] } }
   })
   const hit = result.hits.hits[0]
-  logger.debug({ found: Boolean(hit) }, 'Dataset metadata lookup completed')
+  logger.debug({ found: Boolean(hit) }, 'Metadata record lookup completed')
   if (!hit) {
     return null
   }

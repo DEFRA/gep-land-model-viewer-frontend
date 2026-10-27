@@ -1,4 +1,4 @@
-import { logExternalCall, createLogger } from '../logging/logger.js'
+import { createLogger, logExternalCall } from '../logging/logger.js'
 import * as openid from 'openid-client'
 import Boom from '@hapi/boom'
 
@@ -116,7 +116,7 @@ async function postLogin (request, oidcConfig, options) {
   const currentUrl = asExternalUrl(request.url, config.get('appBaseUrl'))
 
   logger.info('Exchanging authorization code for tokens')
-  const token = await logExternalCall('OIDC', 'authorization code grant', () => openid.authorizationCodeGrant(oidcConfig, currentUrl, {
+  const token = await logExternalCall('OIDC', 'authorizationCodeGrant', () => openid.authorizationCodeGrant(oidcConfig, currentUrl, {
     pkceCodeVerifier: codeVerifier,
     expectedNonce: nonce,
     idTokenExpected: true

@@ -1,4 +1,4 @@
-import { debugFetch } from '../../../../authenticated-fetch.js'
+import { logExternalCall } from '../../../../authenticated-fetch.js'
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
 import VectorSource from 'ol/source/Vector.js'
 import { bbox } from 'ol/loadingstrategy.js'
@@ -9,7 +9,7 @@ import { createFgbLoadController } from './fgb-loader.js'
 import { buildColourVariables, buildVectorStyleWithVariables } from '../style-config.js'
 
 async function checkFgbSignature (url) {
-  const response = await debugFetch(url, { headers: { Range: 'bytes=0-7' } })
+  const response = await logExternalCall('FlatGeobuf', 'checkSignature', () => fetch(url, { headers: { Range: 'bytes=0-7' } }))
   if (!response.ok) {
     throw new Error(`Failed to load FlatGeobuf: ${response.status}`)
   }

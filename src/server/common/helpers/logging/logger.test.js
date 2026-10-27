@@ -1,4 +1,4 @@
-import { createLogger, logExternalCall, externalFetch } from './logger.js'
+import { createLogger, logExternalCall } from './logger.js'
 import { loggerOptions } from './logger-options.js'
 import { pino } from 'pino'
 
@@ -23,6 +23,18 @@ describe('external API logging', () => {
     expect(logger.debug).toHaveBeenCalledWith({ service: 'test', operation: 'read', durationMs: expect.any(Number), statusCode: response.status ?? response.statusCode ?? response.$metadata?.httpStatusCode }, 'External API call completed')
   })
 
+  test('measures elapsed time using the monotonic clock', async () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValueOnce(100).mockReturnValueOnce(125)
+    try {
+      await logExternalCall('test', 'request', async () => undefined)
+      expect(logger.debug).toHaveBeenLastCalledWith({
+        service: 'test', operation: 'request', durationMs: 25, statusCode: undefined
+      }, 'External API call completed')
+    } finally {
+      now.mockRestore()
+    }
+  })
+
   test('preserves errors without logging potentially sensitive error details', async () => {
     const error = new Error('https://example.com/?key=secret')
     await expect(logExternalCall('test', 'read', async () => { throw error })).rejects.toBe(error)
@@ -36,7 +48,7 @@ describe('external API logging', () => {
     vi.stubGlobal('fetch', fetch)
     const url = 'https://example.com/?key=secret'
     const options = { method: 'POST', headers: { authorization: 'secret' } }
-    await expect(externalFetch('test')(url, options)).resolves.toBe(response)
+    await expect(logExternalCall('test', 'fetch', () => fetch(url, options))).resolves.toBe(response)
     expect(fetch).toHaveBeenCalledWith(url, options)
     expect(JSON.stringify(logger.debug.mock.calls)).not.toContain('secret')
   })

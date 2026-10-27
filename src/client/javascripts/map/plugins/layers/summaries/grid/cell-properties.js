@@ -1,4 +1,4 @@
-import { debugFetch } from '../../../../authenticated-fetch.js'
+import { logExternalCall } from '../../../../authenticated-fetch.js'
 import { parseProperties } from 'flatgeobuf/lib/mjs/generic.js'
 import { HttpReader } from 'flatgeobuf/lib/mjs/http-reader.js'
 
@@ -95,7 +95,7 @@ class BlockCachedRangeClient {
    * @returns {Promise<Uint8Array>}
    */
   async #fetch (begin, length) {
-    const response = await debugFetch(this.#url, { headers: { Range: `bytes=${begin}-${begin + length - 1}` } })
+    const response = await logExternalCall('FlatGeobuf', 'readGridProperties', () => fetch(this.#url, { headers: { Range: `bytes=${begin}-${begin + length - 1}` } }))
     // The request started past the end of the file
     if (response.status === 416) {
       return new Uint8Array(0)

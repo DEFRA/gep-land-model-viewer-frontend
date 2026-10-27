@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, afterEach } from 'vitest'
-import { authenticatedFetch, debugFetch } from './authenticated-fetch.js'
+import { authenticatedFetch, logExternalCall } from './authenticated-fetch.js'
 
 describe('#authenticatedFetch', () => {
   afterEach(() => {
@@ -85,16 +85,16 @@ test('forwards requests and logs response status without credentials', async () 
   vi.stubGlobal('fetch', fetch)
   const url = 'https://example.com/?key=secret'
   const options = { method: 'POST', body: 'secret' }
-  await expect(debugFetch(url, options)).resolves.toBe(response)
+  await expect(logExternalCall('test', 'fetch', () => fetch(url, options))).resolves.toBe(response)
   expect(fetch).toHaveBeenCalledWith(url, options)
-  expect(console.debug).toHaveBeenCalledWith('API call completed', { method: 'POST', statusCode: 401, durationMs: expect.any(Number) })
+  expect(console.debug).toHaveBeenCalledWith({ service: 'test', operation: 'fetch', statusCode: 401, durationMs: expect.any(Number) }, 'External API call completed')
   expect(JSON.stringify(console.debug.mock.calls)).not.toContain('secret')
 })
 
 test('preserves network failures without exposing error details', async () => {
   const error = new Error('secret')
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error))
-  await expect(debugFetch(new Request('https://example.com/', { method: 'HEAD' }))).rejects.toBe(error)
-  expect(console.debug).toHaveBeenCalledWith('API call failed', { method: 'HEAD', durationMs: expect.any(Number) })
+  await expect(logExternalCall('test', 'fetch', () => fetch(new Request('https://example.com/', { method: 'HEAD' })))).rejects.toBe(error)
+  expect(console.debug).toHaveBeenCalledWith({ service: 'test', operation: 'fetch', durationMs: expect.any(Number) }, 'External API call failed')
   expect(JSON.stringify(console.debug.mock.calls)).not.toContain('secret')
 })

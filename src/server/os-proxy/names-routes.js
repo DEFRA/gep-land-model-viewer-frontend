@@ -1,9 +1,8 @@
-import { externalFetch, createLogger } from '../common/helpers/logging/logger.js'
+import { createLogger, logExternalCall } from '../common/helpers/logging/logger.js'
 import { statusCodes } from '../common/constants/status-codes.js'
 import { getApiKey } from './config.js'
 
 const logger = createLogger()
-const fetchUpstream = externalFetch('OS Names')
 
 const OS_NAMES_API_URL = 'https://api.os.uk/search/names/v1/find'
 const DEFAULT_CACHE_CONTROL = 'no-cache'
@@ -41,7 +40,7 @@ const namesSearchHandler = {
     try {
       const upstreamUrl = buildUpstreamUrl(query.trim())
       const startTime = Date.now()
-      const res = await fetchUpstream(upstreamUrl, { redirect: 'follow' })
+      const res = await logExternalCall('OS Names', 'fetch', () => fetch(upstreamUrl, { redirect: 'follow' }))
       const duration = Date.now() - startTime
 
       if (!res.ok) {

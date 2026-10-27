@@ -1,4 +1,4 @@
-import { debugFetch } from '../../../authenticated-fetch.js'
+import { logExternalCall } from '../../../authenticated-fetch.js'
 import Feature from 'ol/Feature.js'
 import Point from 'ol/geom/Point.js'
 import VectorLayer from 'ol/layer/Vector.js'
@@ -374,7 +374,7 @@ async function fetchFeatureInfo (layer, coords, map, signal) {
     J: String(Math.round(pixel[1]))
   })
 
-  const response = await debugFetch(`${getSourceUrl(source)}?${params}`, { signal })
+  const response = await logExternalCall('WMS', 'GetFeatureInfo', () => fetch(`${getSourceUrl(source)}?${params}`, { signal }))
   const data = await response.json()
   return data.features ?? []
 }

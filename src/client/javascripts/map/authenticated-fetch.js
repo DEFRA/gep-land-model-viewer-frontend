@@ -11,7 +11,7 @@ export async function authenticatedFetch (input, init) {
     headers.set('Accept', 'application/json')
   }
 
-  const response = await debugFetch(input, { ...init, headers })
+  const response = await logExternalCall('Frontend', 'fetch', () => fetch(input, { ...init, headers }))
   if (response.status === HTTP_UNAUTHORIZED) {
     globalThis.location.reload()
     return new Promise(() => {})
@@ -20,21 +20,24 @@ export async function authenticatedFetch (input, init) {
 }
 
 /**
- * Debug browser requests without exposing URLs, headers or payloads.
- * @param {RequestInfo | URL} input
- * @param {RequestInit} [init]
- * @returns {Promise<Response>}
+ * Log a browser API operation without exposing request data or credentials.
+ * @template T
+ * @param {string} service
+ * @param {string} operation
+ * @param {() => Promise<T>} call
+ * @returns {Promise<T>}
  */
-export async function debugFetch (input, init) {
-  const startedAt = Date.now()
-  const method = init?.method ?? (input instanceof Request ? input.method : 'GET')
-  console.debug('API call started', { method })
+export async function logExternalCall (service, operation, call) {
+  const context = { service, operation }
+  const startedAt = performance.now()
+  console.debug(context, 'External API call started')
   try {
-    const response = await (init === undefined ? fetch(input) : fetch(input, init))
-    console.debug('API call completed', { method, statusCode: response.status, durationMs: Date.now() - startedAt })
-    return response
+    const result = await call()
+    const response = /** @type {{ status?: number }} */ (result)
+    console.debug({ ...context, statusCode: response?.status, durationMs: performance.now() - startedAt }, 'External API call completed')
+    return result
   } catch (error) {
-    console.debug('API call failed', { method, durationMs: Date.now() - startedAt })
+    console.debug({ ...context, durationMs: performance.now() - startedAt }, 'External API call failed')
     throw error
   }
 }
