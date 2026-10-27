@@ -96,7 +96,7 @@
     "@storybook/addon-a11y": "10.6.3",
     "@storybook/preact-vite": "10.6.3",
     "@storybook/react-dom-shim": "10.6.3",
-    "@testing-library/preact": "3.2.4",
+    "@testing-library/preact": "3.2.6",
     "@vitest/coverage-v8": "5.0.5",
     "audit-ci": "7.1.0",
     "autoprefixer": "10.6.1",
