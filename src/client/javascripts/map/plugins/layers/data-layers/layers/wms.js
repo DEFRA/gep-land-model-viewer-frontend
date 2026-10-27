@@ -1,4 +1,3 @@
-import { logExternalCall } from '../../../../authenticated-fetch.js'
 import ImageLayer from 'ol/layer/Image.js'
 import ImageWMS from 'ol/source/ImageWMS.js'
 import { EPSG_27700 } from '../../constants.js'
@@ -15,7 +14,7 @@ export async function fetchWmsLayerNames (wmsUrl) {
   }
 
   try {
-    const res = await logExternalCall('WMS', 'GetCapabilities', () => fetch(`${wmsUrl}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities`))
+    const res = await fetch(`${wmsUrl}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities`)
     if (!res.ok) {
       return []
     }
