@@ -1,6 +1,9 @@
+import { logExternalCall, createLogger } from '../logging/logger.js'
 import * as openid from 'openid-client'
 
 import { config } from '../../../../config/config.js'
+
+const logger = createLogger()
 
 const DISCOVERY_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
@@ -32,23 +35,25 @@ const oidcClient = {
 
       async function resolveMetadata (federatedToken) {
         if (cachedMetadata && Date.now() - cachedAt <= DISCOVERY_CACHE_TTL) {
+          logger.debug('Using cached OIDC discovery metadata')
           return cachedMetadata
         }
 
         if (!inflight) {
-          inflight = openid.discovery(
+          inflight = logExternalCall('OIDC', 'discovery', () => openid.discovery(
             new URL(discoveryUri),
             clientId,
             {},
             createClientAuth(federatedToken),
             execute ? { execute } : {}
-          )
+          ))
         }
 
         try {
           const oidcConfig = await inflight
           cachedMetadata = oidcConfig.serverMetadata()
           cachedAt = Date.now()
+          logger.debug('OIDC discovery metadata cached')
           return cachedMetadata
         } finally {
           inflight = null
@@ -84,7 +89,7 @@ const oidcClient = {
        */
       async function refresh (token) {
         const oidcConfig = await getConfig()
-        return openid.refreshTokenGrant(oidcConfig, token, { scope })
+        return logExternalCall('OIDC', 'refresh token', () => openid.refreshTokenGrant(oidcConfig, token, { scope }))
       }
 
       server.decorate('server', 'oidc', { getConfig, refresh, scope })

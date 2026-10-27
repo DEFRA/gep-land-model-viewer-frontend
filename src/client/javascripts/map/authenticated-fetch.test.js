@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, afterEach } from 'vitest'
-import { authenticatedFetch } from './authenticated-fetch.js'
+import { authenticatedFetch, debugFetch } from './authenticated-fetch.js'
 
 describe('#authenticatedFetch', () => {
   afterEach(() => {
@@ -24,9 +24,7 @@ describe('#authenticatedFetch', () => {
 
     let resolved = false
     const pending = authenticatedFetch('/api/data').then(() => { resolved = true })
-    await Promise.resolve()
-
-    expect(reload).toHaveBeenCalled()
+    await vi.waitFor(() => expect(reload).toHaveBeenCalled())
     expect(resolved).toBe(false)
 
     pending.catch(() => {})
@@ -71,4 +69,32 @@ describe('#authenticatedFetch', () => {
     const headers = fetch.mock.calls[0][1].headers
     expect(headers.get('Accept')).toBe('text/plain')
   })
+})
+
+beforeEach(() => {
+  vi.spyOn(console, 'debug').mockImplementation(() => {})
+})
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+test('forwards requests and logs response status without credentials', async () => {
+  const response = { status: 401 }
+  const fetch = vi.fn().mockResolvedValue(response)
+  vi.stubGlobal('fetch', fetch)
+  const url = 'https://example.com/?key=secret'
+  const options = { method: 'POST', body: 'secret' }
+  await expect(debugFetch(url, options)).resolves.toBe(response)
+  expect(fetch).toHaveBeenCalledWith(url, options)
+  expect(console.debug).toHaveBeenCalledWith('API call completed', { method: 'POST', statusCode: 401, durationMs: expect.any(Number) })
+  expect(JSON.stringify(console.debug.mock.calls)).not.toContain('secret')
+})
+
+test('preserves network failures without exposing error details', async () => {
+  const error = new Error('secret')
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error))
+  await expect(debugFetch(new Request('https://example.com/', { method: 'HEAD' }))).rejects.toBe(error)
+  expect(console.debug).toHaveBeenCalledWith('API call failed', { method: 'HEAD', durationMs: expect.any(Number) })
+  expect(JSON.stringify(console.debug.mock.calls)).not.toContain('secret')
 })

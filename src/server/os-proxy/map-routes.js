@@ -1,4 +1,4 @@
-import { createLogger } from '../common/helpers/logging/logger.js'
+import { externalFetch, createLogger } from '../common/helpers/logging/logger.js'
 import { statusCodes } from '../common/constants/status-codes.js'
 import {
   getConditionalHeaders,
@@ -12,6 +12,7 @@ import {
 import { getApiKey } from './config.js'
 
 const logger = createLogger()
+const fetchUpstream = externalFetch('OS Maps')
 
 const OS_VTS_BASE_URL = 'https://api.os.uk/maps/vector/v1/vts'
 const OS_NGD_BASE_URL = 'https://api.os.uk/maps/vector/ngd/ota/v1'
@@ -53,7 +54,7 @@ const vtsProxyHandler = {
         `Map proxy ${isBinaryResource ? 'binary' : 'json'} request: ${path || '/'}`
       )
       const startTime = Date.now()
-      const res = await fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
+      const res = await fetchUpstream(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
       const duration = Date.now() - startTime
 
       if (res.status === statusCodes.notModified) {
@@ -97,7 +98,7 @@ const ngdProxyHandler = {
     try {
       const url = getNgdUpstreamUrl(path, request.query)
       const startTime = Date.now()
-      const res = await fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
+      const res = await fetchUpstream(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
       const duration = Date.now() - startTime
 
       if (res.status === statusCodes.notModified) {
@@ -135,7 +136,7 @@ const rasterProxyHandler = {
 
     try {
       const startTime = Date.now()
-      const res = await fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
+      const res = await fetchUpstream(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
       const duration = Date.now() - startTime
 
       if (res.status === statusCodes.notModified) {

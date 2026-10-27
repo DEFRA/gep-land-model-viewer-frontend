@@ -1,7 +1,10 @@
+import { logExternalCall, createLogger } from '../../common/helpers/logging/logger.js'
 import { request } from 'undici'
 import { config } from '../../../config/config.js'
 import { statusCodes } from '../../common/constants/status-codes.js'
 import { fields, recordSourceIncludes, searchFields, searchSourceIncludes } from './fields.js'
+
+const logger = createLogger()
 
 export const MAX_RESULTS = 500
 
@@ -44,12 +47,12 @@ const RECORDS_ONLY = { term: { isTemplate: 'n' } }
  */
 async function searchRecords (body) {
   const url = `${config.get('geonetwork.apiUrl').replace(/\/$/, '')}/search/records/_search`
-  const response = await request(url, {
+  const response = await logExternalCall('GeoNetwork', 'search records', () => request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(10_000)
-  })
+  }))
 
   if (response.statusCode !== statusCodes.ok) {
     await response.body.dump()
@@ -120,6 +123,8 @@ export async function queryDatasets (q) {
     sort: q ? [{ _score: 'desc' }] : [{ [fields.title.sort.field]: 'asc' }]
   })
 
+  logger.debug({ returned: result.hits.hits.length, total: result.hits.total.value }, 'Dataset search completed')
+
   return {
     results: result.hits.hits.map(mapSearchHit),
     total: result.hits.total.value
@@ -139,6 +144,7 @@ export async function getDatasetMetadata (id) {
     query: { bool: { filter: [RECORDS_ONLY, { ids: { values: [id] } }] } }
   })
   const hit = result.hits.hits[0]
+  logger.debug({ found: Boolean(hit) }, 'Dataset metadata lookup completed')
   if (!hit) {
     return null
   }

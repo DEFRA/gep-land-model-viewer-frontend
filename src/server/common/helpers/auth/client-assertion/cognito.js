@@ -1,10 +1,10 @@
+import { logExternalCall, createLogger } from '../../logging/logger.js'
 import jwt from '@hapi/jwt'
 import {
   CognitoIdentityClient,
   GetOpenIdTokenForDeveloperIdentityCommand
 } from '@aws-sdk/client-cognito-identity'
 import { config } from '../../../../../config/config.js'
-import { createLogger } from '../../logging/logger.js'
 
 const logger = createLogger()
 
@@ -26,7 +26,7 @@ export class CognitoFederatedCredentialProvider {
     }
     try {
       const command = new GetOpenIdTokenForDeveloperIdentityCommand(input)
-      const result = await this.client.send(command)
+      const result = await logExternalCall('Cognito', 'GetOpenIdTokenForDeveloperIdentity', () => this.client.send(command))
       logger.info(`Got token from Cognito ${result?.IdentityId}`)
       return result.Token
     } catch (e) {

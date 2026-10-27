@@ -1,3 +1,4 @@
+import { logExternalCall } from '../logging/logger.js'
 import Validate from '@hapi/validate'
 import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { config } from '../../../../config/config.js'
@@ -89,7 +90,7 @@ export function isMissingObject (error) {
  * @returns {Promise<{ json: unknown, versionId: string | undefined }>}
  */
 async function getJsonFile (prefix, filename, version) {
-  const result = await getClient().send(new GetObjectCommand(objectInput(prefix, filename, version)), { abortSignal: AbortSignal.timeout(TIMEOUT) })
+  const result = await logExternalCall('S3', 'GetObject', () => getClient().send(new GetObjectCommand(objectInput(prefix, filename, version)), { abortSignal: AbortSignal.timeout(TIMEOUT) }))
   const text = await result.Body.transformToString()
 
   try {
@@ -166,7 +167,7 @@ export async function getJson (prefix, filename, version) {
  */
 export function getAsset (prefix, filename, version, range, signal) {
   const input = { ...objectInput(prefix, filename, version), Range: range }
-  return getClient().send(new GetObjectCommand(input), { abortSignal: signal })
+  return logExternalCall('S3', 'GetObject', () => getClient().send(new GetObjectCommand(input), { abortSignal: signal }))
 }
 
 /**
@@ -181,5 +182,5 @@ export function getAsset (prefix, filename, version, range, signal) {
  */
 export function getAssetMetadata (prefix, filename, version, range, signal) {
   const input = { ...objectInput(prefix, filename, version), Range: range }
-  return getClient().send(new HeadObjectCommand(input), { abortSignal: signal })
+  return logExternalCall('S3', 'HeadObject', () => getClient().send(new HeadObjectCommand(input), { abortSignal: signal }))
 }

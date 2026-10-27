@@ -3,7 +3,8 @@ import { AWS_VERSION_ID, TEST_AUTH, createTestServer, generatedAt, jsonObject, m
 import { landModel } from './index.js'
 
 const logger = vi.hoisted(() => ({ debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() }))
-vi.mock('../common/helpers/logging/logger.js', () => ({ createLogger: () => logger }))
+vi.mock('../common/helpers/logging/logger-options.js', () => ({ loggerOptions: { enabled: false } }))
+vi.mock('../common/helpers/logging/logger.js', async (importOriginal) => ({ ...await importOriginal(), createLogger: () => logger }))
 
 const PREFIX = 'land-model/parcels'
 const LAYER = '/api/land-model/parcels/layer'
