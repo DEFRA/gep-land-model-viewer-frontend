@@ -279,13 +279,32 @@ export const config = convict({
       default: isDevelopment
     }
   },
+  cookieConsent: {
+    name: {
+      doc: 'Service-specific cookie consent policy name',
+      format: String,
+      default: 'gep-land-model-viewer-frontend_policy'
+    },
+    policy: {
+      clearInvalid: { format: Boolean, default: true },
+      ignoreErrors: { format: Boolean, default: true },
+      encoding: { format: String, default: 'base64json' },
+      isSameSite: { format: String, default: 'Lax' },
+      isSecure: { format: Boolean, default: isProduction },
+      isHttpOnly: { format: Boolean, default: true },
+      path: { format: String, default: '/' }
+    },
+    config: {
+      ttl: { format: 'nat', default: 31536000000 }
+    }
+  },
   googleTagManager: {
     containerId: {
       doc: 'Google Tag Manager container ID',
       format: String,
       nullable: true,
       default: null,
-      env: 'GTM_CONTAINER_ID'
+      env: 'GOOGLE_TAG_MANAGER_KEY'
     }
   },
   tracing: {

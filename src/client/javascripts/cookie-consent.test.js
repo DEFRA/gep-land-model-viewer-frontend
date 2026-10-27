@@ -1,367 +1,187 @@
-/**
- * @vitest-environment jsdom
- */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+/** @vitest-environment jsdom */
+import { loadGoogleTagManager, removeAnalyticsCookies, initCookieBanner, initCookiesPage, updateGoogleConsent } from './cookie-consent.js'
 
-import {
-  getCookieConsent,
-  setCookieConsent,
-  hasConsentBeenSet,
-  loadGoogleTagManager,
-  removeAnalyticsCookies,
-  initCookieBanner,
-  initCookiesPage
-} from './cookie-consent.js'
+const bannerHtml = `
+<form action="/cookies" method="post">
+  <div class="js-cookies-container" data-crumb="token" data-gtm-key="GTM-TEST123">
+    <div class="js-question-banner"><button type="submit" name="analytics" value="true">Accept</button><button type="submit" name="analytics" value="false">Reject</button></div>
+    <div class="js-cookies-accepted" hidden><button type="button" class="js-hide">Hide</button></div>
+    <div class="js-cookies-rejected" hidden><button type="button" class="js-hide">Hide</button></div>
+  </div>
+</form>`
 
 function clearCookies () {
-  document.cookie.split(';').forEach((cookie) => {
-    const name = cookie.split('=')[0].trim()
-    document.cookie = `${name}=; max-age=0; path=/; Secure`
-  })
+  for (const cookie of document.cookie.split(';')) {
+    document.cookie = `${cookie.split('=')[0].trim()}=; max-age=0; path=/`
+  }
 }
 
-function createBannerHtml (containerId) {
-  return `
-    <div class="govuk-cookie-banner" data-gtm-container-id="${containerId}">
-      <div class="govuk-cookie-banner__message">
-        <form method="post" action="/cookies/accept">
-          <input type="hidden" name="returnUrl" value="/">
-          <button type="submit" value="accept">Accept analytics cookies</button>
-        </form>
-        <form method="post" action="/cookies/reject">
-          <input type="hidden" name="returnUrl" value="/">
-          <button type="submit" value="reject">Reject analytics cookies</button>
-        </form>
-      </div>
-      <div class="govuk-cookie-banner__message" role="alert" tabindex="-1" hidden>
-        <p>You accepted cookies.</p>
-        <button type="button">Hide cookie message</button>
-      </div>
-      <div class="govuk-cookie-banner__message" role="alert" tabindex="-1" hidden>
-        <p>You rejected cookies.</p>
-        <button type="button">Hide cookie message</button>
-      </div>
-    </div>
-  `
-}
+beforeEach(() => {
+  clearCookies()
+  document.head.innerHTML = ''
+  document.body.innerHTML = ''
+  delete globalThis.dataLayer
+  vi.stubGlobal('gtag', vi.fn())
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }))
+})
+afterEach(() => {
+  clearCookies()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
-describe('cookie-consent', () => {
-  beforeEach(() => {
-    clearCookies()
+describe('GTM loading', () => {
+  test('loads the container only once with its start event', () => {
+    loadGoogleTagManager('GTM-TEST123')
+    loadGoogleTagManager('GTM-TEST123')
+    expect(document.querySelectorAll('script')).toHaveLength(1)
+    expect(document.querySelector('script').src).toBe('https://www.googletagmanager.com/gtm.js?id=GTM-TEST123')
+    expect(document.querySelector('script').async).toBe(true)
+    expect(globalThis.dataLayer).toEqual([{ 'gtm.start': expect.any(Number), event: 'gtm.js' }])
+  })
+  test.each(['', undefined, 'G-123', 'GTM-<script>', 'gtm-test'])('rejects invalid container %s', (id) => {
+    loadGoogleTagManager(id)
+    expect(document.querySelector('script')).toBeNull()
+  })
+})
+
+describe('analytics cleanup', () => {
+  test('deletes every analytics family and preserves other cookies', () => {
+    for (const name of ['_ga', '_ga_ABC', '_gid', '_gat', '_gat_ABC', '_dc_gtm_ABC', 'essential']) {
+      document.cookie = `${name}=value; path=/`
+    }
+    removeAnalyticsCookies()
+    expect(document.cookie).toBe('essential=value')
+  })
+  test('attempts expiry on the host and every parent domain', () => {
+    vi.spyOn(globalThis, 'location', 'get').mockReturnValue({ hostname: 'service.example.gov.uk' })
+    const setter = vi.spyOn(document, 'cookie', 'set')
+    document.cookie = '_ga=test; path=/'
+    setter.mockClear()
+    removeAnalyticsCookies()
+    for (const domain of ['service.example.gov.uk', '.service.example.gov.uk', '.example.gov.uk', '.gov.uk']) {
+      expect(setter).toHaveBeenCalledWith(expect.stringContaining(`domain=${domain}`))
+    }
+  })
+})
+
+describe('banner submissions', () => {
+  test('is safe on pages without a banner', () => {
+    expect(() => initCookieBanner()).not.toThrow()
   })
 
-  afterEach(() => {
-    clearCookies()
-    document.body.innerHTML = ''
-    vi.restoreAllMocks()
+  test.each([true, false])('saves choice %s before confirming and loading tracking', async (analytics) => {
+    document.body.innerHTML = bannerHtml
+    document.cookie = '_ga=old; path=/'
+    const append = vi.spyOn(document.head, 'appendChild')
+    initCookieBanner()
+    document.querySelector(`button[value="${analytics}"]`).click()
+    expect(document.querySelector('.js-question-banner').hidden).toBe(false)
+    expect(document.querySelector('script')).toBeNull()
+    await vi.waitFor(() => expect(document.querySelector('.js-question-banner').hidden).toBe(true))
+    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/cookies'), {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ analytics, async: true, crumb: 'token' })
+    })
+    expect(globalThis.gtag).toHaveBeenCalledWith('consent', 'update', {
+      analytics_storage: analytics ? 'granted' : 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied'
+    })
+    const confirmation = document.querySelector(analytics ? '.js-cookies-accepted' : '.js-cookies-rejected')
+    expect(confirmation.hidden).toBe(false)
+    expect(document.activeElement).toBe(confirmation)
+    confirmation.dispatchEvent(new Event('blur'))
+    expect(confirmation.hasAttribute('tabindex')).toBe(false)
+    expect(Boolean(document.querySelector('script'))).toBe(analytics)
+    if (analytics) {
+      expect(globalThis.gtag.mock.invocationCallOrder[0]).toBeLessThan(append.mock.invocationCallOrder[0])
+    }
+    if (!analytics) expect(document.cookie).not.toContain('_ga')
+    confirmation.querySelector('button').click()
+    expect(document.querySelector('.js-cookies-container').hidden).toBe(true)
   })
 
-  describe('#getCookieConsent', () => {
-    it('should return null when no cookie is set', () => {
-      expect(getCookieConsent()).toBeNull()
-    })
-
-    it('should return parsed consent when cookie is set', () => {
-      document.cookie =
-        'defra_cookies_policy=' +
-        encodeURIComponent('{"analytics":true}') +
-        '; path=/; Secure'
-
-      expect(getCookieConsent()).toEqual({ analytics: true })
-    })
-
-    it('should return null for invalid JSON', () => {
-      document.cookie = 'defra_cookies_policy=invalid-json; path=/; Secure'
-      expect(getCookieConsent()).toBeNull()
-    })
+  test.each(['network', 'http'])('falls back to a native form with the chosen preference after %s failure', async (failure) => {
+    document.body.innerHTML = bannerHtml
+    if (failure === 'network') globalThis.fetch.mockRejectedValue(new Error('offline'))
+    else globalThis.fetch.mockResolvedValue({ ok: false })
+    const form = document.querySelector('form')
+    const submit = vi.spyOn(form, 'submit').mockImplementation(() => {})
+    initCookieBanner()
+    document.querySelector('button[value="false"]').click()
+    await vi.waitFor(() => expect(submit).toHaveBeenCalledOnce())
+    expect(form.querySelector('input[name="analytics"]').value).toBe('false')
+    expect(globalThis.gtag).not.toHaveBeenCalled()
+    expect(document.querySelector('.js-question-banner').hidden).toBe(false)
+    expect(document.querySelector('script')).toBeNull()
   })
 
-  describe('#setCookieConsent', () => {
-    it('should set the consent cookie', () => {
-      setCookieConsent({ analytics: true })
+  test('does not intercept submissions without a valid choice', () => {
+    document.body.innerHTML = bannerHtml
+    initCookieBanner()
+    const event = new Event('submit', { cancelable: true })
+    document.querySelector('form').dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+  })
+})
 
-      expect(document.cookie).toContain('defra_cookies_policy')
-      expect(getCookieConsent()).toEqual({ analytics: true })
-    })
+describe('page initialisation', () => {
+  test('cleans up cookies when no banner or GTM is present', () => {
+    document.cookie = '_ga=test; path=/'
+    initCookiesPage()
+    expect(document.cookie).not.toContain('_ga')
+  })
+  test.each(['banner', 'gtm'])('preserves cookies when %s is present', (mode) => {
+    document.cookie = '_ga=test; path=/'
+    if (mode === 'banner') document.body.innerHTML = bannerHtml
+    else loadGoogleTagManager('GTM-TEST123')
+    initCookiesPage()
+    expect(document.cookie).toContain('_ga')
+  })
+  test('reloads a restored page to refresh consent', () => {
+    const reload = vi.fn()
+    vi.spyOn(globalThis, 'location', 'get').mockReturnValue({ hostname: 'localhost', reload })
+    let handler
+    vi.spyOn(globalThis, 'addEventListener').mockImplementation((name, callback) => { if (name === 'pageshow') handler = callback })
+    initCookiesPage()
+    document.cookie = '_ga=test; path=/'
+    handler({ persisted: false })
+    expect(reload).not.toHaveBeenCalled()
+    handler({ persisted: true })
+    expect(reload).toHaveBeenCalledOnce()
+    expect(document.cookie).not.toContain('_ga')
+  })
+})
 
-    it('should set the consent-set flag cookie', () => {
-      setCookieConsent({ analytics: false })
-
-      expect(document.cookie).toContain('defra_cookies_policy_set=true')
-    })
+describe('consent updates', () => {
+  test('is safe when no Google tag is configured', () => {
+    vi.stubGlobal('gtag', undefined)
+    expect(() => updateGoogleConsent(true)).not.toThrow()
   })
 
-  describe('#hasConsentBeenSet', () => {
-    it('should return false when consent has not been set', () => {
-      expect(hasConsentBeenSet()).toBe(false)
+  test.each([true, false])('preference form updates consent to %s before navigation', (analytics) => {
+    document.body.innerHTML = `<form id="cookies-form"><input name="analytics" value="${analytics}" type="radio" checked></form>`
+    initCookiesPage()
+    document.cookie = '_ga=test; path=/'
+    document.querySelector('form').dispatchEvent(new Event('submit'))
+    expect(globalThis.gtag).toHaveBeenCalledWith('consent', 'update', {
+      analytics_storage: analytics ? 'granted' : 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied'
     })
-
-    it('should return true when consent has been set', () => {
-      setCookieConsent({ analytics: false })
-
-      expect(hasConsentBeenSet()).toBe(true)
-    })
+    expect(document.cookie.includes('_ga')).toBe(analytics)
   })
 
-  describe('#loadGoogleTagManager', () => {
-    it('should inject GTM script into head', () => {
-      loadGoogleTagManager('GTM-TEST123')
-
-      const script = document.querySelector(
-        'script[src*="googletagmanager.com/gtm.js"]'
-      )
-      expect(script).not.toBeNull()
-      expect(script.src).toContain('GTM-TEST123')
-      expect(script.async).toBe(true)
-    })
-
-    it('should not inject duplicate scripts', () => {
-      loadGoogleTagManager('GTM-TEST123')
-      loadGoogleTagManager('GTM-TEST123')
-
-      const scripts = document.querySelectorAll(
-        'script[src*="googletagmanager.com/gtm.js"]'
-      )
-      expect(scripts).toHaveLength(1)
-    })
-
-    it('should initialise the dataLayer with GTM start event', () => {
-      loadGoogleTagManager('GTM-TEST123')
-
-      expect(globalThis.dataLayer).toBeDefined()
-      expect(globalThis.dataLayer[0]).toMatchObject({
-        'gtm.start': expect.any(Number),
-        event: 'gtm.js'
-      })
-    })
-  })
-
-  describe('#removeAnalyticsCookies', () => {
-    it('should remove _ga cookies', () => {
-      document.cookie = '_ga=test; path=/; Secure'
-      document.cookie = '_ga_ABC123=test; path=/; Secure'
-      removeAnalyticsCookies()
-
-      expect(document.cookie).not.toContain('_ga')
-    })
-
-    it('should attempt deletion on parent domain for subdomains', () => {
-      vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
-        hostname: 'find-geo-data.defra.gov.uk'
-      })
-
-      document.cookie = '_ga=test; path=/; Secure'
-      removeAnalyticsCookies()
-
-      expect(document.cookie).not.toContain('_ga')
-    })
-  })
-
-  describe('#initCookieBanner', () => {
-    it('should do nothing when no banner is present', () => {
-      initCookieBanner()
-
-      expect(document.querySelector('.govuk-cookie-banner')).toBeNull()
-    })
-
-    it('should hide banner when consent has already been set', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-      setCookieConsent({ analytics: false })
-
-      initCookieBanner()
-
-      const banner = document.querySelector('.govuk-cookie-banner')
-      expect(banner.hidden).toBe(true)
-    })
-
-    it('should load GTM when consent was previously accepted', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-      setCookieConsent({ analytics: true })
-
-      initCookieBanner()
-
-      const script = document.querySelector(
-        'script[src*="googletagmanager.com/gtm.js"]'
-      )
-      expect(script).not.toBeNull()
-    })
-
-    it('should accept cookies when accept form is submitted', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-
-      initCookieBanner()
-
-      const acceptForm = document.querySelector(
-        'form[action="/cookies/accept"]'
-      )
-      acceptForm.dispatchEvent(new Event('submit', { cancelable: true }))
-
-      expect(getCookieConsent()).toEqual({ analytics: true })
-
-      const messages = document.querySelectorAll(
-        '.govuk-cookie-banner__message'
-      )
-      expect(messages[0].hidden).toBe(true)
-      expect(messages[1].hidden).toBe(false)
-    })
-
-    it('should reject cookies when reject form is submitted', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-
-      initCookieBanner()
-
-      const rejectForm = document.querySelector(
-        'form[action="/cookies/reject"]'
-      )
-      rejectForm.dispatchEvent(new Event('submit', { cancelable: true }))
-
-      expect(getCookieConsent()).toEqual({ analytics: false })
-
-      const messages = document.querySelectorAll(
-        '.govuk-cookie-banner__message'
-      )
-      expect(messages[0].hidden).toBe(true)
-      expect(messages[2].hidden).toBe(false)
-    })
-
-    it('should prevent default form submission for progressive enhancement', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-
-      initCookieBanner()
-
-      const acceptForm = document.querySelector(
-        'form[action="/cookies/accept"]'
-      )
-      const event = new Event('submit', { cancelable: true })
-      acceptForm.dispatchEvent(event)
-
-      expect(event.defaultPrevented).toBe(true)
-    })
-
-    it('should focus the confirmation message after accepting', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-
-      initCookieBanner()
-
-      const acceptForm = document.querySelector(
-        'form[action="/cookies/accept"]'
-      )
-      acceptForm.dispatchEvent(new Event('submit', { cancelable: true }))
-
-      const acceptedMessage = document.querySelectorAll(
-        '.govuk-cookie-banner__message'
-      )[1]
-      expect(document.activeElement).toBe(acceptedMessage)
-    })
-
-    it('should focus the confirmation message after rejecting', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-
-      initCookieBanner()
-
-      const rejectForm = document.querySelector(
-        'form[action="/cookies/reject"]'
-      )
-      rejectForm.dispatchEvent(new Event('submit', { cancelable: true }))
-
-      const rejectedMessage = document.querySelectorAll(
-        '.govuk-cookie-banner__message'
-      )[2]
-      expect(document.activeElement).toBe(rejectedMessage)
-    })
-
-    it('should load GTM when accepted message is visible on page load', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-
-      const messages = document.querySelectorAll(
-        '.govuk-cookie-banner__message'
-      )
-      messages[1].hidden = false
-
-      initCookieBanner()
-
-      const script = document.querySelector(
-        'script[src*="googletagmanager.com/gtm.js"]'
-      )
-      expect(script).not.toBeNull()
-    })
-
-    it('should hide banner when hide button is clicked', () => {
-      document.body.innerHTML = createBannerHtml('GTM-TEST123')
-
-      initCookieBanner()
-
-      const acceptForm = document.querySelector(
-        'form[action="/cookies/accept"]'
-      )
-      acceptForm.dispatchEvent(new Event('submit', { cancelable: true }))
-
-      const hideButton = document.querySelectorAll(
-        '.govuk-cookie-banner__message[role="alert"] button'
-      )[0]
-      hideButton.click()
-
-      const banner = document.querySelector('.govuk-cookie-banner')
-      expect(banner.hidden).toBe(true)
-    })
-  })
-
-  describe('#initCookiesPage', () => {
-    it('should do nothing when no form is present', () => {
-      initCookiesPage()
-
-      expect(document.getElementById('cookies-form')).toBeNull()
-    })
-
-    it('should set consent cookie on form submit with yes selected', () => {
-      document.body.innerHTML = `
-        <form id="cookies-form">
-          <input type="radio" name="analytics" value="yes" checked>
-          <input type="radio" name="analytics" value="no">
-          <button type="submit">Save</button>
-        </form>
-      `
-
-      initCookiesPage()
-
-      const form = document.getElementById('cookies-form')
-      form.dispatchEvent(new Event('submit'))
-
-      expect(getCookieConsent()).toEqual({ analytics: true })
-    })
-
-    it('should not set consent when no radio is selected', () => {
-      document.body.innerHTML = `
-        <form id="cookies-form">
-          <input type="radio" name="analytics" value="yes">
-          <input type="radio" name="analytics" value="no">
-          <button type="submit">Save</button>
-        </form>
-      `
-
-      initCookiesPage()
-
-      const form = document.getElementById('cookies-form')
-      form.dispatchEvent(new Event('submit'))
-
-      expect(getCookieConsent()).toBeNull()
-    })
-
-    it('should set consent cookie on form submit with no selected', () => {
-      document.body.innerHTML = `
-        <form id="cookies-form">
-          <input type="radio" name="analytics" value="yes">
-          <input type="radio" name="analytics" value="no" checked>
-          <button type="submit">Save</button>
-        </form>
-      `
-
-      initCookiesPage()
-
-      const form = document.getElementById('cookies-form')
-      form.dispatchEvent(new Event('submit'))
-
-      expect(getCookieConsent()).toEqual({ analytics: false })
-    })
+  test('leaves consent unchanged when no preference is selected', () => {
+    document.body.innerHTML = '<form id="cookies-form"></form>'
+    initCookiesPage()
+    document.querySelector('form').dispatchEvent(new Event('submit'))
+    expect(globalThis.gtag).not.toHaveBeenCalled()
   })
 })

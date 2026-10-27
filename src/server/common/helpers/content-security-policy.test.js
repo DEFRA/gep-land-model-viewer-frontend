@@ -68,7 +68,7 @@ describe('#contentSecurityPolicy with GTM', () => {
   let server
 
   beforeAll(async () => {
-    vi.stubEnv('GTM_CONTAINER_ID', 'GTM-TEST123')
+    vi.stubEnv('GOOGLE_TAG_MANAGER_KEY', 'GTM-TEST123')
     vi.resetModules()
 
     const { createServer: createGtmServer } = await import('../../server.js')

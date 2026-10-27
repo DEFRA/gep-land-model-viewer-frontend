@@ -1,47 +1,23 @@
-const COOKIE_NAME = 'defra_cookies_policy'
-const COOKIE_SET_NAME = 'defra_cookies_policy_set'
-const MAX_AGE_SECONDS = 31536000
-const isSecure = globalThis.location?.protocol === 'https:'
-const secureSuffix = isSecure ? '; Secure' : ''
+const GA_COOKIE_PREFIXES = ['_ga', '_gid', '_gat', '_dc_gtm_']
 
-export function getCookieConsent () {
-  const match = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(`${COOKIE_NAME}=`))
-  if (!match) {
-    return null
-  }
-
-  try {
-    return JSON.parse(decodeURIComponent(match.split('=')[1]))
-  } catch {
-    return null
-  }
-}
-
-export function setCookieConsent (consent) {
-  const value = encodeURIComponent(JSON.stringify(consent))
-  document.cookie = `${COOKIE_NAME}=${value}; path=/; max-age=${MAX_AGE_SECONDS}; SameSite=Lax${secureSuffix}`
-  document.cookie = `${COOKIE_SET_NAME}=true; path=/; max-age=${MAX_AGE_SECONDS}; SameSite=Lax${secureSuffix}`
-}
-
-export function hasConsentBeenSet () {
-  return document.cookie
-    .split('; ')
-    .some((row) => row.startsWith(`${COOKIE_SET_NAME}=`))
+export function updateGoogleConsent (analytics) {
+  // The head snippet defines gtag and queues defaults before GTM can load.
+  globalThis.gtag?.('consent', 'update', {
+    analytics_storage: analytics ? 'granted' : 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied'
+  })
 }
 
 export function loadGoogleTagManager (containerId) {
-  if (document.querySelector('script[src*="googletagmanager.com/gtm.js"]')) {
+  if (!/^GTM-[A-Z0-9]+$/.test(containerId || '') ||
+      document.querySelector('script[src*="googletagmanager.com/gtm.js"]')) {
     return
   }
 
   globalThis.dataLayer = globalThis.dataLayer || []
-  globalThis.dataLayer.push({
-    'gtm.start': Date.now(),
-    event: 'gtm.js'
-  })
-
+  globalThis.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' })
   const script = document.createElement('script')
   script.src = `https://www.googletagmanager.com/gtm.js?id=${containerId}`
   script.async = true
@@ -49,118 +25,105 @@ export function loadGoogleTagManager (containerId) {
 }
 
 export function removeAnalyticsCookies () {
-  const cookies = document.cookie.split('; ')
-  const parts = globalThis.location.hostname.split('.')
-  const cookieDomain =
-    parts.length > 2 ? parts.slice(1).join('.') : parts.join('.')
+  const hostname = globalThis.location.hostname
+  const parts = hostname.split('.')
+  const domains = new Set([hostname, `.${hostname}`])
+  for (let i = 1; i < parts.length - 1; i++) {
+    domains.add(`.${parts.slice(i).join('.')}`)
+  }
 
-  for (const cookie of cookies) {
-    const name = cookie.split('=')[0]
-    if (name.startsWith('_ga')) {
-      document.cookie = `${name}=; path=/; max-age=0${secureSuffix}`
-      document.cookie = `${name}=; path=/; max-age=0; domain=.${cookieDomain}${secureSuffix}`
+  for (const cookie of document.cookie.split(';')) {
+    const name = cookie.split('=')[0].trim()
+    if (GA_COOKIE_PREFIXES.some((prefix) => name.startsWith(prefix))) {
+      document.cookie = `${name}=; path=/; max-age=0`
+      for (const domain of domains) {
+        document.cookie = `${name}=; path=/; max-age=0; domain=${domain}`
+      }
     }
-  }
-}
-
-function handleBannerConsent (
-  banner,
-  mainMessage,
-  acceptedMessage,
-  rejectedMessage,
-  containerId
-) {
-  const forms = mainMessage.querySelectorAll('form')
-  for (const form of forms) {
-    form.addEventListener('submit', function (event) {
-      event.preventDefault()
-
-      const button = form.querySelector('button')
-      if (button.value === 'accept') {
-        setCookieConsent({ analytics: true })
-        if (containerId) {
-          loadGoogleTagManager(containerId)
-        }
-        mainMessage.hidden = true
-        acceptedMessage.hidden = false
-        acceptedMessage.focus()
-      }
-
-      if (button.value === 'reject') {
-        setCookieConsent({ analytics: false })
-        removeAnalyticsCookies()
-        mainMessage.hidden = true
-        rejectedMessage.hidden = false
-        rejectedMessage.focus()
-      }
-    })
-  }
-
-  const hideButtons = banner.querySelectorAll(
-    '.govuk-cookie-banner__message[role="alert"] button'
-  )
-  for (const hideButton of hideButtons) {
-    hideButton.addEventListener('click', function () {
-      banner.hidden = true
-    })
   }
 }
 
 export function initCookieBanner () {
-  const banner = document.querySelector('.govuk-cookie-banner')
-  if (!(banner instanceof HTMLElement)) {
+  /** @type {HTMLElement | null} */
+  const banner = document.querySelector('.js-cookies-container')
+  if (!banner) {
     return
   }
 
-  const containerId = banner.dataset.gtmContainerId
-  /** @type {NodeListOf<HTMLElement>} */
-  const messages = banner.querySelectorAll('.govuk-cookie-banner__message')
-  const mainMessage = messages[0]
-  const acceptedMessage = messages[1]
-  const rejectedMessage = messages[2]
-
-  if (
-    hasConsentBeenSet() &&
-    !banner.querySelector('[role="alert"]:not([hidden])')
-  ) {
-    banner.hidden = true
-    const consent = getCookieConsent()
-    if (consent?.analytics && containerId) {
-      loadGoogleTagManager(containerId)
+  const form = banner.closest('form')
+  form.addEventListener('submit', async (event) => {
+    const choice = event.submitter instanceof HTMLButtonElement ? event.submitter.value : undefined
+    if (choice !== 'true' && choice !== 'false') {
+      return
     }
-    return
-  }
+    event.preventDefault()
+    const analytics = choice === 'true'
 
-  if (acceptedMessage && !acceptedMessage.hidden && containerId) {
-    loadGoogleTagManager(containerId)
-  }
-
-  handleBannerConsent(
-    banner,
-    mainMessage,
-    acceptedMessage,
-    rejectedMessage,
-    containerId
-  )
-}
-
-export function initCookiesPage () {
-  const form = document.getElementById('cookies-form')
-  if (!form) {
-    return
-  }
-
-  form.addEventListener('submit', function () {
-    const selected = /** @type {HTMLInputElement | null} */ (form.querySelector('input[name="analytics"]:checked'))
-    if (!selected) {
+    try {
+      const response = await globalThis.fetch(form.action, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ analytics, async: true, crumb: banner.dataset.crumb })
+      })
+      if (!response.ok) {
+        throw new Error('Cookie preference could not be saved')
+      }
+    } catch {
+      // Native submit omits the clicked button, so preserve its value explicitly.
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = 'analytics'
+      input.value = choice
+      form.appendChild(input)
+      form.submit()
       return
     }
 
-    const consent = { analytics: selected.value === 'yes' }
-    setCookieConsent(consent)
-
-    if (!consent.analytics) {
+    updateGoogleConsent(analytics)
+    if (analytics) {
+      loadGoogleTagManager(banner.dataset.gtmKey)
+    } else {
       removeAnalyticsCookies()
+    }
+    const question = /** @type {HTMLElement} */ (banner.querySelector('.js-question-banner'))
+    question.hidden = true
+    /** @type {HTMLElement} */
+    const confirmation = banner.querySelector(analytics ? '.js-cookies-accepted' : '.js-cookies-rejected')
+    confirmation.hidden = false
+    confirmation.setAttribute('tabindex', '-1')
+    confirmation.focus()
+    confirmation.addEventListener('blur', () => confirmation.removeAttribute('tabindex'), { once: true })
+  })
+
+  for (const button of banner.querySelectorAll('.js-hide')) {
+    button.addEventListener('click', () => { banner.hidden = true })
+  }
+}
+
+export function initCookiesPage () {
+  document.getElementById('cookies-form')?.addEventListener('submit', () => {
+    /** @type {HTMLInputElement | null} */
+    const selected = document.querySelector('#cookies-form input[name="analytics"]:checked')
+    if (selected) {
+      const analytics = selected.value === 'true'
+      updateGoogleConsent(analytics)
+      if (!analytics) {
+        removeAnalyticsCookies()
+      }
+    }
+  })
+
+  // Remove stale cookies on pages rendered without analytics, including after withdrawal.
+  if (!document.querySelector('.js-cookies-container') &&
+      !document.querySelector('script[src*="googletagmanager.com/gtm.js"]')) {
+    removeAnalyticsCookies()
+  }
+
+  globalThis.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      removeAnalyticsCookies()
+      globalThis.location.reload()
     }
   })
 }
