@@ -24,6 +24,8 @@ import { federatedOidc } from './common/helpers/auth/federated-oidc.js'
 import { cognitoClientAssertion } from './common/helpers/auth/client-assertion/cognito.js'
 import { mockClientAssertion } from './common/helpers/auth/client-assertion/mock.js'
 import { sessionStrategy } from './common/helpers/auth/session-strategy.js'
+import { cookieConsent } from './common/helpers/cookie-consent.js'
+import { csrf } from './common/helpers/csrf.js'
 
 export async function createServer () {
   setupProxy()
@@ -95,6 +97,8 @@ export async function createServer () {
     Scooter,
     contentSecurityPolicy,
     securityHeaders,
+    csrf,
+    cookieConsent,
     router
   ])
 

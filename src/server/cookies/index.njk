@@ -40,14 +40,14 @@
         ],
         rows: [
           [
-            { text: "defra_cookies_policy" },
+            { text: cookieName },
             { text: "Saves your cookie consent settings" },
             { text: "1 year" }
           ],
           [
-            { text: "defra_cookies_policy_set" },
-            { text: "Records that you have set your cookie preferences" },
-            { text: "1 year" }
+            { text: "crumb" },
+            { text: "Protects cookie preference submissions" },
+            { text: "Session" }
           ],
           [
             { text: temporarySessionCookieName },
@@ -103,6 +103,8 @@
         }) }}
 
         <form id="cookies-form" method="post" action="/cookies" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          <input type="hidden" name="async" value="false">
           {{ govukRadios({
             name: "analytics",
             fieldset: {
@@ -113,12 +115,12 @@
             },
             items: [
               {
-                value: "yes",
+                value: "true",
                 text: "Yes",
                 checked: currentAnalytics
               },
               {
-                value: "no",
+                value: "false",
                 text: "No",
                 checked: not currentAnalytics
               }

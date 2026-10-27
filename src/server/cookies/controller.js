@@ -1,76 +1,40 @@
+import Joi from 'joi'
 import { config } from '../../config/config.js'
 import { getSafeRedirect } from '../common/helpers/get-safe-redirect.js'
+import { updatePolicy } from '../common/helpers/cookie-policy-manager.js'
 
-const gtmContainerId = config.get('googleTagManager.containerId')
-
-function parseConsentCookie (cookieValue) {
-  try {
-    const consent = JSON.parse(decodeURIComponent(cookieValue || ''))
-    return consent.analytics === true
-  } catch {
-    return false
-  }
-}
-
-const cookiesGetController = {
+export const cookiesGetController = {
   handler (request, h) {
-    const saved = request.query.saved === 'true'
-    const currentAnalytics = parseConsentCookie(
-      request.state?.defra_cookies_policy
-    )
-
     return h.view('cookies/index', {
       pageTitle: 'Cookies',
-      saved,
-      currentAnalytics,
-      hideCookieBanner: true,
-      gtmContainerId,
       sessionCookieName: config.get('session.cookie.name'),
       temporarySessionCookieName: config.get('session.cache.name'),
+      saved: request.query.saved === 'true',
+      currentAnalytics: request.state[config.get('cookieConsent.name')]?.analytics === true,
+      hideCookieBanner: true,
       breadcrumbs: [{ text: 'Home', href: '/' }, { text: 'Cookies' }]
     })
   }
 }
 
-const cookiesPostController = {
+export const cookiesPostController = {
+  options: {
+    validate: {
+      payload: Joi.object({
+        analytics: Joi.boolean().required(),
+        async: Joi.boolean().default(false),
+        returnUrl: Joi.string().allow('').max(2000).optional()
+      })
+    }
+  },
   handler (request, h) {
-    const analytics = request.payload?.analytics === 'yes'
-    const consent = encodeURIComponent(JSON.stringify({ analytics }))
+    const { analytics, async: isAsync, returnUrl } = request.payload
+    updatePolicy(request, h, analytics)
 
-    return h
-      .redirect('/cookies?saved=true')
-      .state('defra_cookies_policy', consent)
-      .state('defra_cookies_policy_set', 'true')
+    if (isAsync) {
+      return h.response({ message: 'success' })
+    }
+
+    return h.redirect(returnUrl ? getSafeRedirect(returnUrl) : '/cookies?saved=true')
   }
-}
-
-const bannerAcceptController = {
-  handler (request, h) {
-    const returnUrl = getSafeRedirect(request.payload?.returnUrl)
-    const consent = encodeURIComponent(JSON.stringify({ analytics: true }))
-
-    return h
-      .redirect(`${returnUrl}?cookieAction=accept`)
-      .state('defra_cookies_policy', consent)
-      .state('defra_cookies_policy_set', 'true')
-  }
-}
-
-const bannerRejectController = {
-  handler (request, h) {
-    const returnUrl = getSafeRedirect(request.payload?.returnUrl)
-    const consent = encodeURIComponent(JSON.stringify({ analytics: false }))
-
-    return h
-      .redirect(`${returnUrl}?cookieAction=reject`)
-      .state('defra_cookies_policy', consent)
-      .state('defra_cookies_policy_set', 'true')
-  }
-}
-
-export {
-  cookiesGetController,
-  cookiesPostController,
-  bannerAcceptController,
-  bannerRejectController
 }

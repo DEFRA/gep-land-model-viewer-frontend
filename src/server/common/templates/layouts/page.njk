@@ -10,13 +10,16 @@
 
 {% block bodyStart %}
   {% include "partials/cookie-banner.njk" %}
-  {% if gtmContainerId and hasAnalyticsConsent %}
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtmContainerId }}"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  {% if cookiesPolicy.confirmed and cookiesPolicy.analytics %}
+    {% include "partials/google-tag-manager/body-content.njk" %}
   {% endif %}
 {% endblock %}
 
 {% block head %}
+  {% include "partials/google-tag-manager/consent.njk" %}
+  {% if cookiesPolicy.confirmed and cookiesPolicy.analytics %}
+    {% include "partials/google-tag-manager/head-content.njk" %}
+  {% endif %}
   <link href="{{ getAssetPath('stylesheets/application.scss') }}" rel="stylesheet">
 {% endblock %}
 
