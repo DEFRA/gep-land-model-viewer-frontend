@@ -1,4 +1,7 @@
+import { createLogger } from '../logging/logger.js'
 import { getJson, getManifest } from './client.js'
+
+const logger = createLogger()
 
 /**
  * @typedef {string | { [key: string]: AssetFiles }} AssetFiles A filename, or asset files grouped by key
@@ -45,8 +48,10 @@ function assetUrls (assetFiles, files, assetsPath) {
  * @returns {Promise<(LayerResponse & Record<string, unknown>) | null>} null when the prefix has no manifest
  */
 export async function getLayer (prefix, assetFiles, assetsPath, jsonFiles = {}) {
+  logger.debug({ prefix }, 'Loading layer release')
   const release = await getManifest(prefix)
   if (!release) {
+    logger.debug({ prefix }, 'Layer release not found')
     return null
   }
 
@@ -56,5 +61,6 @@ export async function getLayer (prefix, assetFiles, assetsPath, jsonFiles = {}) 
     Promise.all(Object.entries(jsonFiles).map(async ([key, filename]) => [key, await getJson(prefix, filename, files[filename])]))
   ])
 
+  logger.debug({ prefix }, 'Layer release loaded')
   return { manifestVersion, generatedAt, styleConfig, ...Object.fromEntries(json), assets: assetUrls(assetFiles, files, assetsPath) }
 }

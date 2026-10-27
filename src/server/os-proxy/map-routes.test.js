@@ -18,7 +18,9 @@ const mockLogger = vi.hoisted(() => ({
   warn: vi.fn()
 }))
 
-vi.mock('../common/helpers/logging/logger.js', () => ({
+vi.mock('../common/helpers/logging/logger-options.js', () => ({ loggerOptions: { enabled: false } }))
+vi.mock('../common/helpers/logging/logger.js', async (importOriginal) => ({
+  ...await importOriginal(),
   createLogger: () => mockLogger
 }))
 

@@ -1,4 +1,4 @@
-import { createLogger } from '../common/helpers/logging/logger.js'
+import { createLogger, logExternalCall } from '../common/helpers/logging/logger.js'
 import { statusCodes } from '../common/constants/status-codes.js'
 import { getApiKey } from './config.js'
 
@@ -40,7 +40,7 @@ const namesSearchHandler = {
     try {
       const upstreamUrl = buildUpstreamUrl(query.trim())
       const startTime = Date.now()
-      const res = await fetch(upstreamUrl, { redirect: 'follow' })
+      const res = await logExternalCall('OS Names', 'fetch', () => fetch(upstreamUrl, { redirect: 'follow' }))
       const duration = Date.now() - startTime
 
       if (!res.ok) {

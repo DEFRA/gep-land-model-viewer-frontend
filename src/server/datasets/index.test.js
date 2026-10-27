@@ -9,7 +9,8 @@ const { getDatasetMetadata, queryDatasets } = vi.hoisted(() => ({
 vi.mock('./geonetwork/catalogue.js', () => ({ getDatasetMetadata, queryDatasets }))
 
 const logger = vi.hoisted(() => ({ debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() }))
-vi.mock('../common/helpers/logging/logger.js', () => ({ createLogger: () => logger }))
+vi.mock('../common/helpers/logging/logger-options.js', () => ({ loggerOptions: { enabled: false } }))
+vi.mock('../common/helpers/logging/logger.js', async (importOriginal) => ({ ...await importOriginal(), createLogger: () => logger }))
 
 const LOCAL = '11111111-1111-4111-8111-111111111111'
 const LAYER = `/api/datasets/${LOCAL}/layer`

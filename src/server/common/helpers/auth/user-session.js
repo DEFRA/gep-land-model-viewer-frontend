@@ -44,7 +44,7 @@ const sessionCookieName = config.get('session.cookie.name')
  * @property {{ session: SessionCache }} server
  * @property {Record<string, { sessionId?: string }>} [state]
  * @property {{ isAuthenticated: boolean, credentials: AuthCredentials }} [auth]
- * @property {{ info: (message: string) => void }} [logger]
+ * @property {{ info: (message: string) => void, debug?: (message: string) => void }} [logger]
  * @property {{ clear: () => void, h?: { unstate: (name: string) => void } }} [sessionCookie]
  */
 
@@ -62,6 +62,7 @@ async function clearUserSession (request) {
     request.sessionCookie.clear()
     request.sessionCookie.h.unstate(sessionCookieName)
   }
+  request.logger?.debug?.('User session cleared')
 }
 
 /**
@@ -91,6 +92,7 @@ async function createUserSession (request, sessionId) {
   }
 
   await request.server.session.set(sessionId, session)
+  request.logger?.debug?.('User session created')
   return session
 }
 

@@ -1,4 +1,4 @@
-import { createLogger } from '../common/helpers/logging/logger.js'
+import { createLogger, logExternalCall } from '../common/helpers/logging/logger.js'
 import { statusCodes } from '../common/constants/status-codes.js'
 import { config } from '../../config/config.js'
 import {
@@ -51,7 +51,7 @@ const wmsProxyHandler = {
 
     try {
       const startTime = Date.now()
-      const res = await fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) })
+      const res = await logExternalCall('WMS', 'fetch', () => fetch(url, { redirect: 'follow', headers: getConditionalHeaders(request) }))
       const duration = Date.now() - startTime
 
       logger.debug(`WMS proxy request: ${service} (${duration}ms)`)
