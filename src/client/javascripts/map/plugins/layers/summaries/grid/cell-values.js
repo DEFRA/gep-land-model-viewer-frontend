@@ -20,7 +20,8 @@ function openCog (url) {
  *
  * @param {string} url The COG's URL
  * @param {import('ol/extent.js').Extent} extent The cell's bounds, matching one pixel
- * @returns {Promise<number[] | null>} The pixel's band values, first band first, or null outside the COG
+ * @returns {Promise<number[] | null>} The pixel's band values, first band first, or null outside the COG or
+ * where it has no cell
  */
 export async function readCellValues (url, extent) {
   const opening = openCog(url)
@@ -32,7 +33,9 @@ export async function readCellValues (url, extent) {
     }
 
     const pixel = /** @type {ArrayLike<number>} */ (await cog.readRasters({ bbox: extent, interleave: true }))
-    return Array.from(pixel)
+    const values = Array.from(pixel)
+    // a pixel with no cell, such as the sea within the COG's bounds, is nodata (0) in every band
+    return values.every(value => value === 0) ? null : values
   } catch (error) {
     // geotiff keeps failed requests, so open the COG again next time
     if (cogs.get(url) === opening) {

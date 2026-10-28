@@ -1,12 +1,37 @@
 {
-  "generatedAt": "2026-10-12T00:00:00.000Z",
+  "generatedAt": "2026-10-27T13:18:20.944Z",
+  "dataSources": {
+    "land_cover": {
+      "name": "UKCEH Land Cover Map",
+      "date": "2026-10-21T15:20:31.309Z"
+    },
+    "land_use": {
+      "name": "OS NGD",
+      "date": "2026-10-22T11:17:40.971Z"
+    },
+    "soil": {
+      "name": "National Soil Map",
+      "date": "2026-10-22T11:42:03.320Z"
+    },
+    "protected_area": {
+      "name": "Natural England SSSI, SAC, SPA, Ramsar, NNR",
+      "date": "2026-10-21T15:07:42.158Z"
+    },
+    "land_management": {
+      "name": "RPA",
+      "date": "2026-10-22T00:00:00.000Z"
+    },
+    "ownership": {
+      "name": "HM Land Registry",
+      "date": "2026-10-22T00:00:00.000Z"
+    }
+  },
   "files": {
     "style.json": null,
     "bands.json": null,
     "10.tif": null,
     "100.fgb": null,
     "1000.fgb": null,
-    "10000.fgb": null,
-    "100000.fgb": null
+    "10000.fgb": null
   }
 }

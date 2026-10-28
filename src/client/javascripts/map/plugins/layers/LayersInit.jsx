@@ -10,9 +10,15 @@ import { useCatalogue } from './datasets/use-catalogue.js'
 import { useLinkedDataset } from './datasets/use-linked-dataset.js'
 import { loadLayer } from './data-layers/api.js'
 import { loadGridLayer } from './summaries/grid/api.js'
+import { loadFeatureLayer } from './summaries/feature/api.js'
 import { FEATURE_SUMMARY, GRID_SUMMARY } from './summaries/config.js'
 
 const ATTRIBUTIONS_SELECTOR = '.im-c-attributions'
+
+const LAYER_LOADERS = {
+  [GRID_SUMMARY.id]: loadGridLayer,
+  [FEATURE_SUMMARY.id]: loadFeatureLayer
+}
 
 export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, appState, services }) {
   useCatalogue(pluginState)
@@ -55,7 +61,7 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
     const layerController = createLayerController({
       map,
       drawnLayers: { [GRID_SUMMARY.id]: grid },
-      loadLayer: (id, url, signal) => id === GRID_SUMMARY.id ? loadGridLayer(id, url, signal) : loadLayer(id, url, signal),
+      loadLayer: (id, url, signal) => (LAYER_LOADERS[id] ?? loadLayer)(id, url, signal),
       onLayerLoaded: (id, metadata) => pluginState.dispatch({
         type: 'LAYER_LOADED',
         payload: { id, ...metadata }

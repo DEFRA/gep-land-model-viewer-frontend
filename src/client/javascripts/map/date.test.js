@@ -10,6 +10,10 @@ describe('toDate', () => {
     expect(toDate('2024')).toEqual(new Date(2024, 0, 1))
   })
 
+  test('parses an ISO timestamp', () => {
+    expect(toDate('2026-10-21T10:47:51.297Z')).toEqual(new Date(Date.UTC(2026, 9, 21, 10, 47, 51, 297)))
+  })
+
   test('rejects anything else', () => {
     expect(toDate('2023-03-08')).toBeNull()
     expect(toDate('24')).toBeNull()

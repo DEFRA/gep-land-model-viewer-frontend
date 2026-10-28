@@ -42,6 +42,18 @@ describe('#readCellValues', () => {
     expect(file.readRasters).not.toHaveBeenCalled()
   })
 
+  test('returns null for a pixel with no cell', async () => {
+    fromUrl.mockResolvedValue(cog([0, 0]))
+
+    await expect(readCellValues('/empty.tif', [30, 20, 40, 30])).resolves.toBeNull()
+  })
+
+  test('reads a pixel with some bands empty', async () => {
+    fromUrl.mockResolvedValue(cog([7, 0]))
+
+    await expect(readCellValues('/partial.tif', [30, 20, 40, 30])).resolves.toEqual([7, 0])
+  })
+
   test('opens each COG once', async () => {
     fromUrl.mockClear()
     fromUrl.mockResolvedValue(cog([7, 8]))

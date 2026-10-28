@@ -1,0 +1,139 @@
+{
+  "opacity": 0.7,
+  "themes": [
+    {
+      "label": "Land cover",
+      "type": "match",
+      "band": 1,
+      "field": "land_cover_dominant_value",
+      "classes": [
+        {
+          "bandValue": 1,
+          "fieldValues": [
+            "Broad leaved & mixed woodland"
+          ],
+          "label": "Broad leaved & mixed woodland",
+          "fill": [
+            77,
+            140,
+            52,
+            1
+          ]
+        },
+        {
+          "bandValue": 2,
+          "fieldValues": [
+            "Conifer woodland"
+          ],
+          "label": "Conifer woodland",
+          "fill": [
+            27,
+            82,
+            45,
+            1
+          ]
+        },
+        {
+          "bandValue": 3,
+          "fieldValues": [
+            "Cropped land"
+          ],
+          "label": "Cropped land",
+          "fill": [
+            232,
+            196,
+            104,
+            1
+          ]
+        },
+        {
+          "bandValue": 4,
+          "fieldValues": [
+            "Improved grass"
+          ],
+          "label": "Improved grass",
+          "fill": [
+            156,
+            214,
+            96,
+            1
+          ]
+        },
+        {
+          "bandValue": 5,
+          "fieldValues": [
+            "Inland rock"
+          ],
+          "label": "Inland rock",
+          "fill": [
+            168,
+            158,
+            148,
+            1
+          ]
+        },
+        {
+          "bandValue": 6,
+          "fieldValues": [
+            "Suburban"
+          ],
+          "label": "Suburban",
+          "fill": [
+            168,
+            168,
+            168,
+            1
+          ]
+        },
+        {
+          "bandValue": 7,
+          "fieldValues": [
+            "Unimproved grass"
+          ],
+          "label": "Unimproved grass",
+          "fill": [
+            205,
+            228,
+            156,
+            1
+          ]
+        },
+        {
+          "bandValue": 8,
+          "fieldValues": [
+            "Urban"
+          ],
+          "label": "Urban",
+          "fill": [
+            88,
+            88,
+            88,
+            1
+          ]
+        },
+        {
+          "bandValue": 9,
+          "fieldValues": [
+            "Water"
+          ],
+          "label": "Water",
+          "fill": [
+            74,
+            136,
+            204,
+            1
+          ]
+        }
+      ],
+      "default": {
+        "label": "No land cover",
+        "fill": [
+          230,
+          230,
+          230,
+          1
+        ]
+      }
+    }
+  ]
+}
