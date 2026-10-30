@@ -30,7 +30,7 @@ import { toDate } from '../../../date.js'
  * @property {TaxonomyClass} dominant
  * @property {ClassIntersection[]} [intersections]
  * @property {Source} [source]
- * @typedef {{ code?: string, label: string }} TaxonomyClass
+ * @typedef {{ label: string }} TaxonomyClass
  * @typedef {{ label: string, percentage: number }} ClassIntersection
  */
 
@@ -67,17 +67,8 @@ import { toDate } from '../../../date.js'
  */
 
 /**
- * @param {string} label
- * @param {string | null | undefined} code
- * @returns {TaxonomyClass}
- */
-export function toTaxonomyClass (label, code) {
-  return code == null ? { label } : { label, code }
-}
-
-/**
  * @param {string | null | undefined} name
- * @param {string | null | undefined} date dd/MM/yyyy
+ * @param {string | null | undefined} date dd/MM/yyyy, yyyy or an ISO timestamp
  * @returns {Source | undefined}
  */
 export function toSource (name, date) {

@@ -15,7 +15,8 @@ const MANIFEST_SCHEMA = Validate.object({
   generatedAt: Validate.string().required(),
   files: Validate.object({ 'style.json': FILE_VERSION_SCHEMA.required() })
     .pattern(Validate.string(), FILE_VERSION_SCHEMA)
-    .required()
+    .required(),
+  dataSources: Validate.object().pattern(Validate.string(), Validate.object({ name: Validate.string(), date: Validate.string().allow(null) }).unknown())
 }).unknown()
 
 const JSON_OBJECT_SCHEMA = Validate.object()
@@ -30,6 +31,7 @@ export class BrokenReleaseError extends Error {
  * @property {string | null} manifestVersion S3 version ID of manifest.json, null when unavailable
  * @property {string} generatedAt When the pipeline published the release
  * @property {Record<string, string | null>} files S3 version ID of each file, null when unversioned
+ * @property {Record<string, { name?: string, date?: string | null }>} [dataSources] Data source of each theme, when the manifest has them
  */
 
 /** @type {S3Client} */
@@ -123,7 +125,7 @@ export async function getManifest (prefix) {
     throw new BrokenReleaseError(`${prefix}/manifest.json is invalid: ${validationError.message}`)
   }
 
-  return { manifestVersion: manifest.versionId ?? null, generatedAt: value.generatedAt, files: value.files }
+  return { manifestVersion: manifest.versionId ?? null, generatedAt: value.generatedAt, files: value.files, dataSources: value.dataSources }
 }
 
 /**

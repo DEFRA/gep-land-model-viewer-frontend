@@ -29,12 +29,12 @@ function managementRecords (count) {
 /** @type {import('../model.js').LandModelRecord} */
 export const grid10mRecord = {
   unit: gridUnit(10),
-  landCover: { dominant: { label: 'Improved grass', code: 'C021' }, source: coverSource },
-  landUse: { dominant: { label: 'Agriculture', code: 'U011' } },
+  landCover: { dominant: { label: 'Improved grass' }, source: coverSource },
+  landUse: { dominant: { label: 'Agriculture' } },
   ownership: { titles: [{ inspireId: '47540258', titleDescriptor: 'Leasehold' }], source: ownershipSource },
   landManagement: { records: [{ pseudoSbi: '108815123', refreshed: new Date(2024, 0, 1) }], source: managementSource },
   protectedAreas: { count: 1, source: protectionSource },
-  soils: { dominant: { label: 'Brown soils', code: 'S050' }, source: soilSource }
+  soils: { dominant: { label: 'Brown soils' }, source: soilSource }
 }
 
 /** @returns {import('../model.js').LandModelRecord} */
@@ -83,11 +83,11 @@ export const grid100kmRecord = largerGridRecord(100000, 12483, 15962)
 export const featureRecord = {
   unit: { kind: 'feature', osid: '035bc758-5ea7-4897-aa25-f6ec56a9f708', toid: 'osgb1000000082252199' },
   landCover: {
-    dominant: { label: 'Improved grass', code: 'C021' },
+    dominant: { label: 'Improved grass' },
     intersections: [{ label: 'Improved grass', percentage: 82.2 }, { label: 'Broad leaved & mixed woodland', percentage: 17.8 }],
     source: coverSource
   },
-  landUse: { dominant: { label: 'Agriculture', code: 'U011' } },
+  landUse: { dominant: { label: 'Agriculture' } },
   ownership: { titles: [{ inspireId: '47540258', titleDescriptor: 'Freehold' }], source: ownershipSource },
   landManagement: { records: [{ pseudoSbi: '108815123', refreshed: new Date(2024, 0, 1) }], source: managementSource },
   protectedAreas: {
@@ -97,7 +97,7 @@ export const featureRecord = {
     source: protectionSource
   },
   soils: {
-    dominant: { label: 'Brown soils', code: 'S050' },
+    dominant: { label: 'Brown soils' },
     intersections: [{ label: 'Brown soils', percentage: 100 }],
     source: soilSource
   }
