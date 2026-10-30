@@ -7,7 +7,8 @@ import {
   visibleClassForBands,
   visibleClassForFieldValue,
   buildVectorStyle,
-  buildVectorStyleWithVariables
+  buildVectorStyleWithVariables,
+  hasOutlineOnlyClass
 } from './style-config.js'
 
 const TRANSPARENT = [0, 0, 0, 0]
@@ -339,6 +340,16 @@ describe('hit classification rules', () => {
     })
 
     expect(visibleClassForFieldValue(styleConfig, 'Bog')).toBeNull()
+  })
+
+  test('a stroked class without a fill is outline-only in any theme', () => {
+    const outline = matchStyle({
+      band: 2,
+      classes: [{ bandValue: 1, fieldValues: ['Bog'], label: 'Bog', fill: TRANSPARENT, stroke: { color: BOG, width: 1 } }]
+    })
+
+    expect(hasOutlineOnlyClass([matchStyle()])).toBe(false)
+    expect(hasOutlineOnlyClass([matchStyle(), outline])).toBe(true)
   })
 
   test('a fully transparent default is not identified', () => {

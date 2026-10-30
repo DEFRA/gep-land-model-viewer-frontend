@@ -12,12 +12,15 @@
             "Arable and Horticultural"
           ],
           "label": "Arable and Horticultural",
-          "fill": [
-            255,
-            211,
-            127,
-            1
-          ]
+          "stroke": {
+            "color": [
+              255,
+              211,
+              127,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 2,
@@ -25,12 +28,15 @@
             "Water"
           ],
           "label": "Water",
-          "fill": [
-            190,
-            232,
-            255,
-            1
-          ]
+          "stroke": {
+            "color": [
+              190,
+              232,
+              255,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 3,
@@ -38,12 +44,15 @@
             "Bog"
           ],
           "label": "Bog",
-          "fill": [
-            194,
-            158,
-            215,
-            1
-          ]
+          "stroke": {
+            "color": [
+              194,
+              158,
+              215,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 4,
@@ -51,12 +60,15 @@
             "Built-up Areas and Gardens"
           ],
           "label": "Built-up Areas and Gardens",
-          "fill": [
-            52,
-            52,
-            52,
-            1
-          ]
+          "stroke": {
+            "color": [
+              52,
+              52,
+              52,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 5,
@@ -64,12 +76,15 @@
             "Bare Ground"
           ],
           "label": "Bare Ground",
-          "fill": [
-            156,
-            156,
-            156,
-            1
-          ]
+          "stroke": {
+            "color": [
+              156,
+              156,
+              156,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 6,
@@ -77,12 +92,15 @@
             "Dwarf Shrub Heath"
           ],
           "label": "Dwarf Shrub Heath",
-          "fill": [
-            170,
-            102,
-            205,
-            1
-          ]
+          "stroke": {
+            "color": [
+              170,
+              102,
+              205,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 7,
@@ -90,12 +108,15 @@
             "Improved Grassland"
           ],
           "label": "Improved and Semi-Improved Grassland",
-          "fill": [
-            205,
-            245,
-            122,
-            1
-          ]
+          "stroke": {
+            "color": [
+              205,
+              245,
+              122,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 8,
@@ -103,12 +124,15 @@
             "Acid, Calcareous, Neutral Grassland"
           ],
           "label": "Unimproved Grassland",
-          "fill": [
-            255,
-            190,
-            232,
-            1
-          ]
+          "stroke": {
+            "color": [
+              255,
+              190,
+              232,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 9,
@@ -116,12 +140,15 @@
             "Scrub"
           ],
           "label": "Scrub",
-          "fill": [
-            137,
-            112,
-            68,
-            1
-          ]
+          "stroke": {
+            "color": [
+              137,
+              112,
+              68,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 10,
@@ -129,12 +156,15 @@
             "Coastal Sand Dunes"
           ],
           "label": "Coastal Sand Dunes",
-          "fill": [
-            255,
-            255,
-            190,
-            1
-          ]
+          "stroke": {
+            "color": [
+              255,
+              255,
+              190,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 11,
@@ -142,12 +172,15 @@
             "Coniferous Woodland"
           ],
           "label": "Coniferous Woodland",
-          "fill": [
-            0,
-            168,
-            132,
-            1
-          ]
+          "stroke": {
+            "color": [
+              0,
+              168,
+              132,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 12,
@@ -155,12 +188,15 @@
             "Bracken"
           ],
           "label": "Bracken",
-          "fill": [
-            205,
-            137,
-            102,
-            1
-          ]
+          "stroke": {
+            "color": [
+              205,
+              137,
+              102,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 13,
@@ -168,12 +204,15 @@
             "Bare Sand"
           ],
           "label": "Bare Sand",
-          "fill": [
-            255,
-            255,
-            0,
-            1
-          ]
+          "stroke": {
+            "color": [
+              255,
+              255,
+              0,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 14,
@@ -181,12 +220,15 @@
             "Solar Farms"
           ],
           "label": "Solar Farms",
-          "fill": [
-            0,
-            0,
-            0,
-            1
-          ]
+          "stroke": {
+            "color": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 15,
@@ -194,12 +236,15 @@
             "Broadleaved, Mixed and Yew Woodland"
           ],
           "label": "Broadleaved, Mixed and Yew Woodland",
-          "fill": [
-            56,
-            168,
-            0,
-            1
-          ]
+          "stroke": {
+            "color": [
+              56,
+              168,
+              0,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 16,
@@ -207,12 +252,15 @@
             "Fen, Marsh and Swamp"
           ],
           "label": "Fen, Marsh and Swamp",
-          "fill": [
-            122,
-            142,
-            245,
-            1
-          ]
+          "stroke": {
+            "color": [
+              122,
+              142,
+              245,
+              1
+            ],
+            "width": 2
+          }
         },
         {
           "bandValue": 17,
@@ -220,12 +268,15 @@
             "Coastal Saltmarsh"
           ],
           "label": "Coastal Saltmarsh",
-          "fill": [
-            0,
-            169,
-            230,
-            1
-          ]
+          "stroke": {
+            "color": [
+              0,
+              169,
+              230,
+              1
+            ],
+            "width": 2
+          }
         }
       ]
     }

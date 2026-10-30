@@ -7,7 +7,7 @@ function stubResponse (body) {
 }
 
 test('builds the map source from the dataset layer response', async () => {
-  const styleConfig = { themes: [{ band: 1 }] }
+  const styleConfig = { themes: [{ band: 1, classes: [{ fill: [0, 0, 0, 1] }] }] }
   const assets = {
     cog: '/api/datasets/dataset/layer/assets/data.tif?v=3%2FL4kqtJlcpXroDTDmJ%2BrmSpXd3dIbrHY',
     fgb: '/api/datasets/dataset/layer/assets/data.fgb?v=fgb-version'

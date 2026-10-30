@@ -1,3 +1,5 @@
+import { hasOutlineOnlyClass } from './style-config.js'
+
 const FGB_MIN_ZOOM = 7
 export const DEFAULT_OPACITY = 0.5
 
@@ -29,7 +31,14 @@ export function sourceFor (styleConfig, assets) {
   const source = { opacity: styleConfig.opacity ?? DEFAULT_OPACITY, styleConfig }
 
   if (assets.fgb) {
-    return { ...source, type: 'fgb', url: assets.fgb, minZoom: FGB_MIN_ZOOM, overview: assets.cog && { type: 'cog', url: assets.cog } }
+    // A COG only draws fills, so datasets with outline-only classes have no overview.
+    return {
+      ...source,
+      type: 'fgb',
+      url: assets.fgb,
+      minZoom: FGB_MIN_ZOOM,
+      overview: assets.cog && !hasOutlineOnlyClass(styleConfig.themes) ? { type: 'cog', url: assets.cog } : undefined
+    }
   }
 
   if (assets.cog) {

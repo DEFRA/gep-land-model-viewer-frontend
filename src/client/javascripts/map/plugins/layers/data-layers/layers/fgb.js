@@ -5,7 +5,7 @@ import { magicbytes } from 'flatgeobuf/lib/mjs/constants.js'
 import { overviewIdFor } from '../../../../config/layers.js'
 import { createCogOverviewLayer } from './cog.js'
 import { createFgbLoadController } from './fgb-loader.js'
-import { buildColourVariables, buildVectorStyleWithVariables } from '../style-config.js'
+import { buildColourVariables, buildVectorStyleWithVariables, hasOutlineOnlyClass } from '../style-config.js'
 
 async function checkFgbSignature (url) {
   const response = await fetch(url, { headers: { Range: 'bytes=0-7' } })
@@ -97,8 +97,9 @@ export async function createFlatGeobufLayer (layerConfig, layerId, map, { styleC
   const { style, variables } = buildVectorStyleWithVariables(styleConfig)
   const source = new VectorSource({
     strategy: bbox,
-    // WebGL has its own render batch and hit buffer; this source is not queried by extent.
-    useSpatialIndex: false
+    // WebGL has its own render batch and hit buffer, but it skips transparent
+    // fills, so outline-only classes are hit tested by coordinate instead.
+    useSpatialIndex: hasOutlineOnlyClass(layerConfig.source.styleConfig.themes)
   })
   const compositeClassName = overview ? `ol-layer ${layerId}-composite` : undefined
 
