@@ -83,10 +83,12 @@ const SIGNAL = new AbortController().signal
 
 const GEOMETRY = new Polygon([[[0, 0], [20, 0], [20, 20], [0, 20], [0, 0]]])
 
-function stubLayer (id, { visible = true } = {}) {
+function stubLayer (id, { visible = true, featuresAtCoordinate = [] } = {}) {
   return {
     get: vi.fn((key) => (key === 'id' ? id : undefined)),
-    getVisible: vi.fn(() => visible)
+    getVisible: vi.fn(() => visible),
+    isVisible: vi.fn(() => visible),
+    getSource: vi.fn(() => ({ getFeaturesAtCoordinate: vi.fn(() => featuresAtCoordinate) }))
   }
 }
 
@@ -108,9 +110,9 @@ function stubCogOverviewLayer ({ visible = true, bands = new Float32Array([2]), 
   }
 }
 
-function stubDetailLayer ({ visible = true, minZoom = 4 } = {}) {
+function stubDetailLayer ({ visible = true, minZoom = 4, featuresAtCoordinate = [] } = {}) {
   return {
-    ...stubLayer('gep-habitats', { visible }),
+    ...stubLayer('gep-habitats', { visible, featuresAtCoordinate }),
     getMinZoom: vi.fn(() => minZoom)
   }
 }
@@ -462,6 +464,40 @@ describe('#createLayerHits', () => {
 
     detail.getVisible.mockReturnValue(false)
     expect(hits[0].stillValid()).toBe(false)
+  })
+
+  test('an outline-only polygon yields a hit inside its stroke', async () => {
+    datasets.find((dataset) => dataset.id === 'habitats').source.styleConfig = {
+      themes: [{
+        ...MATCH_STYLE_CONFIG,
+        classes: [{ ...MATCH_STYLE_CONFIG.classes[0], fill: [0, 0, 0, 0], stroke: { color: [0, 0, 0, 1], width: 1 } }]
+      }]
+    }
+    const feature = stubFeature({ geometry: {}, A_pred: 'Water' })
+    const detail = stubDetailLayer({ featuresAtCoordinate: [feature] })
+
+    const hits = await getHits(createOlMap({ layers: [detail], zoom: 6 }))
+
+    expect(hits).toHaveLength(1)
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water' }])
+  })
+
+  test('a feature found at both the pixel and the coordinate yields one record', async () => {
+    const feature = stubFeature({ geometry: {}, A_pred: 'Water' })
+    const detail = stubDetailLayer({ featuresAtCoordinate: [feature] })
+    const map = createOlMap({ vectorHits: [{ feature, layer: detail }], layers: [detail], zoom: 6 })
+
+    const hits = await getHits(map)
+
+    expect(hits).toHaveLength(1)
+    await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ A_pred: 'Water' }])
+  })
+
+  test('a hidden detail layer yields no coordinate hit', async () => {
+    const feature = stubFeature({ geometry: {}, A_pred: 'Water' })
+    const detail = stubDetailLayer({ visible: false, featuresAtCoordinate: [feature] })
+
+    await expect(getHits(createOlMap({ layers: [detail], zoom: 6 }))).resolves.toEqual([])
   })
 
   test('visible false prevents a vector feature from yielding a hit', async () => {

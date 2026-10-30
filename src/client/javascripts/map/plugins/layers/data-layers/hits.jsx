@@ -116,7 +116,7 @@ export function createLayerHits (map, getLayers, hitOptions = {}) {
       const layerStates = getLayers().filter(layer => layer.source)
       const context = { map, layerStates, highlight, getStyle, optionsFor }
       const pixel = map.getPixelFromCoordinate(coords)
-      const { hits: vectorHits, layerIds: vectorHitLayerIds } = vectorHitsAt(context, pixel)
+      const { hits: vectorHits, layerIds: vectorHitLayerIds } = vectorHitsAt(context, pixel, coords)
       const cogOverviewHits = cogOverviewHitsAt(context, pixel, coords, vectorHitLayerIds)
       const rasterHits = rasterHitsAt(context, pixel, coords)
       const wmsHits = await wmsHitsAt(map, layerStates, highlight, coords, signal)
@@ -137,7 +137,12 @@ function isFgbLayer (layer, layerStates) {
   return layerStateFor(layer, layerStates)?.source.type === 'fgb'
 }
 
-function vectorHitsAt ({ map, layerStates, highlight, getStyle, optionsFor }, pixel) {
+function isFgbDetailLayer (layer, layerStates) {
+  const layerState = layerStateFor(layer, layerStates)
+  return layerState?.source.type === 'fgb' && layer.get('id') === layerIdFor(layerState)
+}
+
+function vectorHitsAt ({ map, layerStates, highlight, getStyle, optionsFor }, pixel, coords) {
   const grouped = new Map()
 
   const collect = (feature, layer) => {
@@ -151,6 +156,10 @@ function vectorHitsAt ({ map, layerStates, highlight, getStyle, optionsFor }, pi
       return
     }
     const group = grouped.get(layerState.id)
+    // A feature can come from both lookups, don't add it twice
+    if (group?.matches.some((match) => match.feature === feature)) {
+      return
+    }
     if (group) {
       group.matches.push({ feature, layer })
     } else {
@@ -161,6 +170,16 @@ function vectorHitsAt ({ map, layerStates, highlight, getStyle, optionsFor }, pi
   map.forEachFeatureAtPixel(pixel, collect, {
     layerFilter: (layer) => isFgbLayer(layer, layerStates)
   })
+
+  // WebGL hit detection skips transparent fills, sources with outline-only
+  // classes have a spatial index to check others return nothing here.
+  for (const layer of map.getLayers().getArray()) {
+    if (isFgbDetailLayer(layer, layerStates) && layer.isVisible()) {
+      for (const feature of layer.getSource().getFeaturesAtCoordinate(coords)) {
+        collect(feature, layer)
+      }
+    }
+  }
 
   return {
     hits: [...grouped.values()].map(({ layerState, matches, isCurrent }) => makeVectorHit({ highlight, layerState, hitOptions: optionsFor(layerState), matches, isCurrent })),

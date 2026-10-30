@@ -224,6 +224,17 @@ export function hasVisibleStroke (definition) {
   return stroke?.color?.[RGBA_ALPHA_INDEX] > 0 && stroke.width > 0
 }
 
+/**
+ * Whether any theme draws a class as an outline with no fill.
+ *
+ * @param {object[]} themes Style themes
+ * @returns {boolean} Whether the dataset has an outline-only class
+ */
+export function hasOutlineOnlyClass (themes) {
+  return themes.some(theme => [...theme.classes, theme.default]
+    .some(definition => hasVisibleStroke(definition) && !hasVisibleFill(definition)))
+}
+
 export function editableStyleEntries (styleConfig) {
   if (!styleConfig) {
     return []
