@@ -1,4 +1,4 @@
-import { RGBA_ALPHA_INDEX, rgbaString } from '../../../config/colours.js'
+import { RGBA_ALPHA_INDEX } from '../../../config/colours.js'
 
 const TRANSPARENT = [0, 0, 0, 0]
 
@@ -49,67 +49,52 @@ export function buildCogColourExpression (styleConfig) {
     return fillFor(styleConfig.classes[0])
   }
 
-  /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
-  const branches = ['case']
   // Sources retain the file's band order; OpenLayers handles nodata alpha.
   const band = ['band', styleConfig.band]
 
   if (styleConfig.type === 'range' && !isClassCodedCog(styleConfig)) {
-    branches.push(['<', band, styleConfig.minValue], fillFor(styleConfig.default))
+    /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
+    const branches = ['case', ['<', band, styleConfig.minValue], fillFor(styleConfig.default)]
     for (const definition of styleConfig.classes) {
       branches.push(['<=', band, definition.maxValue], fillFor(definition))
     }
     branches.push(fillFor(styleConfig.default))
-  } else {
-    for (const definition of classCodedDefinitions(styleConfig)) {
-      branches.push(['==', band, definition.bandValue], fillFor(definition))
-    }
-    branches.push(TRANSPARENT)
+    return branches
   }
 
-  return branches
+  const definitions = classCodedDefinitions(styleConfig)
+  // +1 for the highest bandValue, +1 for a transparent entry for values above it
+  const coloursLength = Math.max(...definitions.map(def => def.bandValue)) + 2
+  const colours = Array.from({ length: coloursLength }, () => TRANSPARENT)
+  for (const definition of definitions) {
+    colours[definition.bandValue] = fillFor(definition)
+  }
+
+  return ['palette', band, colours]
 }
 
-// Fixed field name for style value property avoiding invalid shader identifiers.
+// Fixed field names for style properties avoiding invalid shader identifiers.
 // e.g `_mode` generated the invalid identifier `v_prop__mode` (no double underscore allowed).
-export const STYLE_VALUE_PROPERTY = 'styleValue'
+const STYLE_FILL_PROPERTY = 'styleFill'
+const STYLE_STROKE_PROPERTY = 'styleStroke'
+const STYLE_STROKE_WIDTH_PROPERTY = 'styleStrokeWidth'
 
-function matchExpressionFor (styleConfig, valueFor) {
-  /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
-  const expression = ['match', ['get', STYLE_VALUE_PROPERTY]]
-  for (const definition of styleConfig.classes) {
-    for (const fieldValue of definition.fieldValues) {
-      expression.push(fieldValue, valueFor(definition))
-    }
-  }
-  expression.push(valueFor(styleConfig.default))
-  return expression
-}
+export const VECTOR_STYLE_PROPERTIES = [STYLE_FILL_PROPERTY, STYLE_STROKE_PROPERTY, STYLE_STROKE_WIDTH_PROPERTY]
 
-function rangeExpressionFor (styleConfig, valueFor) {
-  if (styleConfig.field === undefined) {
-    throw new Error('A range style config needs a field for vector rendering')
+/**
+ * Resolved style values the vector style reads from each feature.
+ *
+ * @param {object} styleConfig Style config
+ * @param {*} value Feature field value
+ * @returns {Record<string, *>} Feature properties
+ */
+export function vectorStyleProperties (styleConfig, value) {
+  const definition = definitionForFieldValue(styleConfig, value)
+  return {
+    [STYLE_FILL_PROPERTY]: fillFor(definition),
+    [STYLE_STROKE_PROPERTY]: strokeColourFor(definition),
+    [STYLE_STROKE_WIDTH_PROPERTY]: strokeWidthFor(definition)
   }
-
-  /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
-  const value = ['get', STYLE_VALUE_PROPERTY]
-  /** @type {import('ol/expr/expression.js').EncodedExpression[]} */
-  const expression = ['case', ['<', value, styleConfig.minValue], valueFor(styleConfig.default)]
-  for (const definition of styleConfig.classes) {
-    expression.push(['<=', value, definition.maxValue], valueFor(definition))
-  }
-  expression.push(valueFor(styleConfig.default))
-  return expression
-}
-
-function vectorExpressionFor (styleConfig, valueFor) {
-  if (styleConfig.type === 'uniform') {
-    return valueFor(styleConfig.classes[0])
-  }
-  if (styleConfig.type === 'match') {
-    return matchExpressionFor(styleConfig, valueFor)
-  }
-  return rangeExpressionFor(styleConfig, valueFor)
 }
 
 /**
@@ -119,72 +104,20 @@ function vectorExpressionFor (styleConfig, valueFor) {
  * @returns {import('ol/style/flat.js').FlatStyle}
  */
 export function buildVectorStyle (styleConfig) {
+  if (styleConfig.type === 'range' && styleConfig.field === undefined) {
+    throw new Error('A range style config needs a field for vector rendering')
+  }
+
   const style = {
-    'fill-color': vectorExpressionFor(styleConfig, fillFor)
+    'fill-color': ['get', STYLE_FILL_PROPERTY]
   }
 
   if (hasStroke(styleConfig)) {
-    style['stroke-color'] = vectorExpressionFor(styleConfig, strokeColourFor)
-    style['stroke-width'] = vectorExpressionFor(styleConfig, strokeWidthFor)
+    style['stroke-color'] = ['get', STYLE_STROKE_PROPERTY]
+    style['stroke-width'] = ['get', STYLE_STROKE_WIDTH_PROPERTY]
   }
 
   return style
-}
-
-function variableName (classIndex, part) {
-  const prefix = classIndex === undefined ? 'default' : `class_${classIndex}`
-  return `${prefix}_${part}`
-}
-
-/**
- * Complete colour values, including defaults, for an existing vector renderer.
- * @param {object} styleConfig Effective style config
- * @returns {import('ol/style/flat.js').StyleVariables}
- */
-export function buildColourVariables (styleConfig) {
-  /** @type {import('ol/style/flat.js').StyleVariables} */
-  const variables = {}
-  // Use CSS strings so OpenLayers recognises these variables as colours.
-  for (const { classIndex, definition } of editableStyleEntries(styleConfig)) {
-    if (hasVisibleFill(definition)) {
-      variables[variableName(classIndex, 'fill')] = rgbaString(definition.fill)
-    }
-    if (hasVisibleStroke(definition)) {
-      variables[variableName(classIndex, 'stroke')] = rgbaString(definition.stroke.color)
-    }
-  }
-  return variables
-}
-
-function definitionWithVariables (definition, classIndex, variables) {
-  if (!definition) {
-    return definition
-  }
-
-  const fillName = variableName(classIndex, 'fill')
-  const strokeName = variableName(classIndex, 'stroke')
-  return {
-    ...definition,
-    ...(fillName in variables && { fill: ['var', fillName] }),
-    ...(strokeName in variables && {
-      stroke: { ...definition.stroke, color: ['var', strokeName] }
-    })
-  }
-}
-
-/**
- * Build vector colour expressions with variables so edits avoid rebuilding the renderer.
- * @param {object} styleConfig
- */
-export function buildVectorStyleWithVariables (styleConfig) {
-  const variables = buildColourVariables(styleConfig)
-  const config = {
-    ...styleConfig,
-    classes: styleConfig.classes.map((definition, index) => definitionWithVariables(definition, index, variables)),
-    default: definitionWithVariables(styleConfig.default, undefined, variables)
-  }
-
-  return { style: buildVectorStyle(config), variables }
 }
 
 function rangeClassForValue (styleConfig, value) {

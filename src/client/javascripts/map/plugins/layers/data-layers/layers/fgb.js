@@ -5,7 +5,7 @@ import { magicbytes } from 'flatgeobuf/lib/mjs/constants.js'
 import { overviewIdFor } from '../../../../config/layers.js'
 import { createCogOverviewLayer } from './cog.js'
 import { createFgbLoadController } from './fgb-loader.js'
-import { buildColourVariables, buildVectorStyleWithVariables, hasOutlineOnlyClass } from '../style-config.js'
+import { buildVectorStyle, hasOutlineOnlyClass } from '../style-config.js'
 
 async function checkFgbSignature (url) {
   const response = await fetch(url, { headers: { Range: 'bytes=0-7' } })
@@ -94,7 +94,6 @@ export async function createFlatGeobufLayer (layerConfig, layerId, map, { styleC
 
   let themeBand = styleConfig.band
 
-  const { style, variables } = buildVectorStyleWithVariables(styleConfig)
   const source = new VectorSource({
     strategy: bbox,
     // WebGL has its own render batch and hit buffer, but it skips transparent
@@ -107,8 +106,7 @@ export async function createFlatGeobufLayer (layerConfig, layerId, map, { styleC
     properties: { id: layerId },
     source,
     minZoom: exclusiveMinZoomFor(minZoom),
-    style,
-    variables,
+    style: buildVectorStyle(styleConfig),
     // Consecutive WebGL layers with the same className share a canvas:
     // https://openlayers.org/en/latest/examples/webgl-layer-swipe.html
     // Opaque detail pixels replace the COG before layer opacity is applied.
@@ -128,22 +126,18 @@ export async function createFlatGeobufLayer (layerConfig, layerId, map, { styleC
     layers = [detail]
   }
 
-  const loadController = createFgbLoadController(source, url, detail, styleConfig.field)
+  const loadController = createFgbLoadController(source, url, detail, styleConfig)
   source.setLoader(loadController.loader)
   registerLoadRecovery(map, detail, loadController)
 
   return {
     layers,
     applyStyle (next) {
-      if (next.band === themeBand) {
-        detail.updateStyleVariables(buildColourVariables(next))
-      } else {
-        const { style: nextStyle, variables: nextVariables } = buildVectorStyleWithVariables(next)
-        detail.updateStyleVariables(nextVariables)
-        detail.setStyle(nextStyle)
+      if (next.band !== themeBand) {
+        detail.setStyle(buildVectorStyle(next))
         themeBand = next.band
-        loadController.setStyleField(next.field)
       }
+      loadController.setStyleConfig(next)
       overviewLayer?.applyStyle(next)
     },
     setOpacity: overview

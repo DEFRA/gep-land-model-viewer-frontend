@@ -273,7 +273,7 @@ describe('#createLayerHits', () => {
   })
 
   test('a detail FlatGeobuf feature yields a hit with its dataset properties only', async () => {
-    const feature = stubFeature({ geometry: {}, A_pred: 'Bog', area: 12, styleValue: 'Bog' })
+    const feature = stubFeature({ geometry: {}, A_pred: 'Bog', area: 12, styleFill: [0, 0, 0, 1], styleStroke: [0, 0, 0, 0], styleStrokeWidth: 0 })
     const map = createOlMap({ vectorHits: [{ feature, layer: stubLayer('gep-woodland') }] })
 
     const hits = await getHits(map)
