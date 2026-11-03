@@ -11,7 +11,6 @@ function stubLayer (opts) {
   this._opts = opts
   this.get = vi.fn((key) => properties[key])
   this.changed = vi.fn()
-  this.updateStyleVariables = vi.fn()
   this.setStyle = vi.fn()
   this.setOpacity = vi.fn()
   this.getVisible = vi.fn(() => visible)
@@ -50,7 +49,7 @@ vi.mock('./fgb-loader.js', () => ({
   createFgbLoadController: vi.fn(() => ({
     loader: 'fgb-loader',
     retryFailedExtents: vi.fn(() => false),
-    setStyleField: vi.fn()
+    setStyleConfig: vi.fn()
   }))
 }))
 
@@ -155,8 +154,8 @@ describe('#createFlatGeobufLayer', () => {
 
     try {
       datasetLayer.applyStyle(county)
-      expect(setStyle.mock.lastCall[0]['fill-color'][1]).toEqual(['get', 'styleValue'])
-      expect(latestLoadController().setStyleField).toHaveBeenLastCalledWith('county')
+      expect(setStyle.mock.lastCall[0]['fill-color']).toEqual(['get', 'styleFill'])
+      expect(latestLoadController().setStyleConfig).toHaveBeenLastCalledWith(county)
       expect(overview.applyStyle).toHaveBeenLastCalledWith(county)
       const countyRenderer = detail.getRenderer()
       expect(countyRenderer).not.toBe(originalRenderer)
@@ -169,13 +168,13 @@ describe('#createFlatGeobufLayer', () => {
       }).styleConfig
       datasetLayer.applyStyle(edited)
       expect(setStyle).toHaveBeenCalledOnce()
-      expect(latestLoadController().setStyleField).toHaveBeenCalledOnce()
+      expect(latestLoadController().setStyleConfig).toHaveBeenLastCalledWith(edited)
       expect(detail.getRenderer()).toBe(countyRenderer)
       expect(overview.applyStyle).toHaveBeenLastCalledWith(edited)
 
       datasetLayer.applyStyle(dataset.source.styleConfig.themes[0])
-      expect(setStyle.mock.lastCall[0]['fill-color'][1]).toEqual(['get', 'styleValue'])
-      expect(latestLoadController().setStyleField).toHaveBeenLastCalledWith('lucode')
+      expect(setStyle).toHaveBeenCalledTimes(2)
+      expect(latestLoadController().setStyleConfig).toHaveBeenLastCalledWith(dataset.source.styleConfig.themes[0])
       expect(detail.getSource()).toBe(source)
     } finally {
       detail.dispose()
@@ -229,13 +228,12 @@ describe('#createFlatGeobufLayer', () => {
     const source = VectorSource.mock.instances[0]
     expect(source._opts.strategy).toBe(bbox)
     expect(source._opts.useSpatialIndex).toBe(false)
-    expect(createFgbLoadController).toHaveBeenCalledWith(source, '/land-model/vector/test.fgb', layers[0], 'category')
+    expect(createFgbLoadController).toHaveBeenCalledWith(source, '/land-model/vector/test.fgb', layers[0], expect.objectContaining({ field: 'category' }))
     expect(source.setLoader).toHaveBeenCalledWith(latestLoadController().loader)
 
     const [layerOptions] = WebGLVectorLayer.mock.calls[0]
     expect(layerOptions.properties).toEqual({ id: 'gep-test-fgb' })
-    expect(layerOptions.style).toEqual({ 'fill-color': ['match', ['get', 'styleValue'], 'Bog', ['var', 'class_0_fill'], [0, 0, 0, 0]] })
-    expect(layerOptions.variables).toEqual({ class_0_fill: 'rgba(194, 158, 215, 1)' })
+    expect(layerOptions.style).toEqual({ 'fill-color': ['get', 'styleFill'] })
     expect(layerOptions.minZoom).toBeUndefined()
     expect(layerOptions.opacity).toBe(0.7)
     expect(layerOptions.className).toBeUndefined()
@@ -256,8 +254,7 @@ describe('#createFlatGeobufLayer', () => {
 
     await createLayerForTest(dataset, 'gep-test-fgb', mapHarness().map)
 
-    const [detailOptions] = WebGLVectorLayer.mock.calls[0]
-    expect(detailOptions.style['fill-color'][1]).toEqual(['get', 'styleValue'])
+    expect(createFgbLoadController.mock.calls[0][3].field).toBe('category')
     expect(createCogOverviewLayer.mock.calls[0][2].styleConfig).toBe(MATCH_STYLE_CONFIG)
   })
 
@@ -388,7 +385,8 @@ describe('#createFlatGeobufLayer', () => {
     datasetLayer.applyStyle(updatedStyle)
     datasetLayer.setOpacity(0.4)
 
-    expect(detail.updateStyleVariables).toHaveBeenLastCalledWith({ class_0_fill: 'rgba(255, 0, 0, 0.6)', class_0_stroke: 'rgba(0, 0, 0, 0.8)' })
+    expect(latestLoadController().setStyleConfig).toHaveBeenLastCalledWith(updatedStyle)
+    expect(detail.setStyle).not.toHaveBeenCalled()
     if (overviewType === 'cog') {
       const overviewLayer = await createCogOverviewLayer.mock.results[0].value
       expect(overviewLayer.applyStyle).toHaveBeenCalledWith(updatedStyle)

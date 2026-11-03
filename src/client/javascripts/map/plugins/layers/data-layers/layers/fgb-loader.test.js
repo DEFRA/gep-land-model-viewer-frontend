@@ -13,6 +13,12 @@ const URL = '/land-model/vector/test.fgb'
 const EXTENT = [100, 200, 300, 400]
 const OTHER_EXTENT = [500, 600, 700, 800]
 const projection = { getCode: () => 'EPSG:27700' }
+const STYLE_CONFIG = {
+  type: 'match',
+  field: 'category',
+  classes: [{ fieldValues: ['Arable'], fill: [1, 2, 3, 1], stroke: { color: [4, 5, 6, 1], width: 2 } }],
+  default: { fill: [0, 0, 0, 0] }
+}
 
 async function * streamOf (features) {
   yield * features
@@ -72,11 +78,11 @@ describe('#createFgbLoadController', () => {
   })
 
   test('returns the decoded features through the OpenLayers promise-loader lifecycle', async () => {
-    const features = [{ id: 1 }, { id: 2 }, { id: 3 }]
+    const features = [new Feature({ id: 1 }), new Feature({ id: 2 }), new Feature({ id: 3 })]
     deserialize.mockReturnValueOnce(streamOf(features))
     const source = sourceHarness()
     const detail = detailHarness()
-    const { loader } = createFgbLoadController(source, URL, detail.layer)
+    const { loader } = createFgbLoadController(source, URL, detail.layer, STYLE_CONFIG)
 
     const loaded = loader(EXTENT, 10, projection)
 
@@ -90,13 +96,13 @@ describe('#createFgbLoadController', () => {
   })
 
   test('uses scheduler.yield when decoding spends its time slice', async () => {
-    deserialize.mockReturnValueOnce(streamOf([{ id: 1 }, { id: 2 }]))
+    deserialize.mockReturnValueOnce(streamOf([new Feature({ id: 1 }), new Feature({ id: 2 })]))
     const schedulerYield = vi.fn(() => Promise.resolve())
     vi.stubGlobal('scheduler', { yield: schedulerYield })
     advancingClock(8)
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
     const detail = detailHarness()
-    const { loader } = createFgbLoadController(sourceHarness(), URL, detail.layer)
+    const { loader } = createFgbLoadController(sourceHarness(), URL, detail.layer, STYLE_CONFIG)
 
     await loader(EXTENT, 10, projection)
 
@@ -105,12 +111,12 @@ describe('#createFgbLoadController', () => {
   })
 
   test('falls back to a timer when scheduler.yield is unavailable', async () => {
-    deserialize.mockReturnValueOnce(streamOf([{ id: 1 }]))
+    deserialize.mockReturnValueOnce(streamOf([new Feature({ id: 1 })]))
     vi.stubGlobal('scheduler', undefined)
     advancingClock(8)
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
     const detail = detailHarness()
-    const { loader } = createFgbLoadController(sourceHarness(), URL, detail.layer)
+    const { loader } = createFgbLoadController(sourceHarness(), URL, detail.layer, STYLE_CONFIG)
 
     await loader(EXTENT, 10, projection)
 
@@ -118,12 +124,12 @@ describe('#createFgbLoadController', () => {
   })
 
   test('does not yield while decoding stays inside the time slice', async () => {
-    deserialize.mockReturnValueOnce(streamOf([{ id: 1 }, { id: 2 }]))
+    deserialize.mockReturnValueOnce(streamOf([new Feature({ id: 1 }), new Feature({ id: 2 })]))
     const schedulerYield = vi.fn(() => Promise.resolve())
     vi.stubGlobal('scheduler', { yield: schedulerYield })
     advancingClock(1)
     const detail = detailHarness()
-    const { loader } = createFgbLoadController(sourceHarness(), URL, detail.layer)
+    const { loader } = createFgbLoadController(sourceHarness(), URL, detail.layer, STYLE_CONFIG)
 
     await loader(EXTENT, 10, projection)
 
@@ -131,10 +137,10 @@ describe('#createFgbLoadController', () => {
   })
 
   test('waits for an older WebGL buffer build before completing an extent', async () => {
-    const features = [{ id: 1 }]
+    const features = [new Feature({ id: 1 })]
     deserialize.mockReturnValueOnce(streamOf(features))
     const detail = detailHarness(false)
-    const { loader } = createFgbLoadController(sourceHarness(), URL, detail.layer)
+    const { loader } = createFgbLoadController(sourceHarness(), URL, detail.layer, STYLE_CONFIG)
     let completed = false
 
     const loaded = loader(EXTENT, 10, projection).then((result) => {
@@ -151,25 +157,32 @@ describe('#createFgbLoadController', () => {
     expect(detail.layer.un).toHaveBeenCalled()
   })
 
-  test('copies the style field to the style value property', async () => {
-    const feature = new Feature({ _mode: 'Arable' })
+  test('resolves the style onto each feature from its style field', async () => {
+    const feature = new Feature({ category: 'Arable' })
     deserialize.mockReturnValueOnce(streamOf([feature]))
-    const { loader } = createFgbLoadController(sourceHarness(), URL, detailHarness().layer, '_mode')
+    const { loader } = createFgbLoadController(sourceHarness(), URL, detailHarness().layer, STYLE_CONFIG)
 
     await loader(EXTENT, 10, projection)
 
-    expect(feature.get('styleValue')).toBe('Arable')
+    expect(feature.getProperties()).toEqual({
+      category: 'Arable',
+      styleFill: [1, 2, 3, 1],
+      styleStroke: [4, 5, 6, 1],
+      styleStrokeWidth: 2
+    })
   })
 
-  test('reloads the source only when the style field changes', () => {
+  test('reloads the source to restyle with a new style config', async () => {
     const source = sourceHarness()
-    const controller = createFgbLoadController(source, URL, detailHarness().layer, 'lucode')
+    const controller = createFgbLoadController(source, URL, detailHarness().layer, STYLE_CONFIG)
+    const feature = new Feature({ category: 'Arable' })
+    deserialize.mockReturnValueOnce(streamOf([feature]))
 
-    controller.setStyleField('lucode')
-    expect(source.refresh).not.toHaveBeenCalled()
+    controller.setStyleConfig({ ...STYLE_CONFIG, classes: [{ ...STYLE_CONFIG.classes[0], fill: [9, 9, 9, 1] }] })
+    await controller.loader(EXTENT, 10, projection)
 
-    controller.setStyleField('county')
     expect(source.refresh).toHaveBeenCalledOnce()
+    expect(feature.get('styleFill')).toEqual([9, 9, 9, 1])
   })
 
   test('OpenLayers adds a completed extent as one batch', async () => {
@@ -179,7 +192,7 @@ describe('#createFgbLoadController', () => {
     const source = new VectorSource({ strategy: () => [EXTENT] })
     const detail = detailHarness()
     const addFeaturesSpy = vi.spyOn(source, 'addFeatures')
-    const { loader } = createFgbLoadController(source, URL, detail.layer)
+    const { loader } = createFgbLoadController(source, URL, detail.layer, STYLE_CONFIG)
     source.setLoader(loader)
     const ended = new Promise((resolve) => source.once('featuresloadend', resolve))
 
@@ -198,7 +211,7 @@ describe('#createFgbLoadController', () => {
     deserialize.mockImplementation(() => failingStream())
     const source = new VectorSource({ strategy: () => [EXTENT] })
     const detail = detailHarness()
-    const controller = createFgbLoadController(source, URL, detail.layer)
+    const controller = createFgbLoadController(source, URL, detail.layer, STYLE_CONFIG)
     source.setLoader(controller.loader)
     const firstFailure = new Promise((resolve) => source.once('featuresloaderror', resolve))
     let checkedFailureRedraw = false
@@ -232,10 +245,10 @@ describe('#createFgbLoadController', () => {
     deserialize
       .mockReturnValueOnce(failingStream())
       .mockReturnValueOnce(failingStream())
-      .mockReturnValueOnce(streamOf([{ id: 1 }]))
+      .mockReturnValueOnce(streamOf([new Feature({ id: 1 })]))
     const source = sourceHarness()
     const detail = detailHarness()
-    const controller = createFgbLoadController(source, URL, detail.layer)
+    const controller = createFgbLoadController(source, URL, detail.layer, STYLE_CONFIG)
 
     await expect(controller.loader(EXTENT, 10, projection)).rejects.toThrow('range request failed')
     await expect(controller.loader(OTHER_EXTENT, 10, projection)).rejects.toThrow('range request failed')

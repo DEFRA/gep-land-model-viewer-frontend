@@ -1,13 +1,13 @@
 import { getDifference, intersects } from 'ol/extent.js'
 import { deserialize } from 'flatgeobuf/lib/mjs/ol.js'
 import { EPSG_27700 } from '../../constants.js'
-import { STYLE_VALUE_PROPERTY } from '../style-config.js'
+import { vectorStyleProperties } from '../style-config.js'
 
 /**
  * @typedef {object} FgbLoadController
  * @property {import('ol/featureloader.js').FeatureLoader} loader
  * @property {(extent: import('ol/extent.js').Extent) => boolean} retryFailedExtents
- * @property {(field: string|undefined) => void} setStyleField
+ * @property {(styleConfig: object) => void} setStyleConfig
  */
 
 // Yield after roughly half a 60 Hz frame so input and rendering get a turn.
@@ -71,10 +71,10 @@ function removeExtentFromFailures (failures, extent) {
  * @param {import('ol/source/Vector.js').default} source
  * @param {string} url
  * @param {import('ol/layer/WebGLVector.js').default} detailLayer
- * @param {string} [styleField] Field copied to the style value property
+ * @param {object} styleConfig Style resolved onto each loaded feature
  * @returns {FgbLoadController}
  */
-export function createFgbLoadController (source, url, detailLayer, styleField) {
+export function createFgbLoadController (source, url, detailLayer, styleConfig) {
   /** @type {{extent: import('ol/extent.js').Extent, retryGranted: boolean}[]} */
   let failures = []
 
@@ -100,9 +100,7 @@ export function createFgbLoadController (source, url, detailLayer, styleField) {
       })
 
       for await (const feature of stream) {
-        if (styleField !== undefined) {
-          feature.set(STYLE_VALUE_PROPERTY, feature.get(styleField))
-        }
+        feature.setProperties(vectorStyleProperties(styleConfig, feature.get(styleConfig.field)), true)
         features.push(feature)
 
         if (performance.now() - sliceStarted >= LOAD_TIME_SLICE_MS) {
@@ -138,15 +136,11 @@ export function createFgbLoadController (source, url, detailLayer, styleField) {
     return true
   }
 
-  function setStyleField (field) {
-    if (field === styleField) {
-      return
-    }
-
-    styleField = field
-    // Must reload to use the latest style field as we have the spatial index off for performance reasons
+  function setStyleConfig (next) {
+    styleConfig = next
+    // Must reload to restyle features as we have the spatial index off for performance reasons
     source.refresh()
   }
 
-  return { loader, retryFailedExtents, setStyleField }
+  return { loader, retryFailedExtents, setStyleConfig }
 }

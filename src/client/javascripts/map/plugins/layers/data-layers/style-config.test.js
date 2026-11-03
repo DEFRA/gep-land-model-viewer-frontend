@@ -1,13 +1,12 @@
 import { describe, test, expect } from 'vitest'
 import { parseLiteralStyle } from 'ol/render/webgl/style.js'
-import sssiStyle from './test-helpers/sssi.json'
 import {
   classForCogValue,
   buildCogColourExpression,
   visibleClassForBands,
   visibleClassForFieldValue,
   buildVectorStyle,
-  buildVectorStyleWithVariables,
+  vectorStyleProperties,
   hasOutlineOnlyClass
 } from './style-config.js'
 
@@ -72,22 +71,17 @@ function uniformStyle (classOverrides = {}) {
 }
 
 describe('class-coded COG rules', () => {
-  test('a match COG compares its pixel with each class bandValue', () => {
+  test('a match COG looks up each class bandValue in a palette', () => {
     expect(buildCogColourExpression(matchStyle())).toEqual([
-      'case',
-      ['==', ['band', 1], 1], BOG,
-      ['==', ['band', 1], 2], WATER,
-      TRANSPARENT
+      'palette', ['band', 1],
+      [TRANSPARENT, BOG, WATER, TRANSPARENT]
     ])
   })
 
-  test('a class-coded range COG ignores its numeric bounds and compares bandValue', () => {
+  test('a class-coded range COG ignores its numeric bounds and indexes by bandValue', () => {
     expect(buildCogColourExpression(classCodedRangeStyle())).toEqual([
-      'case',
-      ['==', ['band', 1], 1], [204, 204, 255, 1],
-      ['==', ['band', 1], 2], [20, 20, 227, 1],
-      ['==', ['band', 1], 3], OUTSIDE_RANGE,
-      TRANSPARENT
+      'palette', ['band', 1],
+      [TRANSPARENT, [204, 204, 255, 1], [20, 20, 227, 1], OUTSIDE_RANGE, TRANSPARENT]
     ])
   })
 
@@ -96,20 +90,15 @@ describe('class-coded COG rules', () => {
     style.classes[0].visible = false
 
     expect(buildCogColourExpression(style)).toEqual([
-      'case',
-      ['==', ['band', 1], 1], TRANSPARENT,
-      ['==', ['band', 1], 2], WATER,
-      TRANSPARENT
+      'palette', ['band', 1],
+      [TRANSPARENT, TRANSPARENT, WATER, TRANSPARENT]
     ])
   })
 
   test('a later-band class-coded range matches its codes and default independently of its bounds', () => {
     expect(buildCogColourExpression({ ...classCodedRangeStyle(), band: 5 })).toEqual([
-      'case',
-      ['==', ['band', 5], 1], [204, 204, 255, 1],
-      ['==', ['band', 5], 2], [20, 20, 227, 1],
-      ['==', ['band', 5], 3], OUTSIDE_RANGE,
-      TRANSPARENT
+      'palette', ['band', 5],
+      [TRANSPARENT, [204, 204, 255, 1], [20, 20, 227, 1], OUTSIDE_RANGE, TRANSPARENT]
     ])
   })
 })
@@ -146,41 +135,23 @@ describe('source-value range COG rules', () => {
 })
 
 describe('vector style rules', () => {
-  test('a match style expands grouped fieldValues and ignores COG bandValue', () => {
-    expect(buildVectorStyle(matchStyle())).toEqual({
-      'fill-color': [
-        'match', ['get', 'styleValue'],
-        'Bog', BOG,
-        'Standing Water', WATER,
-        'Canal', WATER,
-        TRANSPARENT
-      ]
-    })
-  })
-
-  test('a range style compares the source field even when its COG is class-coded', () => {
-    expect(buildVectorStyle(classCodedRangeStyle())).toEqual({
-      'fill-color': [
-        'case',
-        ['<', ['get', 'styleValue'], 0], OUTSIDE_RANGE,
-        ['<=', ['get', 'styleValue'], 20], [204, 204, 255, 1],
-        ['<=', ['get', 'styleValue'], 500], [20, 20, 227, 1],
-        OUTSIDE_RANGE
-      ]
-    })
+  test('a range style resolves the source field even when its COG is class-coded', () => {
+    expect(buildVectorStyle(classCodedRangeStyle())).toEqual({ 'fill-color': ['get', 'styleFill'] })
+    expect(vectorStyleProperties(classCodedRangeStyle(), 21).styleFill).toEqual([20, 20, 227, 1])
+    expect(vectorStyleProperties(classCodedRangeStyle(), -1).styleFill).toEqual(OUTSIDE_RANGE)
   })
 
   test('a fieldless raster range cannot style vector features', () => {
     expect(() => buildVectorStyle(sourceValueRangeStyle({ field: undefined }))).toThrow('needs a field')
   })
 
-  test('a uniform style applies its fill and stroke directly', () => {
-    expect(buildVectorStyle(uniformStyle({
-      stroke: { color: [112, 48, 135, 1], width: 1.25 }
-    }))).toEqual({
-      'fill-color': [178, 102, 204, 1],
-      'stroke-color': [112, 48, 135, 1],
-      'stroke-width': 1.25
+  test('a uniform style resolves its fill and stroke for every feature', () => {
+    const styleConfig = uniformStyle({ stroke: { color: [112, 48, 135, 1], width: 1.25 } })
+
+    expect(vectorStyleProperties(styleConfig, undefined)).toEqual({
+      styleFill: [178, 102, 204, 1],
+      styleStroke: [112, 48, 135, 1],
+      styleStrokeWidth: 1.25
     })
   })
 
@@ -209,32 +180,26 @@ describe('vector style rules', () => {
       }
     })
 
-    const style = buildVectorStyle(styleConfig)
-
-    expect(style['stroke-color']).toEqual([
-      'match', ['get', 'styleValue'],
-      'Bog', [0, 0, 0, 1],
-      'Water', [255, 0, 0, 1],
-      [4, 5, 6, 1]
-    ])
-    expect(style['stroke-width']).toEqual([
-      'match', ['get', 'styleValue'],
-      'Bog', 1,
-      'Water', 3,
-      2
-    ])
+    expect(buildVectorStyle(styleConfig)).toEqual({
+      'fill-color': ['get', 'styleFill'],
+      'stroke-color': ['get', 'styleStroke'],
+      'stroke-width': ['get', 'styleStrokeWidth']
+    })
+    expect(vectorStyleProperties(styleConfig, 'Water')).toEqual({
+      styleFill: WATER,
+      styleStroke: [255, 0, 0, 1],
+      styleStrokeWidth: 3
+    })
+    expect(vectorStyleProperties(styleConfig, 'Other value')).toEqual({
+      styleFill: [1, 2, 3, 1],
+      styleStroke: [4, 5, 6, 1],
+      styleStrokeWidth: 2
+    })
   })
 
   test('visible false hides both the fill and stroke of a matched class', () => {
     const styleConfig = matchStyle({
       classes: [
-        {
-          bandValue: 1,
-          fieldValues: ['Bog'],
-          label: 'Bog',
-          fill: BOG,
-          stroke: { color: [0, 0, 0, 1], width: 1 }
-        },
         {
           bandValue: 2,
           fieldValues: ['Water'],
@@ -246,80 +211,20 @@ describe('vector style rules', () => {
       ]
     })
 
-    const style = buildVectorStyle(styleConfig)
-
-    expect(style['fill-color']).toEqual([
-      'match', ['get', 'styleValue'],
-      'Bog', BOG,
-      'Water', TRANSPARENT,
-      TRANSPARENT
-    ])
-    expect(style['stroke-color']).toEqual([
-      'match', ['get', 'styleValue'],
-      'Bog', [0, 0, 0, 1],
-      'Water', TRANSPARENT,
-      TRANSPARENT
-    ])
-    expect(style['stroke-width']).toEqual([
-      'match', ['get', 'styleValue'],
-      'Bog', 1,
-      'Water', 0,
-      0
-    ])
+    expect(vectorStyleProperties(styleConfig, 'Water')).toEqual({
+      styleFill: TRANSPARENT,
+      styleStroke: TRANSPARENT,
+      styleStrokeWidth: 0
+    })
   })
 })
 
-describe('WebGL vector colour variables', () => {
-  const filled = { fieldValues: ['Land'], fill: [10, 20, 30, 0.8], stroke: { color: [40, 50, 60, 0.6], width: 2 } }
-  const outline = { fieldValues: ['Edge'], fill: [0, 0, 0, 0], stroke: { color: [40, 50, 60, 0.6], width: 3 } }
-  const defaults = {
-    type: 'match',
-    field: 'category',
-    classes: [
-      filled,
-      { ...filled, fieldValues: ['Hidden'], visible: false },
-      outline,
-      { ...filled, fieldValues: ['Same colour'] }
-    ],
-    default: { fill: [100, 110, 120, 0.5] }
-  }
-
-  test('keeps separate variables for original class indices and drawable defaults', () => {
-    const before = structuredClone(defaults)
-    const { style, variables } = buildVectorStyleWithVariables(defaults)
-
-    expect(variables).toEqual({
-      class_0_fill: 'rgba(10, 20, 30, 0.8)',
-      class_0_stroke: 'rgba(40, 50, 60, 0.6)',
-      class_2_stroke: 'rgba(40, 50, 60, 0.6)',
-      class_3_fill: 'rgba(10, 20, 30, 0.8)',
-      class_3_stroke: 'rgba(40, 50, 60, 0.6)',
-      default_fill: 'rgba(100, 110, 120, 0.5)'
-    })
-    expect(style['fill-color']).toEqual([
-      'match', ['get', 'styleValue'],
-      'Land', ['var', 'class_0_fill'],
-      'Hidden', [0, 0, 0, 0],
-      'Edge', [0, 0, 0, 0],
-      'Same colour', ['var', 'class_3_fill'],
-      ['var', 'default_fill']
-    ])
-    expect(defaults).toEqual(before)
-  })
-
+describe('WebGL vector style', () => {
   test('generates a style accepted by the OpenLayers WebGL compiler', () => {
-    const { style, variables } = buildVectorStyleWithVariables(defaults)
-    expect(() => parseLiteralStyle(style, variables)).not.toThrow()
-  })
-
-  test('SSSI keeps its outline width while both colours become updateable', () => {
-    const { style, variables } = buildVectorStyleWithVariables(sssiStyle.themes[0])
-    expect(style).toEqual({
-      'fill-color': ['var', 'class_0_fill'],
-      'stroke-color': ['var', 'class_0_stroke'],
-      'stroke-width': 1.25
+    const styleConfig = matchStyle({
+      classes: [{ fieldValues: ['Edge'], fill: TRANSPARENT, stroke: { color: [40, 50, 60, 0.6], width: 3 } }]
     })
-    expect(variables).toEqual({ class_0_fill: 'rgba(178, 102, 204, 1)', class_0_stroke: 'rgba(112, 48, 135, 1)' })
+    expect(() => parseLiteralStyle(buildVectorStyle(styleConfig))).not.toThrow()
   })
 })
 
