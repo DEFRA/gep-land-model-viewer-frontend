@@ -12,6 +12,7 @@ import { getJson } from '../data-layers/api.js'
  * @property {string | null} accessLevel
  * @property {string | null} updateFrequency
  * @property {string[]} categories
+ * @property {string[]} catalogueCategories
  * @property {string | null} updatedAt
  * @property {string | null} licence
  * @property {string[]} format
