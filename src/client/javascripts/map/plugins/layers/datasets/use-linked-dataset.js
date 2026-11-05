@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { loadDatasetMetadata } from './api.js'
+import { SUMMARIES } from '../summaries/config.js'
 
 /**
  * @param {{
@@ -19,9 +20,12 @@ export function useLinkedDataset ({ datasetId, isMapReady, dispatch, hints }) {
 
     async function load () {
       try {
-        const { title } = await loadDatasetMetadata(datasetId, controller.signal)
+        const { title, catalogueCategories } = await loadDatasetMetadata(datasetId, controller.signal)
         if (!controller.signal.aborted) {
-          dispatch({ type: 'DATASET_LOADING', payload: { id: datasetId, title } })
+          const summary = SUMMARIES.find(({ catalogueCategory }) => catalogueCategories?.includes(catalogueCategory))
+          dispatch(summary
+            ? { type: 'SET_SUMMARY', payload: { id: summary.id, enabled: true } }
+            : { type: 'DATASET_LOADING', payload: { id: datasetId, title } })
         }
       } catch (error) {
         if (!controller.signal.aborted) {
