@@ -4,6 +4,8 @@ import { hit } from './test-helpers/peaty-soil-depth.js'
 const { request } = vi.hoisted(() => ({ request: vi.fn() }))
 vi.mock('undici', () => ({ request }))
 
+const unlistedCategories = { terms: { 'cat.keyword': ['referenceDatasets', 'landModelGrids', 'landModelParcels'] } }
+
 beforeEach(() => {
   request.mockResolvedValue({ statusCode: 200, body: { json: async () => ({ hits: { total: { value: 1 }, hits: [hit] } }) } })
 })
@@ -22,7 +24,14 @@ test('searches catalogue text by prefix with a result limit and returns summarie
 
 test('browses the catalogue without requiring a query', async () => {
   await queryDatasets('')
-  expect(JSON.parse(request.mock.calls[0][1].body).query).toEqual({ bool: { filter: [{ term: { isTemplate: 'n' } }], must: { match_all: {} } } })
+  expect(JSON.parse(request.mock.calls[0][1].body).query).toEqual({
+    bool: { filter: [{ term: { isTemplate: 'n' } }], must_not: [unlistedCategories], must: { match_all: {} } }
+  })
+})
+
+test.each(['', 'pea'])('leaves reference datasets and land models out of the listing for query %j', async (q) => {
+  await queryDatasets(q)
+  expect(JSON.parse(request.mock.calls[0][1].body).query.bool.must_not).toEqual([unlistedCategories])
 })
 
 test('looks up metadata records only, excluding templates', async () => {
@@ -42,6 +51,7 @@ test('maps the Elasticsearch record into dataset metadata', async () => {
     accessLevel: 'Open data',
     updateFrequency: 'As needed',
     categories: ['Environment'],
+    catalogueCategories: [],
     updatedAt: '2025-05-09',
     licence: 'Open Government Licence',
     format: [
@@ -59,6 +69,16 @@ test('maps the Elasticsearch record into dataset metadata', async () => {
     resolution: { scaleDenominators: [], distances: ['10 m'] },
     creationDate: '2025-05-06'
   })
+})
+
+test('maps the catalogue categories of the record', async () => {
+  const categorisedHit = { ...hit, _source: { ...hit._source, cat: ['datasets', 'landModelGrids'] } }
+  request.mockResolvedValue({ statusCode: 200, body: { json: async () => ({ hits: { total: { value: 1 }, hits: [categorisedHit] } }) } })
+
+  const result = await getDatasetMetadata(hit._id)
+
+  expect(result.catalogueCategories).toEqual(['datasets', 'landModelGrids'])
+  expect(JSON.parse(request.mock.calls[0][1].body)._source).toContain('cat')
 })
 
 test('returns null when the catalogue record is missing', async () => {

@@ -62,6 +62,10 @@ const fields = {
     source: ['cl_topic'],
     hitAccessor: allDefaults('cl_topic')
   },
+  catalogueCategories: {
+    source: ['cat'],
+    hitAccessor: rawArray('cat')
+  },
   updatedAt: {
     source: ['resourceDate.date'],
     hitAccessor: latestNestedDate('resourceDate')

@@ -10,6 +10,13 @@ export const MAX_RESULTS = 500
 
 const RECORDS_ONLY = { term: { isTemplate: 'n' } }
 
+// Reference datasets do not have assets to render,
+// and the land models have their own dedicated catalogue,
+// so we hide them from the main catalogue search.
+const UNLISTED_CATEGORIES = {
+  terms: { 'cat.keyword': ['referenceDatasets', 'landModelGrids', 'landModelParcels'] }
+}
+
 /**
  * @typedef {object} SpatialResolution
  * @property {number[]} scaleDenominators The denominator in each 1:n scale, e.g. 250000 for 1:250,000.
@@ -28,6 +35,7 @@ const RECORDS_ONLY = { term: { isTemplate: 'n' } }
  * @property {string | null} accessLevel
  * @property {string | null} updateFrequency
  * @property {string[]} categories
+ * @property {string[]} catalogueCategories
  * @property {string | null} updatedAt
  * @property {string | null} licence
  * @property {string[]} format
@@ -108,6 +116,7 @@ export async function queryDatasets (q) {
     query: {
       bool: {
         filter: [RECORDS_ONLY],
+        must_not: [UNLISTED_CATEGORIES],
         must: q
           ? {
               multi_match: {
