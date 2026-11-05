@@ -34,6 +34,18 @@ test('adds the linked dataset once the map is ready', async () => {
   expect(fetch).toHaveBeenCalledWith(`/api/datasets/${DATASET_ID}`, expect.anything())
 })
 
+test.each([
+  ['landModelGrids', 'grid'],
+  ['landModelParcels', 'features']
+])('turns on the land summary for a linked %s record', async (catalogueCategory, summaryId) => {
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ id: DATASET_ID, title: 'Land model', catalogueCategories: [catalogueCategory] }) })))
+  const dispatch = vi.fn()
+  render(<LinkedDataset dispatch={dispatch} />)
+
+  await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: 'SET_SUMMARY', payload: { id: summaryId, enabled: true } }))
+  expect(dispatch).toHaveBeenCalledOnce()
+})
+
 test('shows a hint when the linked dataset cannot be loaded', async () => {
   const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 404 })))
