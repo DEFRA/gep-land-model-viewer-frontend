@@ -38,7 +38,7 @@ describe('map entry point', () => {
   // clearAllMocks between tests would drop it and the module is cached.
   test('creates the map with the OpenLayers provider and every plugin', async () => {
     document.body.innerHTML = `
-      <main data-style-nonce="test-style-nonce">
+      <main data-style-nonce="test-style-nonce" data-map-center="436374,296143" data-map-zoom="2">
         <div id="land-map"></div>
       </main>
     `
@@ -60,7 +60,8 @@ describe('map entry point', () => {
     expect(options).toMatchObject({
       mapProvider: { provider: 'openlayers' },
       mapStyle: { id: 'outdoor', label: 'Outdoor', url: '/style.json' },
-      zoom: 7,
+      center: [436374, 296143],
+      zoom: 2,
       minZoom: 0,
       maxZoom: 13,
       enableZoomControls: true,

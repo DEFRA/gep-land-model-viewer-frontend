@@ -114,11 +114,14 @@ Start the shared GeoNetwork from `DEFRA-GEP-metadata-management` and import its 
 
 Copy [`.env.example`](./.env.example) to `.env` and set `OS_API_KEY`.
 
-| Variable             | Required | Description                                                                                                                                     |
-| -------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OS_API_KEY`         | Yes      | OS Maps API key with premium access. Used by the `/os/vts`, `/os/ngd` and `/os/raster` proxies to authenticate tile, sprite and glyph requests. |
-| `FIND_GEO_DATA_URL`  | No       | Find Geo Data frontend base URL for dataset details links. Defaults to `http://localhost:3000`.                                                 |
-| `GEONETWORK_API_URL` | No       | GeoNetwork API base URL. Defaults to `http://localhost:8080/geonetwork/srv/api`.                                                                |
+| Variable              | Required | Description                                                                                                                                     |
+| --------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OS_API_KEY`          | Yes      | OS Maps API key with premium access. Used by the `/os/vts`, `/os/ngd` and `/os/raster` proxies to authenticate tile, sprite and glyph requests. |
+| `FIND_GEO_DATA_URL`   | No       | Find Geo Data frontend base URL for dataset details links. Defaults to `http://localhost:3000`.                                                 |
+| `GEONETWORK_API_URL`  | No       | GeoNetwork API base URL. Defaults to `http://localhost:8080/geonetwork/srv/api`.                                                                |
+| `MAP_CENTER_EASTING`  | No       | Initial map centre easting (EPSG:27700). Defaults to `436374` (centre of England), or `465000` (sample area) in development.                    |
+| `MAP_CENTER_NORTHING` | No       | Initial map centre northing (EPSG:27700). Defaults to `296143`, or `475000` in development.                                                     |
+| `MAP_ZOOM`            | No       | Initial whole zoom level on the OS tile grid (0-13). Defaults to `2`, or `7` in development.                                                    |
 
 ### Development
 

@@ -10,13 +10,11 @@ import createInfoLinksPlugin from './plugins/info-links/index.js'
 import createNorthIndicatorPlugin from './plugins/north-indicator/index.js'
 
 const MAP_ID = 'land-map'
-const DEFAULT_CENTER = [465000, 475000] // center of sample land model area
-const DEFAULT_ZOOM = 7
 const MIN_ZOOM = 0
 const MAX_ZOOM = 13
 const UK_EXTENT = [-100000, 0, 800000, 1250000]
 const mapElement = document.getElementById(MAP_ID)
-const { styleNonce, findGeoDataUrl } = mapElement?.closest('main')?.dataset ?? {}
+const { styleNonce, findGeoDataUrl, mapCenter, mapZoom } = mapElement?.closest('main')?.dataset ?? {}
 const datasetId = new URLSearchParams(window.location.search).get('dataset')
 
 const map = new InteractiveMap(MAP_ID, {
@@ -24,8 +22,8 @@ const map = new InteractiveMap(MAP_ID, {
   mapProvider: createOpenLayersProvider({ zoomAlignment: 'uk' }),
   mapStyle: mapStyles[0],
   mapLabel: 'Land model grid viewer',
-  center: DEFAULT_CENTER,
-  zoom: DEFAULT_ZOOM,
+  center: mapCenter?.split(',').map(Number.parseFloat),
+  zoom: Number.parseInt(mapZoom),
   minZoom: MIN_ZOOM,
   maxZoom: MAX_ZOOM,
   containerHeight: '100%',
