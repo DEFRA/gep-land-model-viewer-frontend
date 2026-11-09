@@ -37,8 +37,8 @@ function parcelProperties (overrides = {}) {
       { code: '1003409', type: 'SSSI', name: 'Dalby Bush Fen SSSI', intersection_area: 767.9, intersection_pct: 75.1 }
     ]),
     land_management_intersections_json: JSON.stringify([
-      { id: 107132256, intersection_area: 613.5, intersection_pct: 60 },
-      { id: 107132257, intersection_area: 409, intersection_pct: 40 }
+      { id: '107132256', intersection_area: 613.5, intersection_pct: 60 },
+      { id: '107132257', intersection_area: 409, intersection_pct: 40 }
     ]),
     ownership_intersections_json: JSON.stringify([
       { id: 47540258, mapped_value: 'Freehold', intersection_area: 1022.5, intersection_pct: 100 }
@@ -95,6 +95,19 @@ describe('#toFeatureRecord', () => {
       records: [{ pseudoSbi: '107132256' }, { pseudoSbi: '107132257' }],
       source: { name: 'RPA', updated: UPDATED }
     })
+  })
+
+  test('drops land management records without an SBI', () => {
+    const record = toFeatureRecord(parcelProperties({
+      land_management_intersections_json: JSON.stringify([
+        { id: 'null', intersection_area: 613.5, intersection_pct: 50 },
+        { id: null, intersection_area: 204.5, intersection_pct: 20 },
+        { id: '107132257', intersection_area: 204.5, intersection_pct: 20 },
+        { id: 107132258, intersection_area: 102.3, intersection_pct: 10 }
+      ])
+    }), SOURCES)
+
+    expect(record.landManagement.records).toEqual([{ pseudoSbi: '107132257' }, { pseudoSbi: '107132258' }])
   })
 
   test('returns null for a theme with no intersections', () => {
