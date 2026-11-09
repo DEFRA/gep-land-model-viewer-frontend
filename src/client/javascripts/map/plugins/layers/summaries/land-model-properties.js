@@ -31,7 +31,7 @@ import { toSource } from './model.js'
 
 /**
  * @typedef {{ mapped_value: string, intersection_area: number, intersection_pct: number }} ClassIntersection
- * @typedef {{ id: number, intersection_area: number, intersection_pct: number }} ManagementIntersection
+ * @typedef {{ id: string | number | null, intersection_area: number, intersection_pct: number }} ManagementIntersection
  * @typedef {{ id: number, mapped_value?: string, intersection_area: number, intersection_pct: number }} OwnershipIntersection
  * @typedef {{ code: string, type: string, name: string, intersection_area: number, intersection_pct: number }} ProtectedAreaIntersection
  */
@@ -142,7 +142,10 @@ function toLandManagement (properties, description) {
 
   /** @type {ManagementIntersection[]} */
   const intersections = parseIntersections(properties.land_management_intersections_json)
-  return { records: intersections.map(intersection => ({ pseudoSbi: String(intersection.id) })), ...sourceOf(description) }
+  const records = intersections
+    .filter(intersection => intersection.id != null && intersection.id !== 'null')
+    .map(intersection => ({ pseudoSbi: String(intersection.id) }))
+  return { records, ...sourceOf(description) }
 }
 
 /**

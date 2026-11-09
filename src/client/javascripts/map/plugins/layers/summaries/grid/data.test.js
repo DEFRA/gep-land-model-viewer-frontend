@@ -60,6 +60,10 @@ function testProperties () {
     soil_intersections_json: JSON.stringify([
       { mapped_value: 'Brown soils', intersection_area: 10000.0, intersection_pct: 100.0 }
     ]),
+    land_management_intersections_json: JSON.stringify([
+      { id: '430580387823', intersection_area: 6000.0, intersection_pct: 60.0 },
+      { id: 'null', intersection_area: 4000.0, intersection_pct: 40.0 }
+    ]),
     protected_area_count: 1
   }
 }
@@ -156,6 +160,14 @@ describe('#getGridDetails', () => {
     const record = await getGridDetails(COARSE_UNIT, coarseExtent, source)
 
     expect(record.protectedAreas).toEqual({ count: 1, source: { name: 'Natural England SSSI, SAC, SPA, Ramsar, NNR', updated: UPDATED } })
+  })
+
+  test('takes a coarser cell\'s pseudo SBIs from its intersections, dropping those without an SBI', async () => {
+    readCellProperties.mockResolvedValue(testProperties())
+
+    const record = await getGridDetails(COARSE_UNIT, coarseExtent, source)
+
+    expect(record.landManagement).toEqual({ records: [{ pseudoSbi: '430580387823' }], source: { name: 'RPA', updated: UPDATED } })
   })
 
   test('returns null when the FGB has no point for the cell', async () => {
