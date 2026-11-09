@@ -13,3 +13,4 @@ tsconfig.tsbuildinfo
 
 compose/garage/data/**/*.tif*
 compose/garage/data/**/*.fgb
+compose/garage/data/**/*.parquet
