@@ -26,6 +26,8 @@ describe('#mapController', () => {
     expect(result).toEqual(expect.stringContaining('Map |'))
     expect(result).toEqual(expect.stringContaining('id="land-map"'))
     expect(result).toEqual(expect.stringContaining(`data-find-geo-data-url="${config.get('findGeoDataUrl')}"`))
+    expect(result).toEqual(expect.stringContaining(`data-map-center="${config.get('map.center.easting')},${config.get('map.center.northing')}"`))
+    expect(result).toEqual(expect.stringContaining(`data-map-zoom="${config.get('map.zoom')}"`))
   })
 
   test('applies map CSP for dataset hosts, blob workers and runtime styles', async () => {

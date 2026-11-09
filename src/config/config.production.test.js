@@ -21,5 +21,7 @@ describe('config in production mode', () => {
     expect(config.get('session.cache.engine')).toBe('redis')
     expect(config.get('isSecureContextEnabled')).toBe(true)
     expect(config.get('log.redact')).toContain('req.headers.authorization')
+    expect(config.get('map.center')).toEqual({ easting: 436374, northing: 296143 })
+    expect(config.get('map.zoom')).toBe(2)
   })
 })

@@ -370,6 +370,26 @@ export const config = convict({
       default: '',
       env: 'APGB_WMS_URL',
       sensitive: true
+    },
+    center: {
+      easting: {
+        doc: 'Initial map centre easting (EPSG:27700)',
+        format: Number,
+        default: isDevelopment ? 465000 : 436374,
+        env: 'MAP_CENTER_EASTING'
+      },
+      northing: {
+        doc: 'Initial map centre northing (EPSG:27700)',
+        format: Number,
+        default: isDevelopment ? 475000 : 296143,
+        env: 'MAP_CENTER_NORTHING'
+      }
+    },
+    zoom: {
+      doc: 'Initial map zoom level on the OS tile grid (0-13)',
+      format: 'nat',
+      default: isDevelopment ? 7 : 2,
+      env: 'MAP_ZOOM'
     }
   }
 })
