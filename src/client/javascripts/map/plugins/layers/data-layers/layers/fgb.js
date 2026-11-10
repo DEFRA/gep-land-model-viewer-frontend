@@ -1,11 +1,10 @@
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
 import VectorSource from 'ol/source/Vector.js'
-import { bbox } from 'ol/loadingstrategy.js'
 import { magicbytes } from 'flatgeobuf/lib/mjs/constants.js'
 import { overviewIdFor } from '../../../../config/layers.js'
 import { createCogOverviewLayer } from './cog.js'
 import { createFgbLoadController } from './fgb-loader.js'
-import { buildVectorStyle, hasOutlineOnlyClass } from '../style-config.js'
+import { buildVectorStyle } from '../style-config.js'
 
 async function checkFgbSignature (url) {
   const response = await fetch(url, { headers: { Range: 'bytes=0-7' } })
@@ -34,22 +33,33 @@ function exclusiveMinZoomFor (firstZoom) {
 
 function registerLoadRecovery (map, detailLayer, loadController) {
   const view = map.getView()
+  let frameExtent
 
   function retryFailedViewport () {
-    const size = map.getSize()
     const detailIsVisible = detailLayer.getVisible() && view.getZoom() > detailLayer.getMinZoom()
-    if (!size || !detailIsVisible) {
+    if (!frameExtent || !detailIsVisible) {
       return
     }
 
-    loadController.retryFailedExtents(view.calculateExtent(size))
+    loadController.retryFailedExtents(frameExtent)
   }
 
   // A failed extent stays counted as loaded, so without this it would stay
   // blank for the whole session. One retry per user action avoids timers
   // and failure loops.
-  map.on('moveend', retryFailedViewport)
+  map.on('moveend', (event) => {
+    frameExtent = event.frameState.extent
+    retryFailedViewport()
+  })
   detailLayer.on('change:visible', retryFailedViewport)
+}
+
+function trackViewExtent (map, loadController) {
+  // The frame extent is what the renderer loads. With view padding,
+  // calculateExtent is offset from it.
+  map.on('moveend', (event) => {
+    loadController.setViewExtent(event.frameState.extent)
+  })
 }
 
 function registerSharedCanvasOpacity (layers, initialOpacity) {
@@ -95,10 +105,7 @@ export async function createFlatGeobufLayer (layerConfig, layerId, map, { styleC
   let themeBand = styleConfig.band
 
   const source = new VectorSource({
-    strategy: bbox,
-    // WebGL has its own render batch and hit buffer, but it skips transparent
-    // fills, so outline-only classes are hit tested by coordinate instead.
-    useSpatialIndex: hasOutlineOnlyClass(layerConfig.source.styleConfig.themes)
+    strategy: (extent) => loadController.strategy(extent)
   })
   const compositeClassName = overview ? `ol-layer ${layerId}-composite` : undefined
 
@@ -129,6 +136,7 @@ export async function createFlatGeobufLayer (layerConfig, layerId, map, { styleC
   const loadController = createFgbLoadController(source, url, detail, styleConfig)
   source.setLoader(loadController.loader)
   registerLoadRecovery(map, detail, loadController)
+  trackViewExtent(map, loadController)
 
   return {
     layers,
