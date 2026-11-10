@@ -1,6 +1,9 @@
 import { getJson } from '../../data-layers/api.js'
 import { sourceFor } from '../../data-layers/source.js'
 
+// Parcels are too dense around cities to load smoothly at low zooms
+const FEATURE_MIN_ZOOM = 10
+
 /**
  * @typedef {object} FeatureLayerResponse
  * @property {{ themes: object[], opacity?: number }} styleConfig
@@ -23,5 +26,5 @@ import { sourceFor } from '../../data-layers/source.js'
 export async function loadFeatureLayer (id, url, signal) {
   /** @type {FeatureLayerResponse} */
   const { styleConfig, assets, dataSources } = await getJson(url, signal)
-  return { id, source: { ...sourceFor(styleConfig, assets), dataSources } }
+  return { id, source: { ...sourceFor(styleConfig, assets), minZoom: FEATURE_MIN_ZOOM, dataSources } }
 }
