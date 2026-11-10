@@ -243,7 +243,7 @@ export default {
           to: 'stylesheets/vendor/interactive-map.css'
         },
         {
-          from: path.join(dirname, 'node_modules/@defra/interactive-map/plugins/beta/map-styles/dist/css/index.css'),
+          from: path.join(dirname, 'node_modules/@defra/interactive-map/plugins/map-styles/dist/css/index.css'),
           to: 'stylesheets/vendor/interactive-map-styles.css'
         },
         {
@@ -251,7 +251,7 @@ export default {
           to: 'stylesheets/vendor/interactive-map-search.css'
         },
         {
-          from: path.join(dirname, 'node_modules/@defra/interactive-map/plugins/beta/scale-bar/dist/css/index.css'),
+          from: path.join(dirname, 'node_modules/@defra/interactive-map/plugins/scale-bar/dist/css/index.css'),
           to: 'stylesheets/vendor/interactive-map-scale-bar.css'
         },
         {
