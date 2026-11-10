@@ -1,5 +1,4 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
-import { bbox } from 'ol/loadingstrategy.js'
 import { getLayerStyle } from '../layer-style.js'
 import { THEMED_DATASET } from '../test-helpers/themed-dataset.js'
 import cromeStyle from '../test-helpers/crop-map-of-england.json'
@@ -49,6 +48,8 @@ vi.mock('./fgb-loader.js', () => ({
   createFgbLoadController: vi.fn(() => ({
     loader: 'fgb-loader',
     retryFailedExtents: vi.fn(() => false),
+    strategy: vi.fn(() => []),
+    setViewExtent: vi.fn(() => Promise.resolve()),
     setStyleConfig: vi.fn()
   }))
 }))
@@ -95,14 +96,12 @@ function fgbDataset (source = {}) {
 
 function mapHarness ({ zoom = 8 } = {}) {
   const handlers = new Map()
-  const extent = [100, 200, 300, 400]
+  const frameExtent = [100, 200, 300, 400]
   const view = {
-    getZoom: vi.fn(() => zoom),
-    calculateExtent: vi.fn(() => extent)
+    getZoom: vi.fn(() => zoom)
   }
   const map = {
     getView: vi.fn(() => view),
-    getSize: vi.fn(() => [800, 600]),
     on: vi.fn((type, listener) => {
       const listeners = handlers.get(type) ?? []
       listeners.push(listener)
@@ -110,12 +109,12 @@ function mapHarness ({ zoom = 8 } = {}) {
     }),
     emit: (type) => {
       for (const listener of handlers.get(type) ?? []) {
-        listener()
+        listener({ type, frameState: { extent: frameExtent } })
       }
     }
   }
 
-  return { map, view, extent }
+  return { map, view, frameExtent }
 }
 
 function latestLoadController () {
@@ -226,8 +225,6 @@ describe('#createFlatGeobufLayer', () => {
     expect(layers).toHaveLength(1)
 
     const source = VectorSource.mock.instances[0]
-    expect(source._opts.strategy).toBe(bbox)
-    expect(source._opts.useSpatialIndex).toBe(false)
     expect(createFgbLoadController).toHaveBeenCalledWith(source, '/land-model/vector/test.fgb', layers[0], expect.objectContaining({ field: 'category' }))
     expect(source.setLoader).toHaveBeenCalledWith(latestLoadController().loader)
 
@@ -259,12 +256,30 @@ describe('#createFlatGeobufLayer', () => {
   })
 
   test('retries a failed visible viewport once the user finishes moving', async () => {
-    const { map, extent } = mapHarness()
+    const { map, frameExtent } = mapHarness()
     await createLayerForTest(fgbDataset(), 'gep-test-fgb', map)
 
     map.emit('moveend')
 
-    expect(latestLoadController().retryFailedExtents).toHaveBeenCalledWith(extent)
+    expect(latestLoadController().retryFailedExtents).toHaveBeenCalledWith(frameExtent)
+  })
+
+  test('loads with the load controller\'s strategy', async () => {
+    await createLayerForTest(fgbDataset(), 'gep-test-fgb', mapHarness().map)
+    const { strategy } = VectorSource.mock.instances[0]._opts
+
+    strategy([1, 2, 3, 4])
+
+    expect(latestLoadController().strategy).toHaveBeenCalledWith([1, 2, 3, 4])
+  })
+
+  test('reports the rendered frame extent once the user finishes moving', async () => {
+    const { map, frameExtent } = mapHarness()
+    await createLayerForTest(fgbDataset(), 'gep-test-fgb', map)
+
+    map.emit('moveend')
+
+    expect(latestLoadController().setViewExtent).toHaveBeenCalledWith(frameExtent)
   })
 
   test('does not retry while detail is outside its zoom range', async () => {
@@ -277,15 +292,17 @@ describe('#createFlatGeobufLayer', () => {
   })
 
   test('turning a dataset back on permits one attempt over the current viewport', async () => {
-    const { map, extent } = mapHarness()
+    const { map, frameExtent } = mapHarness()
     const { layers: [detail] } = await createLayerForTest(fgbDataset(), 'gep-test-fgb', map)
     const controller = latestLoadController()
+    map.emit('moveend')
+    controller.retryFailedExtents.mockClear()
 
     detail.setVisible(false)
     expect(controller.retryFailedExtents).not.toHaveBeenCalled()
 
     detail.setVisible(true)
-    expect(controller.retryFailedExtents).toHaveBeenCalledWith(extent)
+    expect(controller.retryFailedExtents).toHaveBeenCalledWith(frameExtent)
   })
 
   test('a configured minZoom caps the detail layer', async () => {

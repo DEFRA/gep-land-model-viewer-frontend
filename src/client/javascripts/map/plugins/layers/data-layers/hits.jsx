@@ -171,8 +171,8 @@ function vectorHitsAt ({ map, layerStates, highlight, getStyle, optionsFor }, pi
     layerFilter: (layer) => isFgbLayer(layer, layerStates)
   })
 
-  // WebGL hit detection skips transparent fills, sources with outline-only
-  // classes have a spatial index to check others return nothing here.
+  // WebGL hit detection skips transparent fills, so outline-only classes are
+  // found from the source.
   for (const layer of map.getLayers().getArray()) {
     if (isFgbDetailLayer(layer, layerStates) && layer.isVisible()) {
       for (const feature of layer.getSource().getFeaturesAtCoordinate(coords)) {
