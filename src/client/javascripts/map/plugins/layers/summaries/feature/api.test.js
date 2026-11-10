@@ -14,7 +14,7 @@ test('adds the release\'s data sources to the OS features\' map source', async (
 
   expect(features).toEqual({
     id: 'features',
-    source: expect.objectContaining({ type: 'fgb', url: '/api/land-model/parcels/layer/assets/data.fgb?v=1', styleConfig, dataSources })
+    source: expect.objectContaining({ type: 'fgb', url: '/api/land-model/parcels/layer/assets/data.fgb?v=1', minZoom: 10, styleConfig, dataSources })
   })
   expect(fetch).toHaveBeenCalledWith('/api/land-model/parcels/layer', expect.any(Object))
 })
