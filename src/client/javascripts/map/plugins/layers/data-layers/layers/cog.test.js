@@ -35,6 +35,8 @@ vi.mock('ol/layer/WebGLTile.js', () => ({
     this._opts = opts
     this.setStyle = vi.fn()
     this.setOpacity = vi.fn()
+    this.set = vi.fn()
+    this.updateStyleVariables = vi.fn()
   })
 }))
 
@@ -167,10 +169,25 @@ describe('#createCogOverviewLayer', () => {
     expect(layerOptions.properties).toEqual({ id: 'gep-test-fgb-overview' })
     expect(layerOptions.opacity).toBe(1)
     expect(layerOptions.className).toBe('ol-layer gep-test-fgb-composite')
-    expect(layerOptions.style.color).toEqual(buildCogColourExpression.mock.results.at(-1).value)
+    expect(layerOptions.style.color).toEqual([
+      'case', ['==', ['var', 'detailReady'], 1], ['color', 0, 0, 0, 0], buildCogColourExpression.mock.results.at(-1).value
+    ])
     expect(layerOptions.minZoom).toBeUndefined()
     expect(layerOptions.maxZoom).toBeUndefined()
     expect(layerOptions.preload).toBe(Infinity)
+  })
+
+  test('toggles raster transparency without changing shared canvas opacity and retains it across themes', async () => {
+    const overview = await createCogOverviewLayer({ url: '/overview.tif' }, 'overview', { styleConfig })
+    const [layer] = overview.layers
+    overview.setDetailReady(true)
+    expect(layer.updateStyleVariables).toHaveBeenCalledExactlyOnceWith({ detailReady: 1 })
+    expect(layer.set).toHaveBeenCalledWith('detailReady', true)
+    expect(layer.setOpacity).not.toHaveBeenCalled()
+    overview.applyStyle(styleConfig)
+    expect(layer.setStyle.mock.calls.at(-1)[0].variables).toEqual({ detailReady: 1 })
+    overview.setDetailReady(false)
+    expect(layer.updateStyleVariables).toHaveBeenLastCalledWith({ detailReady: 0 })
   })
 
   test('rejects when the COG source errors while getView remains pending', async () => {

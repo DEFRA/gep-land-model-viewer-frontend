@@ -223,7 +223,7 @@ function cogOverviewHitsAt ({ map, layerStates, highlight, getStyle, optionsFor 
 
     // Loaded vectors give an exact hit. Only fall back to the COG while it is
     // visible and the detail layer has no hit.
-    if (!layer.getVisible() || vectorHitLayerIds.has(layerState.id)) {
+    if (!layer.getVisible() || layer.get('detailReady') || vectorHitLayerIds.has(layerState.id)) {
       return []
     }
 

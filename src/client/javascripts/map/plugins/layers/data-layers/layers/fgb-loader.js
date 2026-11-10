@@ -12,6 +12,7 @@ import { vectorStyleProperties } from '../style-config.js'
  * @property {(extent: import('ol/extent.js').Extent) => boolean} retryFailedExtents
  * @property {(extent: import('ol/extent.js').Extent) => Promise<void>} setViewExtent
  * @property {(styleConfig: object) => void} setStyleConfig
+ * @property {(extent: import('ol/extent.js').Extent) => boolean} isExtentLoaded
  */
 
 // Yield after roughly half a 60 Hz frame so input and rendering get a turn.
@@ -381,5 +382,9 @@ export function createFgbLoadController (source, url, detailLayer, styleConfig) 
     source.refresh()
   }
 
-  return { strategy, loader, retryFailedExtents, setViewExtent, setStyleConfig }
+  function isExtentLoaded (extent) {
+    return boxesIn(extent).every((key) => loadedBoxes.has(key))
+  }
+
+  return { strategy, loader, retryFailedExtents, setViewExtent, setStyleConfig, isExtentLoaded }
 }
