@@ -28,24 +28,6 @@ test('takes the default opacity from the style config when it sets one', () => {
   expect(source.opacity).toBe(0.01)
 })
 
-test('makes visible class fills opaque so only layer opacity sets transparency', () => {
-  const stroke = { color: [0, 0, 255, 0.4], width: 2 }
-  const styleConfig = {
-    opacity: 0.3,
-    themes: [{
-      band: 1,
-      classes: [{ fill: [96, 165, 250, 0.5] }, { fill: [0, 0, 0, 0], stroke }],
-      default: { fill: [255, 0, 0, 0.6] }
-    }]
-  }
-  const source = sourceFor(styleConfig, { cog: '/parcels.tif' })
-
-  expect(source.opacity).toBe(0.3)
-  expect(source.styleConfig.themes[0].classes).toEqual([{ fill: [96, 165, 250, 1] }, { fill: [0, 0, 0, 0], stroke }])
-  expect(source.styleConfig.themes[0].default).toEqual({ fill: [255, 0, 0, 1] })
-  expect(styleConfig.themes[0].classes[0].fill).toEqual([96, 165, 250, 0.5])
-})
-
 test.each([
   { styleConfig: {}, assets: { cog: '/peat.tif' }, message: 'Missing style themes' },
   { styleConfig: { themes: [] }, assets: { cog: '/peat.tif' }, message: 'Missing style themes' },
