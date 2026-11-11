@@ -3,8 +3,14 @@ import WebGLTileLayer from 'ol/layer/WebGLTile.js'
 import { EPSG_27700 } from '../../constants.js'
 import { buildCogColourExpression } from '../style-config.js'
 
-function cogStyleFor (styleConfig) {
-  return { color: buildCogColourExpression(styleConfig) }
+function cogStyleFor (styleConfig, detailReady) {
+  const color = buildCogColourExpression(styleConfig)
+  return detailReady === undefined
+    ? { color }
+    : {
+        variables: { detailReady: Number(detailReady) },
+        color: ['case', ['==', ['var', 'detailReady'], 1], ['color', 0, 0, 0, 0], color]
+      }
 }
 
 // GeoTIFF leaves getView() pending after a metadata error, so source state
@@ -40,13 +46,23 @@ function waitForMetadata (source) {
   })
 }
 
-async function createCogMapLayers (options, styleConfig) {
+async function createCogMapLayers (options, styleConfig, detailReady) {
   await waitForMetadata(options.source)
-  const layer = new WebGLTileLayer({ ...options, style: cogStyleFor(styleConfig) })
+  const layer = new WebGLTileLayer({ ...options, style: cogStyleFor(styleConfig, detailReady) })
 
   return {
     layers: [layer],
-    applyStyle: next => layer.setStyle(cogStyleFor(next)),
+    applyStyle: next => layer.setStyle(cogStyleFor(next, detailReady)),
+    setDetailReady (next) {
+      if (next === detailReady) {
+        return
+      }
+
+      detailReady = next
+      layer.set('detailReady', next)
+      // Layer opacity affects the shared canvas, so hide just the raster pixels.
+      layer.updateStyleVariables({ detailReady: Number(next) })
+    },
     setOpacity: next => layer.setOpacity(next)
   }
 }
@@ -70,7 +86,7 @@ export async function createCogLayer (layerConfig, layerId, { styleConfig, opaci
 }
 
 /**
- * Creates the permanent COG underlay for a FlatGeobuf detail layer.
+ * Creates the COG underlay used until FlatGeobuf detail is ready.
  *
  * @param {object} overview Overview definition with a cog url
  * @param {string} layerId Map layer id
@@ -98,5 +114,5 @@ export async function createCogOverviewLayer (overview, layerId, { styleConfig, 
     className,
     // Load every ancestor tile so OL can stretch one over gaps during movement.
     preload: Infinity
-  }, styleConfig)
+  }, styleConfig, false)
 }

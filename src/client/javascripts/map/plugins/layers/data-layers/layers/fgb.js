@@ -89,6 +89,27 @@ function registerSharedCanvasOpacity (layers, initialOpacity) {
   }
 }
 
+function registerOverviewTransparency (map, detail, loadController, overview) {
+  function hasDetail (frameState) {
+    return frameState && detail.getVisible() &&
+      map.getView().getZoom() > detail.getMinZoom() &&
+      loadController.isExtentLoaded(frameState.extent)
+  }
+
+  // Restore the overview before drawing newly exposed, unloaded areas.
+  map.on('precompose', ({ frameState }) => {
+    if (!hasDetail(frameState)) {
+      overview.setDetailReady(false)
+    }
+  })
+  map.on('postrender', ({ frameState }) => {
+    // Coverage alone is insufficient: WebGL builds its buffers asynchronously.
+    const ready = !!hasDetail(frameState) &&
+      !frameState.viewHints.some(Boolean) && detail.getRenderer()?.ready === true
+    overview.setDetailReady(ready)
+  })
+}
+
 /**
  * Creates a FlatGeobuf detail layer and its optional COG overview.
  *
@@ -137,6 +158,9 @@ export async function createFlatGeobufLayer (layerConfig, layerId, map, { styleC
   source.setLoader(loadController.loader)
   registerLoadRecovery(map, detail, loadController)
   trackViewExtent(map, loadController)
+  if (overviewLayer) {
+    registerOverviewTransparency(map, detail, loadController, overviewLayer)
+  }
 
   return {
     layers,

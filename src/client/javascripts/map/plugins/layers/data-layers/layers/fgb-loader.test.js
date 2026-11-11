@@ -100,6 +100,25 @@ describe('#createFgbLoadController', () => {
     })
   })
 
+  test('tracks complete viewport coverage including empty boxes, failures and style reloads', async () => {
+    const detail = detailHarness()
+    const controller = createFgbLoadController(sourceHarness(), URL, detail.layer, STYLE_CONFIG)
+    const extent = [100, 100, 1900, 900]
+    expect(controller.isExtentLoaded(extent)).toBe(false)
+    deserialize.mockReturnValueOnce(streamOf([]))
+    await controller.loader([0, 0, 1000, 1000], 10, projection)
+    expect(controller.isExtentLoaded(EXTENT)).toBe(true)
+    expect(controller.isExtentLoaded(extent)).toBe(false)
+    deserialize.mockReturnValueOnce(failingStream())
+    await expect(controller.loader([1000, 0, 2000, 1000], 10, projection)).rejects.toThrow()
+    expect(controller.isExtentLoaded(extent)).toBe(false)
+    deserialize.mockReturnValueOnce(streamOf([]))
+    await controller.loader([1000, 0, 2000, 1000], 10, projection)
+    expect(controller.isExtentLoaded(extent)).toBe(true)
+    controller.setStyleConfig(STYLE_CONFIG)
+    expect(controller.isExtentLoaded(extent)).toBe(false)
+  })
+
   test('uses scheduler.yield when decoding spends its time slice', async () => {
     deserialize.mockReturnValueOnce(streamOf([new Feature({ id: 1 }), new Feature({ id: 2 })]))
     const schedulerYield = vi.fn(() => Promise.resolve())

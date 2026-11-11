@@ -438,6 +438,15 @@ describe('#createLayerHits', () => {
     await expect(hits[0].loadDetails({ signal: SIGNAL })).resolves.toEqual([{ Classification: 'Open water' }])
   })
 
+  test('a transparent COG overview cannot supply hits through gaps in loaded detail', async () => {
+    const overview = stubCogOverviewLayer()
+    const get = overview.get
+    overview.get = (key) => key === 'detailReady' ? true : get(key)
+    const hits = await getHits(createOlMap({ layers: [overview, stubDetailLayer()], zoom: 8 }))
+    expect(hits).toHaveLength(0)
+    expect(overview.getData).not.toHaveBeenCalled()
+  })
+
   test('an exact detail hit takes precedence over the visible COG overview', async () => {
     const overview = stubCogOverviewLayer()
     const detail = stubDetailLayer()

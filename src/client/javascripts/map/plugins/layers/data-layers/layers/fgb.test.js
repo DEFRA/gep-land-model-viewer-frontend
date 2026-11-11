@@ -50,7 +50,8 @@ vi.mock('./fgb-loader.js', () => ({
     retryFailedExtents: vi.fn(() => false),
     strategy: vi.fn(() => []),
     setViewExtent: vi.fn(() => Promise.resolve()),
-    setStyleConfig: vi.fn()
+    setStyleConfig: vi.fn(),
+    isExtentLoaded: vi.fn(() => false)
   }))
 }))
 
@@ -58,7 +59,7 @@ vi.mock('./cog.js', () => ({
   createCogOverviewLayer: vi.fn(async (overview, layerId, { className, styleConfig }) => {
     const layer = {}
     stubLayer.call(layer, { properties: { id: layerId }, className, styleConfig, opacity: 1 })
-    return { layers: [layer], applyStyle: vi.fn(), setOpacity: vi.fn() }
+    return { layers: [layer], applyStyle: vi.fn(), setOpacity: vi.fn(), setDetailReady: vi.fn() }
   })
 }))
 
@@ -109,7 +110,7 @@ function mapHarness ({ zoom = 8 } = {}) {
     }),
     emit: (type) => {
       for (const listener of handlers.get(type) ?? []) {
-        listener({ type, frameState: { extent: frameExtent } })
+        listener({ type, frameState: { extent: frameExtent, viewHints: [0, 0] } })
       }
     }
   }
@@ -321,6 +322,34 @@ describe('#createFlatGeobufLayer', () => {
 
     expect(createFgbLoadController).not.toHaveBeenCalled()
     expect(map.on).not.toHaveBeenCalled()
+  })
+
+  test('makes the overview transparent only after viewport detail has loaded and rendered', async () => {
+    const { map, view } = mapHarness()
+    const { layers: [, detail] } = await createLayerForTest(fgbDataset({
+      minZoom: 7, overview: { type: 'cog', url: '/overview' }
+    }), 'gep-test-fgb', map)
+    const overview = await createCogOverviewLayer.mock.results.at(-1).value
+    const controller = latestLoadController()
+    const renderer = { ready: false }
+    detail.getRenderer = () => renderer
+
+    map.emit('postrender')
+    expect(overview.setDetailReady).toHaveBeenLastCalledWith(false)
+    controller.isExtentLoaded.mockReturnValue(true)
+    map.emit('postrender')
+    expect(overview.setDetailReady).toHaveBeenLastCalledWith(false)
+    renderer.ready = true
+    map.emit('postrender')
+    expect(overview.setDetailReady).toHaveBeenLastCalledWith(true)
+
+    controller.isExtentLoaded.mockReturnValue(false)
+    map.emit('precompose')
+    expect(overview.setDetailReady).toHaveBeenLastCalledWith(false)
+    controller.isExtentLoaded.mockReturnValue(true)
+    view.getZoom.mockReturnValue(5)
+    map.emit('postrender')
+    expect(overview.setDetailReady).toHaveBeenLastCalledWith(false)
   })
 
   test('a cog overview remains under detail with opacity on their shared canvas', async () => {
