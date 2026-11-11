@@ -1,4 +1,5 @@
-import { hasOutlineOnlyClass } from './style-config.js'
+import { RGBA_ALPHA_INDEX } from '../../../config/colours.js'
+import { hasOutlineOnlyClass, hasVisibleFill } from './style-config.js'
 
 const FGB_MIN_ZOOM = 7
 export const DEFAULT_OPACITY = 0.5
@@ -17,6 +18,28 @@ export const DEFAULT_OPACITY = 0.5
  * @property {string} [attribution] Credit displayed while the layer is visible
  */
 
+function withOpaqueFill (definition) {
+  if (!hasVisibleFill(definition)) {
+    return definition
+  }
+
+  return { ...definition, fill: [...definition.fill.slice(0, RGBA_ALPHA_INDEX), 1] }
+}
+
+// A COG overview and its FGB detail share one canvas, so semi-transparent fills
+// stack when drawn together. Users can only change the entire layer opacity
+// so fills are made opaque to avoid the visible colour changes.
+function withOpaqueFills (styleConfig) {
+  return {
+    ...styleConfig,
+    themes: styleConfig.themes.map(theme => ({
+      ...theme,
+      classes: theme.classes?.map(withOpaqueFill),
+      default: withOpaqueFill(theme.default)
+    }))
+  }
+}
+
 /**
  * Builds a source from the layer's style config and available data assets.
  * @param {{ themes: object[], opacity?: number }} styleConfig Original themed style config, with an optional default opacity
@@ -28,7 +51,7 @@ export function sourceFor (styleConfig, assets) {
     throw new Error('Missing style themes')
   }
 
-  const source = { opacity: styleConfig.opacity ?? DEFAULT_OPACITY, styleConfig }
+  const source = { opacity: styleConfig.opacity ?? DEFAULT_OPACITY, styleConfig: withOpaqueFills(styleConfig) }
 
   if (assets.fgb) {
     // A COG only draws fills, so datasets with outline-only classes have no overview.
