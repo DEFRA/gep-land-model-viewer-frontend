@@ -2,7 +2,7 @@ import { EVENTS } from '@defra/interactive-map'
 import { buffer, containsExtent } from 'ol/extent.js'
 import Feature from 'ol/Feature.js'
 import LineString from 'ol/geom/LineString.js'
-import Polygon from 'ol/geom/Polygon.js'
+import { fromExtent } from 'ol/geom/Polygon.js'
 import VectorSource from 'ol/source/Vector.js'
 import WebGLVectorLayer from 'ol/layer/WebGLVector.js'
 import { snapDown, snapUp } from './cell-at-point.js'
@@ -52,9 +52,10 @@ export function createGridLayer (eventBus, map) {
   scheduleRefresh()
 
   return {
-    highlightCell (easting, northing, cellSize) {
+    /** @param {import('ol/extent.js').Extent[]} extents The selected cells' bounds */
+    highlightCells (extents) {
       selectedSource.clear()
-      selectedSource.addFeature(buildHighlightFeature(easting, northing, cellSize))
+      selectedSource.addFeatures(extents.map(extent => new Feature({ geometry: fromExtent(extent) })))
     },
 
     clearHighlight () {
@@ -172,16 +173,4 @@ function buildGridFeatures (map, cellSize) {
     features.push(new Feature({ geometry: new LineString([[startE, n], [endE, n]]) }))
   }
   return { features, extent: [startE, startN, endE, endN] }
-}
-
-function buildHighlightFeature (easting, northing, cellSize) {
-  return new Feature({
-    geometry: new Polygon([[
-      [easting, northing],
-      [easting + cellSize, northing],
-      [easting + cellSize, northing + cellSize],
-      [easting, northing + cellSize],
-      [easting, northing]
-    ]])
-  })
 }

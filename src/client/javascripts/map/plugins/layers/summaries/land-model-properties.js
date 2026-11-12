@@ -73,7 +73,27 @@ function largestIntersection (intersections) {
  * @returns {import('./model.js').ClassIntersection}
  */
 function toClassIntersection (intersection) {
-  return { label: intersection.mapped_value, percentage: intersection.intersection_pct }
+  return { label: intersection.mapped_value, percentage: intersection.intersection_pct, area: intersection.intersection_area }
+}
+
+/**
+ * Ownership has one intersection per title rather than per tenure, so titles with the same tenure are added up into one share.
+ *
+ * @param {OwnershipIntersection[]} intersections
+ * @returns {import('./model.js').ClassIntersection[]}
+ */
+function toTenureIntersections (intersections) {
+  const tenures = new Map()
+  for (const { mapped_value: label, intersection_area: area, intersection_pct: percentage } of intersections) {
+    if (!label) {
+      continue
+    }
+
+    const tenure = tenures.get(label) ?? { label, area: 0, percentage: 0 }
+    tenures.set(label, { label, area: tenure.area + area, percentage: tenure.percentage + percentage })
+  }
+
+  return [...tenures.values()].map(tenure => ({ ...tenure, percentage: Math.round(tenure.percentage * 10) / 10 }))
 }
 
 /**
@@ -119,8 +139,10 @@ function toOwnership (properties, description) {
   return {
     titles: intersections.map(intersection => ({
       inspireId: String(intersection.id),
+      area: intersection.intersection_area,
       ...(intersection.mapped_value ? { titleDescriptor: intersection.mapped_value } : {})
     })),
+    tenureIntersections: toTenureIntersections(intersections),
     ...sourceOf(description)
   }
 }

@@ -9,8 +9,34 @@ function getProtectedAreaCount (protectedAreas) {
   return protectedAreas?.sites?.length ?? protectedAreas?.count
 }
 
-/** @param {{ protectedAreas: import('../model.js').ProtectedAreas | null }} props */
+/**
+ * @param {import('../model.js').ProtectedAreas | import('../model.js').ProtectedAreasPresence | null} protectedAreas
+ * @returns {protectedAreas is import('../model.js').ProtectedAreasPresence}
+ */
+function isPresence (protectedAreas) {
+  return protectedAreas != null && 'contains' in protectedAreas
+}
+
+/** @param {import('../model.js').ProtectedAreas | import('../model.js').ProtectedAreasPresence | null} protectedAreas */
+function getProtectedAreasPreview (protectedAreas) {
+  if (isPresence(protectedAreas)) {
+    return protectedAreas.contains ? 'Present' : 'None'
+  }
+
+  return formatCount(getProtectedAreaCount(protectedAreas), 'designation', 'designations')
+}
+
+/** @param {{ protectedAreas: import('../model.js').ProtectedAreas | import('../model.js').ProtectedAreasPresence | null }} props */
 function ProtectedAreasDetail ({ protectedAreas }) {
+  if (isPresence(protectedAreas)) {
+    return (
+      <>
+        <p className='app-map__summary-message'>{protectedAreas.contains ? 'Contains protected areas.' : 'Not in a protected area.'}</p>
+        <Provenance source={protectedAreas.source} separator />
+      </>
+    )
+  }
+
   const count = getProtectedAreaCount(protectedAreas)
   if (count == null) {
     return <p className='app-map__summary-message'>Not available</p>
@@ -47,10 +73,10 @@ function ProtectedAreasDetail ({ protectedAreas }) {
   )
 }
 
-/** @param {{ protectedAreas: import('../model.js').ProtectedAreas | null }} props */
+/** @param {{ protectedAreas: import('../model.js').ProtectedAreas | import('../model.js').ProtectedAreasPresence | null }} props */
 export function ProtectedAreasSection ({ protectedAreas }) {
   return (
-    <Section sectionKey='protectedAreas' title='Protected areas' preview={formatCount(getProtectedAreaCount(protectedAreas), 'designation', 'designations')}>
+    <Section sectionKey='protectedAreas' title='Protected areas' preview={getProtectedAreasPreview(protectedAreas)}>
       <ProtectedAreasDetail protectedAreas={protectedAreas} />
     </Section>
   )

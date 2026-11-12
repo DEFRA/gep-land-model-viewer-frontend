@@ -40,6 +40,7 @@ const INSPECTION_STATUS = /** @type {const} */ ({
  * @property {InspectionStatus} status
  * @property {import('./inspection/index.js').Hit[]} hits
  * @property {import('./inspection/index.js').Hit | null} hit
+ * @property {{ title: string, details?: unknown } | null} selection Selected land summary units, e.g. grid squares
  */
 
 /**
@@ -65,7 +66,8 @@ const INSPECTION_STATUS = /** @type {const} */ ({
 const initialInspectionState = {
   status: INSPECTION_STATUS.IDLE,
   hits: [],
-  hit: null
+  hit: null,
+  selection: null
 }
 
 /** @type {LayersState} */
@@ -428,6 +430,24 @@ const detailsFailed = state => ({
   }
 })
 
+const showSelection = (state, { title }) => ({
+  ...state,
+  inspection: {
+    ...initialInspectionState,
+    status: INSPECTION_STATUS.DETAIL_LOADING,
+    selection: { title }
+  }
+})
+
+const selectionDetailsLoaded = (state, { details }) => ({
+  ...state,
+  inspection: {
+    ...state.inspection,
+    status: INSPECTION_STATUS.DETAIL_READY,
+    selection: { ...state.inspection.selection, details }
+  }
+})
+
 const setHits = (state, { hits }) => ({
   ...state,
   inspection: {
@@ -477,6 +497,8 @@ const actions = {
   SELECT_HIT: selectHit,
   DETAILS_LOADED: detailsLoaded,
   DETAILS_FAILED: detailsFailed,
+  SHOW_SELECTION: showSelection,
+  SELECTION_DETAILS_LOADED: selectionDetailsLoaded,
   SET_HITS: setHits,
   RESET_INSPECTION: resetInspection
 }

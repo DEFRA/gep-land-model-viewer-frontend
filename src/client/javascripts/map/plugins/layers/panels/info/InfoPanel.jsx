@@ -25,6 +25,16 @@ function HitList ({ hits, onSelectHit }) {
   )
 }
 
+function Detail ({ status, render }) {
+  return (
+    <>
+      {status === INSPECTION_STATUS.DETAIL_LOADING && <Message>Loading details...</Message>}
+      {status === INSPECTION_STATUS.DETAIL_ERROR && <Message>Could not load details. Try selecting again.</Message>}
+      {status === INSPECTION_STATUS.DETAIL_READY && render()}
+    </>
+  )
+}
+
 function HitDetail ({ hit, status, backCount, onBack, renderHit }) {
   return (
     <>
@@ -34,16 +44,18 @@ function HitDetail ({ hit, status, backCount, onBack, renderHit }) {
           Back to {backCount} selected
         </LinkButton>
       )}
-      {status === INSPECTION_STATUS.DETAIL_LOADING && <Message>Loading details...</Message>}
-      {status === INSPECTION_STATUS.DETAIL_ERROR && <Message>Could not load details. Try selecting again.</Message>}
-      {status === INSPECTION_STATUS.DETAIL_READY && renderHit(hit)}
+      <Detail status={status} render={() => renderHit(hit)} />
     </>
   )
 }
 
-function PanelBody ({ status, hits, hit, onSelectHit, onBack, renderHit }) {
+function PanelBody ({ status, hits, hit, selection, onSelectHit, onBack, renderHit, renderSelection }) {
   if (status === INSPECTION_STATUS.EMPTY) {
     return <Message>No information found at this location.</Message>
+  }
+
+  if (selection) {
+    return <Detail status={status} render={() => renderSelection(selection.details)} />
   }
 
   if (hit) {
@@ -71,15 +83,17 @@ export function InfoPanel ({ pluginState, pluginConfig }) {
   const isLoading = inspection.status === INSPECTION_STATUS.SEARCHING || inspection.status === INSPECTION_STATUS.DETAIL_LOADING
 
   return (
-    <InfoPanelContext.Provider value={{ sections, findGeoDataUrl: pluginConfig.findGeoDataUrl }}>
+    <InfoPanelContext.Provider value={{ sections, findGeoDataUrl: pluginConfig.findGeoDataUrl, clearSelection: () => inspectionRef.current?.clearSelection() }}>
       <div className='app-map__info-panel' aria-busy={isLoading ? 'true' : undefined}>
         <PanelBody
           status={inspection.status}
           hits={inspection.hits}
           hit={inspection.hit}
+          selection={inspection.selection}
           onSelectHit={hit => inspectionRef.current?.selectHit(hit)}
           onBack={() => inspectionRef.current?.showHitList()}
           renderHit={hit => inspectionRef.current?.renderHit(hit)}
+          renderSelection={details => inspectionRef.current?.renderSelection(details)}
         />
       </div>
     </InfoPanelContext.Provider>

@@ -1,15 +1,16 @@
 import { toDate } from '../../../date.js'
 
 /**
- * @typedef {object} LandModelRecord
- * @property {GridUnit | FeatureUnit} unit
+ * @typedef {object} LandModelThemes
  * @property {TaxonomyTheme | null} landCover
  * @property {TaxonomyTheme | null} landUse
  * @property {Ownership | null} ownership
  * @property {LandManagement | null} landManagement
- * @property {ProtectedAreas | null} protectedAreas
+ * @property {ProtectedAreas | ProtectedAreasPresence | null} protectedAreas
  * @property {TaxonomyTheme | null} soils
  */
+
+/** @typedef {LandModelThemes & { unit: GridUnit | FeatureUnit }} LandModelRecord */
 
 /**
  * @typedef {object} GridUnit
@@ -31,7 +32,7 @@ import { toDate } from '../../../date.js'
  * @property {ClassIntersection[]} [intersections]
  * @property {Source} [source]
  * @typedef {{ label: string }} TaxonomyClass
- * @typedef {{ label: string, percentage: number }} ClassIntersection
+ * @typedef {{ label: string, percentage: number, area?: number }} ClassIntersection
  */
 
 /**
@@ -43,7 +44,7 @@ import { toDate } from '../../../date.js'
  * @property {TitleRecord[]} titles
  * @property {ClassIntersection[]} [tenureIntersections]
  * @property {Source} [source]
- * @typedef {{ inspireId: string, titleDescriptor?: string, source?: Source }} TitleRecord
+ * @typedef {{ inspireId: string, titleDescriptor?: string, area?: number, source?: Source }} TitleRecord
  */
 
 /**
@@ -60,6 +61,12 @@ import { toDate } from '../../../date.js'
  * @property {Source} [source]
  * @typedef {{ code: string, name: string, designation: { code?: string, label: string },
  *   intersection: Intersection, source?: Source }} ProtectedSite
+ */
+
+/**
+ * Combined grid squares, whose counts of protected area types cannot be added up
+ *
+ * @typedef {{ contains: boolean, source?: Source }} ProtectedAreasPresence
  */
 
 /**

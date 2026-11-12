@@ -55,5 +55,7 @@ describe('layers plugin', () => {
       .toBe('OS feature')
     expect(label({ pluginState: { inspection: { status: 'detail-ready', hits: [], hit: { label: 'Woodland', panelTitle: 'Data layer attributes' } } } }))
       .toBe('Data layer attributes')
+    expect(label({ pluginState: { inspection: { status: 'detail-loading', hits: [], hit: null, selection: { title: 'Grid squares' } } } }))
+      .toBe('Grid squares')
   })
 })
