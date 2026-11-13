@@ -119,13 +119,38 @@ function combineLandManagement (landManagements) {
 }
 
 /**
- * @param {Array<import('./model.js').ProtectedAreas | null>} protectedAreas
- * @returns {import('./model.js').ProtectedAreasPresence | null}
+ * Lists each protected site once by code, with its summed overlap against the total area.
+ *
+ * @param {import('./model.js').ProtectedAreas[]} protectedAreas
+ * @param {number} totalArea
+ * @returns {import('./model.js').ProtectedAreas}
  */
-function combineProtectedAreas (protectedAreas) {
+function combineSites (protectedAreas, totalArea) {
+  const byCode = new Map()
+  for (const site of protectedAreas.flatMap(({ sites }) => sites)) {
+    const area = (byCode.get(site.code)?.area ?? 0) + site.intersection.area
+    byCode.set(site.code, { site, area })
+  }
+
+  return {
+    sites: [...byCode.values()].map(({ site, area }) => ({ ...site, intersection: { area, percentage: percentageOf(area, totalArea) } })),
+    ...sourceOf(protectedAreas)
+  }
+}
+
+/**
+ * @param {Array<import('./model.js').ProtectedAreas | null>} protectedAreas
+ * @param {number} totalArea
+ * @returns {import('./model.js').ProtectedAreas | import('./model.js').ProtectedAreasPresence | null}
+ */
+function combineProtectedAreas (protectedAreas, totalArea) {
+  const available = protectedAreas.filter(Boolean)
+  if (available.some(({ sites }) => sites)) {
+    return combineSites(available, totalArea)
+  }
+
   // TODO: grid squares only have a count of protected area types, which cannot be added up.
   // Showing if any cell contains a protected area until design is decided.
-  const available = protectedAreas.filter(Boolean)
   if (available.some(({ count }) => count > 0)) {
     return { contains: true, ...sourceOf(available) }
   }
@@ -157,7 +182,7 @@ export function combineRecords (units) {
     landUse: combineTheme(themesWithArea('landUse'), totalArea),
     ownership: combineOwnership(themesWithArea('ownership'), totalArea),
     landManagement: combineLandManagement(themes('landManagement')),
-    protectedAreas: combineProtectedAreas(themes('protectedAreas')),
+    protectedAreas: combineProtectedAreas(themes('protectedAreas'), totalArea),
     soils: combineTheme(themesWithArea('soils'), totalArea)
   }
 }

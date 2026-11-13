@@ -125,6 +125,31 @@ describe('#combineRecords', () => {
     expect(combineRecords(units(10000, [record({ protectedAreas: { count: 0 } }), record()])).protectedAreas).toBeNull()
   })
 
+  test('lists OS features\' protected sites once, sharing their summed overlap against the total area', () => {
+    const site = (code, area) => ({ code, name: `Site ${code}`, designation: { label: 'SSSI' }, intersection: { area, percentage: 0 } })
+    const source = { name: 'Natural England' }
+
+    const combined = combineRecords([
+      { record: record({ protectedAreas: { sites: [site('1', 400), site('2', 100)], source } }), area: 1000 },
+      { record: record({ protectedAreas: { sites: [site('1', 200)], source } }), area: 1000 },
+      { record: record(), area: 2000 }
+    ])
+
+    expect(combined.protectedAreas).toEqual({
+      sites: [
+        { ...site('1'), intersection: { area: 600, percentage: 15 } },
+        { ...site('2'), intersection: { area: 100, percentage: 2.5 } }
+      ],
+      source
+    })
+  })
+
+  test('keeps OS features\' empty site lists, as not in a protected area', () => {
+    const combined = combineRecords(units(1000, [record({ protectedAreas: { sites: [] } }), record({ protectedAreas: { sites: [] } })]))
+
+    expect(combined.protectedAreas).toEqual({ sites: [] })
+  })
+
   test('keeps the release\'s source', () => {
     const source = { name: 'Cranfield', updated: new Date('2024-01-01') }
 

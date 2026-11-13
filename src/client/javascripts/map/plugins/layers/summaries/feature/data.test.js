@@ -78,7 +78,7 @@ describe('#toFeatureRecord', () => {
         code: '1003409',
         name: 'Dalby Bush Fen SSSI',
         designation: { label: 'SSSI' },
-        intersection: { percentage: 75.1 }
+        intersection: { percentage: 75.1, area: 767.9 }
       }],
       source: { name: 'Natural England SSSI, SAC, SPA, Ramsar, NNR', updated: UPDATED }
     })
