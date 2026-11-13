@@ -191,7 +191,7 @@ function toProtectedAreas (properties, description) {
       code: intersection.code,
       name: intersection.name,
       designation: { label: intersection.type },
-      intersection: { percentage: intersection.intersection_pct }
+      intersection: { percentage: intersection.intersection_pct, area: intersection.intersection_area }
     })),
     ...sourceOf(description)
   }
