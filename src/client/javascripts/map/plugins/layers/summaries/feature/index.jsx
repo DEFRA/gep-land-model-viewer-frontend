@@ -8,5 +8,5 @@ export const featureHitOptions = {
     /** @type {import('./data.js').ParcelProperties} */ (properties),
     /** @type {import('./api.js').FeatureSource} */ (layer.source).dataSources
   ),
-  render: details => <LandSummaryView record={details} />
+  render: details => <LandSummaryView record={details} unit={details.unit} />
 }

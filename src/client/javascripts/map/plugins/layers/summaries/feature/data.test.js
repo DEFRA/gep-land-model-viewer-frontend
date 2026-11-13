@@ -54,7 +54,7 @@ describe('#toFeatureRecord', () => {
     expect(record.unit).toEqual({ kind: 'feature', osid: '18a31fc7-a2a3-441c-8bc5-403a016a2ebf', toid: 't1' })
     expect(record.landUse).toEqual({
       dominant: { label: 'Transport tracks and ways' },
-      intersections: [{ label: 'Transport tracks and ways', percentage: 100 }],
+      intersections: [{ label: 'Transport tracks and ways', percentage: 100, area: 1022.4680500023286 }],
       source: { name: 'OS NGD', updated: UPDATED }
     })
   })
@@ -63,8 +63,8 @@ describe('#toFeatureRecord', () => {
     const record = toFeatureRecord(parcelProperties({ land_cover_dominant_value: 'Improved grass' }), SOURCES)
 
     expect(record.landCover.intersections).toEqual([
-      { label: 'Broad leaved & mixed woodland', percentage: 75.6 },
-      { label: 'Improved grass', percentage: 24.4 }
+      { label: 'Broad leaved & mixed woodland', percentage: 75.6, area: 773.1 },
+      { label: 'Improved grass', percentage: 24.4, area: 249.4 }
     ])
     expect(record.landCover.dominant).toEqual({ label: 'Improved grass' })
     expect(record.soils.source).toEqual({ name: 'National Soil Map', updated: UPDATED })
@@ -88,13 +88,30 @@ describe('#toFeatureRecord', () => {
     const record = toFeatureRecord(parcelProperties(), SOURCES)
 
     expect(record.ownership).toEqual({
-      titles: [{ inspireId: '47540258', titleDescriptor: 'Freehold' }],
+      titles: [{ inspireId: '47540258', area: 1022.5, titleDescriptor: 'Freehold' }],
+      tenureIntersections: [{ label: 'Freehold', area: 1022.5, percentage: 100 }],
       source: { name: 'HM Land Registry', updated: UPDATED }
     })
     expect(record.landManagement).toEqual({
       records: [{ pseudoSbi: '107132256' }, { pseudoSbi: '107132257' }],
       source: { name: 'RPA', updated: UPDATED }
     })
+  })
+
+  test('adds up the share of titles with the same tenure', () => {
+    const record = toFeatureRecord(parcelProperties({
+      ownership_intersections_json: JSON.stringify([
+        { id: 1, mapped_value: 'Freehold', intersection_area: 400, intersection_pct: 40.1 },
+        { id: 2, mapped_value: 'Freehold', intersection_area: 250, intersection_pct: 25.2 },
+        { id: 3, mapped_value: 'Leasehold', intersection_area: 200, intersection_pct: 20 },
+        { id: 4, intersection_area: 100, intersection_pct: 10 }
+      ])
+    }), SOURCES)
+
+    expect(record.ownership.tenureIntersections).toEqual([
+      { label: 'Freehold', area: 650, percentage: 65.3 },
+      { label: 'Leasehold', area: 200, percentage: 20 }
+    ])
   })
 
   test('drops land management records without an SBI', () => {
