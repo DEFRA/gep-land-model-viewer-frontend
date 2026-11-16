@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createGridSummary } from './summaries/grid/index.jsx'
-import { featureHitOptions } from './summaries/feature/index.jsx'
+import { createFeatureSummary } from './summaries/feature/index.jsx'
 import { createLayerHits } from './data-layers/hits.jsx'
 import { createInspection } from './inspection/index.js'
 import { getAttribution } from './data-layers/attribution.js'
@@ -45,14 +45,13 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
 
     const { map } = mapProvider
     const grid = createGridSummary(services.eventBus, map, () => layersRef.current)
-    // The grid identifies its own cells.
-    const layerHits = createLayerHits(map, () => layersRef.current.filter(layer => layer.id !== GRID_SUMMARY.id), {
-      [FEATURE_SUMMARY.id]: featureHitOptions
-    })
+    const features = createFeatureSummary(map, () => layersRef.current)
+    // The grid and OS features identify their own units.
+    const layerHits = createLayerHits(map, () => layersRef.current.filter(layer => layer.id !== GRID_SUMMARY.id && layer.id !== FEATURE_SUMMARY.id))
     const inspection = createInspection({
       map,
       eventBus: services.eventBus,
-      sources: [layerHits, grid],
+      sources: [layerHits, grid, features],
       getInspectionState: () => inspectionStateRef.current,
       dispatch: pluginState.dispatch,
       appDispatch: appState.dispatch,
@@ -81,6 +80,7 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
       inspection.dispose()
       layerHits.dispose()
       grid.dispose()
+      features.dispose()
       layerControllerRef.current = null
       inspectionRef.current = null
     }

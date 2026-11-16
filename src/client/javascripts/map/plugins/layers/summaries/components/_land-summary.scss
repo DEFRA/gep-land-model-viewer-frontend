@@ -54,6 +54,14 @@
   }
 }
 
+.app-map__summary-selection-count {
+  margin: 0 0 govuk-spacing(1);
+}
+
+.app-map__summary-selection-note {
+  margin: govuk-spacing(2) 0 0;
+}
+
 .app-map__summary-size {
   margin: 0 0 govuk-spacing(2);
   font-weight: $govuk-font-weight-bold;
@@ -234,6 +242,10 @@
 
 .app-map__summary-message {
   margin: 0;
+}
+
+.app-map__summary-message + .app-map__summary-list--separated {
+  margin-top: govuk-spacing(2);
 }
 
 .app-map__summary-empty-message {

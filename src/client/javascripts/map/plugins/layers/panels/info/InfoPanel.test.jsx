@@ -10,7 +10,8 @@ const FIND_GEO_DATA_URL = 'https://find-geo-data.example.test/'
 const INITIAL_INSPECTION = {
   status: 'idle',
   hits: [],
-  hit: null
+  hit: null,
+  selection: null
 }
 
 function hit (label, id = 0) {
@@ -25,10 +26,11 @@ let view
 let selectHit
 let showHitList
 let renderHit
+let renderSelection
 
 function renderPanel (inspection = INITIAL_INSPECTION, { sections = new Map() } = {}) {
   const refs = {
-    inspection: { current: { selectHit, showHitList, renderHit } },
+    inspection: { current: { selectHit, showHitList, renderHit, renderSelection } },
     inspectionSections: { current: sections }
   }
   const pluginState = {
@@ -44,6 +46,7 @@ beforeEach(() => {
   selectHit = vi.fn()
   showHitList = vi.fn()
   renderHit = vi.fn(selectedHit => <p>{selectedHit.details.label} body</p>)
+  renderSelection = vi.fn(details => <p>{details.count} squares body</p>)
 })
 
 describe('InfoPanel', () => {
@@ -75,6 +78,17 @@ describe('InfoPanel', () => {
 
     click(buttons[1])
     expect(selectHit).toHaveBeenCalledWith(hits[1])
+  })
+
+  test('renders a selection once its details load, without a Back link', () => {
+    renderPanel({ ...INITIAL_INSPECTION, status: 'detail-loading', selection: { title: 'Grid squares' } })
+    expect(view.container.textContent).toBe('Loading details...')
+    view.unmount()
+
+    renderPanel({ ...INITIAL_INSPECTION, status: 'detail-ready', selection: { title: 'Grid squares', details: { count: 2 } } })
+
+    expect(view.container.textContent).toBe('2 squares body')
+    expect(view.container.querySelector('.app-map__info-back')).toBeNull()
   })
 
   test('renders a lone selected hit without a Back link', () => {

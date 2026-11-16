@@ -147,11 +147,11 @@ describe('#getGridDetails', () => {
     expect(record.unit).toBe(COARSE_UNIT)
     expect(record.landCover).toEqual({
       dominant: { label: 'Broad leaved & mixed woodland' },
-      intersections: [{ label: 'Improved grass', percentage: 42.4 }, { label: 'Broad leaved & mixed woodland', percentage: 57.6 }],
+      intersections: [{ label: 'Improved grass', percentage: 42.4, area: 4238.4 }, { label: 'Broad leaved & mixed woodland', percentage: 57.6, area: 5761.6 }],
       source: { name: 'UKCEH Land Cover Map', updated: UPDATED }
     })
     expect(record.landUse.dominant).toEqual({ label: 'Unused land' })
-    expect(record.soils.intersections).toEqual([{ label: 'Brown soils', percentage: 100 }])
+    expect(record.soils.intersections).toEqual([{ label: 'Brown soils', percentage: 100, area: 10000 }])
   })
 
   test('takes a coarser cell\'s protected area count from its column', async () => {

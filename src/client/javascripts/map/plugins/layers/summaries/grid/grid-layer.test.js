@@ -21,10 +21,7 @@ vi.mock('ol/geom/LineString.js', () => ({
 }))
 
 vi.mock('ol/geom/Polygon.js', () => ({
-  default: vi.fn().mockImplementation(function (rings) {
-    this.type = 'Polygon'
-    this.rings = rings
-  })
+  fromExtent: vi.fn(extent => ({ type: 'Polygon', extent }))
 }))
 
 vi.mock('ol/source/Vector.js', () => ({
@@ -109,21 +106,24 @@ describe('#createGridLayer', () => {
     expect(WebGLVectorLayer).toHaveBeenCalledTimes(2)
   })
 
-  test.each([10, 100, 1000, 10000, 100000])('highlights a %im cell using its captured size', size => {
+  test('highlights every selected cell', () => {
     const api = createGridLayer(interactiveMap, olMap)
+    const extents = [[460000, 470000, 460100, 470100], [460100, 470000, 460200, 470100]]
 
-    api.highlightCell(460000, 470000, size)
+    api.highlightCells(extents)
 
-    const selectedLayer = olMap._layers[1]
-    const selectedSource = selectedLayer.source
+    const selectedSource = olMap._layers[1].source
     expect(selectedSource.clear).toHaveBeenCalled()
-    expect(selectedSource.features[0].geometry.rings).toEqual([[
-      [460000, 470000],
-      [460000 + size, 470000],
-      [460000 + size, 470000 + size],
-      [460000, 470000 + size],
-      [460000, 470000]
-    ]])
+    expect(selectedSource.features.map(feature => feature.geometry.extent)).toEqual(extents)
+  })
+
+  test('replaces the previous highlight', () => {
+    const api = createGridLayer(interactiveMap, olMap)
+    api.highlightCells([[460000, 470000, 460100, 470100], [460100, 470000, 460200, 470100]])
+
+    api.highlightCells([[400000, 400000, 500000, 500000]])
+
+    expect(olMap._layers[1].source.features.map(feature => feature.geometry.extent)).toEqual([[400000, 400000, 500000, 500000]])
   })
 
   test('clearHighlight clears selected source', () => {
@@ -263,17 +263,17 @@ describe('#createGridLayer', () => {
   test('keeps the selected geometry when the displayed grid changes resolution', () => {
     const api = createGridLayer(interactiveMap, olMap)
     api.setEnabled(true)
-    api.highlightCell(466720, 475130, 10)
+    api.highlightCells([[466720, 475130, 466730, 475140]])
     const selectedSource = olMap._layers[1].source
     const selectedFeature = selectedSource.features[0]
     selectedSource.clear.mockClear()
-    selectedSource.addFeature.mockClear()
+    selectedSource.addFeatures.mockClear()
 
     olMap._view.getZoom.mockReturnValue(0)
     interactiveMap._handlers['map:render']()
 
     expect(selectedSource.clear).not.toHaveBeenCalled()
-    expect(selectedSource.addFeature).not.toHaveBeenCalled()
+    expect(selectedSource.addFeatures).not.toHaveBeenCalled()
     expect(selectedSource.features).toEqual([selectedFeature])
   })
 

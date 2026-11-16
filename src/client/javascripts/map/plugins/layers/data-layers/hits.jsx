@@ -1,77 +1,18 @@
-import Feature from 'ol/Feature.js'
-import Point from 'ol/geom/Point.js'
-import VectorLayer from 'ol/layer/Vector.js'
-import VectorSource from 'ol/source/Vector.js'
 import GeoJSON from 'ol/format/GeoJSON.js'
-import Style from 'ol/style/Style.js'
-import Fill from 'ol/style/Fill.js'
-import RegularShape from 'ol/style/RegularShape.js'
-import Stroke from 'ol/style/Stroke.js'
-import { layerStateFor, layerIdFor, overviewIdFor, SELECTION_Z_INDEX } from '../../../config/layers.js'
-import { DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from '../../../config/colours.js'
+import { layerStateFor, layerIdFor, overviewIdFor } from '../../../config/layers.js'
 import { EPSG_27700, UNKNOWN_LAYER_LABEL } from '../constants.js'
 import { getSourceUrl, getVisibleWmsLayers } from './layers/wms.js'
 import { queryFgbNearPoint } from './layers/fgb-lookup.js'
 import { DatasetAttributes } from '../datasets/DatasetAttributes.jsx'
-import { VECTOR_STYLE_PROPERTIES, visibleClassForBands, visibleClassForFieldValue } from './style-config.js'
+import { createHighlight } from '../inspection/highlight.js'
+import { visibleClassForBands } from './style-config.js'
 import { getLayerStyle, getLayerTheme } from './layer-style.js'
+import { featureProperties, vectorFeaturesAt } from './vector-features.js'
 import { isLayerStateVisible } from '../reducer.js'
 
 const DATASET_PANEL_TITLE = 'Data layer attributes'
 
-const HIGHLIGHT_STYLE = new Style({
-  fill: new Fill({ color: withAlpha(DEFRA_GREEN, 0.25) }),
-  stroke: new Stroke({ color: DEFRA_GREEN_DARK, width: 2 })
-})
-
-const CROSSHAIR_STYLE = new Style({
-  image: new RegularShape({
-    points: 4,
-    radius: 11,
-    radius2: 0,
-    stroke: new Stroke({ color: DEFRA_GREEN_DARK, width: 2 })
-  })
-})
-
 const geojson = new GeoJSON()
-
-function createHighlight (map) {
-  const source = new VectorSource()
-  const layer = new VectorLayer({
-    source,
-    style: HIGHLIGHT_STYLE,
-    zIndex: SELECTION_Z_INDEX,
-    properties: { id: 'gep-layer-highlight' }
-  })
-  map.addLayer(layer)
-
-  return {
-    show (geometries) {
-      source.clear()
-      for (const geometry of geometries) {
-        if (geometry) {
-          source.addFeature(new Feature(geometry))
-        }
-      }
-    },
-
-    showPoint (coords) {
-      source.clear()
-      const feature = new Feature(new Point(coords))
-      feature.setStyle(CROSSHAIR_STYLE)
-      source.addFeature(feature)
-    },
-
-    clear () {
-      source.clear()
-    },
-
-    dispose () {
-      source.clear()
-      map.removeLayer(layer)
-    }
-  }
-}
 
 /**
  * @typedef {object} HitOptions
@@ -133,63 +74,13 @@ export function createLayerHits (map, getLayers, hitOptions = {}) {
   }
 }
 
-function isFgbLayer (layer, layerStates) {
-  return layerStateFor(layer, layerStates)?.source.type === 'fgb'
-}
-
-function isFgbDetailLayer (layer, layerStates) {
-  const layerState = layerStateFor(layer, layerStates)
-  return layerState?.source.type === 'fgb' && layer.get('id') === layerIdFor(layerState)
-}
-
 function vectorHitsAt ({ map, layerStates, highlight, getStyle, optionsFor }, pixel, coords) {
-  const grouped = new Map()
-
-  const collect = (feature, layer) => {
-    const layerState = layerStateFor(layer, layerStates)
-    if (!layerState) {
-      return
-    }
-
-    const { styleConfig, isCurrent } = getStyle(layerState)
-    if (!featureHasVisibleStyle(feature, styleConfig)) {
-      return
-    }
-    const group = grouped.get(layerState.id)
-    // A feature can come from both lookups, don't add it twice
-    if (group?.matches.some((match) => match.feature === feature)) {
-      return
-    }
-    if (group) {
-      group.matches.push({ feature, layer })
-    } else {
-      grouped.set(layerState.id, { layerState, matches: [{ feature, layer }], isCurrent })
-    }
-  }
-
-  map.forEachFeatureAtPixel(pixel, collect, {
-    layerFilter: (layer) => isFgbLayer(layer, layerStates)
-  })
-
-  // WebGL hit detection skips transparent fills, so outline-only classes are
-  // found from the source.
-  for (const layer of map.getLayers().getArray()) {
-    if (isFgbDetailLayer(layer, layerStates) && layer.isVisible()) {
-      for (const feature of layer.getSource().getFeaturesAtCoordinate(coords)) {
-        collect(feature, layer)
-      }
-    }
-  }
+  const grouped = vectorFeaturesAt(map, layerStates, pixel, coords)
 
   return {
-    hits: [...grouped.values()].map(({ layerState, matches, isCurrent }) => makeVectorHit({ highlight, layerState, hitOptions: optionsFor(layerState), matches, isCurrent })),
+    hits: [...grouped.values()].map(({ layerState, matches }) => makeVectorHit({ highlight, layerState, hitOptions: optionsFor(layerState), matches, isCurrent: getStyle(layerState).isCurrent })),
     layerIds: new Set(grouped.keys())
   }
-}
-
-function featureHasVisibleStyle (feature, styleConfig) {
-  const value = feature.get(styleConfig.field)
-  return visibleClassForFieldValue(styleConfig, value) !== null
 }
 
 function makeVectorHit ({ highlight, layerState, hitOptions, matches, isCurrent }) {
@@ -282,13 +173,6 @@ function attributesForClass (styleConfig, classDefinition) {
   }
 
   return { Classification: classDefinition.label }
-}
-
-function featureProperties (feature) {
-  const geometryName = feature.getGeometryName?.()
-  return Object.fromEntries(
-    Object.entries(feature.getProperties()).filter(([key]) => key !== geometryName && !VECTOR_STYLE_PROPERTIES.includes(key))
-  )
 }
 
 function rasterHitsAt ({ map, layerStates, highlight, getStyle, optionsFor }, pixel, coords) {

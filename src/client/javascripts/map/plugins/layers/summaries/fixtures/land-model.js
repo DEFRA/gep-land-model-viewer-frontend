@@ -150,3 +150,113 @@ export const partialRecord = {
   landManagement: null,
   protectedAreas: null
 }
+
+const releaseSources = {
+  landCover: { name: 'UKCEH Land Cover Map', updated: new Date('2026-10-21T15:20:31.309Z') },
+  landUse: { name: 'OS NGD', updated: new Date('2026-10-22T11:17:40.971Z') },
+  ownership: { name: 'HM Land Registry', updated: new Date('2026-10-22T00:00:00.000Z') },
+  landManagement: { name: 'RPA', updated: new Date('2026-10-22T00:00:00.000Z') },
+  protectedAreas: { name: 'Natural England SSSI, SAC, SPA, Ramsar, NNR', updated: new Date('2026-10-21T15:07:42.158Z') },
+  soils: { name: 'National Soil Map', updated: new Date('2026-10-22T11:42:03.320Z') }
+}
+
+/** @returns {import('../model.js').GridUnit} */
+function tenMetreSquare (bngRef) {
+  return { kind: 'grid', bngRef, cellSize: 10 }
+}
+
+/** @returns {import('../model.js').LandModelRecord} */
+function tenMetreRecord (bngRef, landCover, landUse, protectedAreaCount) {
+  return {
+    unit: tenMetreSquare(bngRef),
+    landCover: { dominant: { label: landCover }, source: releaseSources.landCover },
+    landUse: { dominant: { label: landUse }, source: releaseSources.landUse },
+    ownership: { titles: [{ inspireId: '57896977', titleDescriptor: 'Freehold' }], source: releaseSources.ownership },
+    landManagement: { records: [{ pseudoSbi: '448991231' }], source: releaseSources.landManagement },
+    protectedAreas: { count: protectedAreaCount, source: releaseSources.protectedAreas },
+    soils: { dominant: { label: 'Brown soils' }, source: releaseSources.soils }
+  }
+}
+
+/**
+ * Six neighbouring 10m grid squares from the grid COG, by Dalby Bush Fen SSSI
+ *
+ * @type {Array<{ record: import('../model.js').LandModelRecord, area: number }>}
+ */
+export const gridSelection = [
+  tenMetreRecord('SE64567169', 'Broad leaved & mixed woodland', 'Unused land', 1),
+  tenMetreRecord('SE64577169', 'Improved grass', 'Transport tracks and ways', 1),
+  tenMetreRecord('SE64587169', 'Improved grass', 'Agriculture', 0),
+  tenMetreRecord('SE64567168', 'Broad leaved & mixed woodland', 'Unused land', 1),
+  tenMetreRecord('SE64577168', 'Improved grass', 'Transport tracks and ways', 1),
+  tenMetreRecord('SE64587168', 'Improved grass', 'Agriculture', 0)
+].map(record => ({ record, area: 100 }))
+
+function dalbyBushFen (percentage, area) {
+  return { code: '1003409', name: 'Dalby Bush Fen SSSI', designation: { label: 'SSSI' }, intersection: { percentage, area } }
+}
+
+function wholly (label, area) {
+  return { dominant: { label }, intersections: [{ label, percentage: 100, area }] }
+}
+
+/** @returns {import('../model.js').LandModelRecord} */
+function parcelRecord ({ osid, toid, landCover, landUse, titles, pseudoSbis, site, area }) {
+  return {
+    unit: { kind: 'feature', osid, toid },
+    landCover: { ...landCover, source: releaseSources.landCover },
+    landUse: { ...wholly(landUse, area), source: releaseSources.landUse },
+    ownership: {
+      titles: titles.map(([inspireId, titleArea]) => ({ inspireId, area: titleArea, titleDescriptor: 'Freehold' })),
+      tenureIntersections: [{ label: 'Freehold', area, percentage: 100 }],
+      source: releaseSources.ownership
+    },
+    landManagement: { records: pseudoSbis.map(pseudoSbi => ({ pseudoSbi })), source: releaseSources.landManagement },
+    protectedAreas: { sites: [site], source: releaseSources.protectedAreas },
+    soils: { ...wholly('Brown soils', area), source: releaseSources.soils }
+  }
+}
+
+/**
+ * Three neighbouring OS features from the parcels FlatGeobuf, in Dalby Bush Fen SSSI, with their geometry's area
+ *
+ * @type {Array<{ record: import('../model.js').LandModelRecord, area: number }>}
+ */
+export const featureSelection = [
+  {
+    osid: '21e8c649-507a-4028-9eff-772b6e8107bf',
+    toid: 'osgb5000005337170180',
+    landCover: wholly('Improved grass', 1273.8),
+    landUse: 'Transport tracks and ways',
+    titles: [['30183545', 308.5], ['60622154', 965.3]],
+    pseudoSbis: ['344046374911'],
+    site: dalbyBushFen(8.3, 106.3),
+    area: 1273.8
+  },
+  {
+    osid: '48f705a5-c265-4f4c-88c7-5314e91b0cc0',
+    toid: 'osgb1000000082135676',
+    landCover: {
+      dominant: { label: 'Improved grass' },
+      intersections: [{ label: 'Broad leaved & mixed woodland', percentage: 1.3, area: 35.2 }, { label: 'Improved grass', percentage: 98.7, area: 2623 }]
+    },
+    landUse: 'Unused land',
+    titles: [['30183545', 2658.4]],
+    pseudoSbis: ['344046374911'],
+    site: dalbyBushFen(100, 2658.4),
+    area: 2658.4
+  },
+  {
+    osid: '124f3508-5495-44a6-b373-5388d7980d6a',
+    toid: 'osgb1000000082135675',
+    landCover: {
+      dominant: { label: 'Broad leaved & mixed woodland' },
+      intersections: [{ label: 'Improved grass', percentage: 10.5, area: 907.9 }, { label: 'Broad leaved & mixed woodland', percentage: 89.5, area: 7773.8 }]
+    },
+    landUse: 'Unused land',
+    titles: [['60622154', 8681.7]],
+    pseudoSbis: ['344046374911', '344046374911'],
+    site: dalbyBushFen(94.4, 8195.9),
+    area: 8681.7
+  }
+].map(parcel => ({ record: parcelRecord(parcel), area: parcel.area }))

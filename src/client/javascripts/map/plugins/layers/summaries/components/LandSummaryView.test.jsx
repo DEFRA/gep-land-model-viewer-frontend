@@ -4,9 +4,10 @@ import { render, fireEvent, act } from '@testing-library/preact'
 import { InfoPanelContext } from '../../panels/info/context.js'
 import { grid10mRecord, grid100mRecord, grid1kmRecord, featureRecord, featureMultipleRecord, zeroRecord, partialRecord } from '../fixtures/land-model.js'
 import { LandSummaryView } from './LandSummaryView.jsx'
+import { SelectionHeader } from './SelectionHeader.jsx'
 
 function mount (record, sections = new Map(), extra = {}) {
-  return render(<InfoPanelContext.Provider value={{ sections }}><LandSummaryView record={record} {...extra} /></InfoPanelContext.Provider>)
+  return render(<InfoPanelContext.Provider value={{ sections }}><LandSummaryView record={record} unit={record?.unit} {...extra} /></InfoPanelContext.Provider>)
 }
 
 function section (view, title) {
@@ -388,5 +389,41 @@ describe('LandSummaryView', () => {
         delete navigator.clipboard
       }
     }
+  })
+})
+
+describe('combined summary', () => {
+  function mountCombined (record, clearSelection = vi.fn()) {
+    return render(
+      <InfoPanelContext.Provider value={{ sections: new Map(), clearSelection }}>
+        <LandSummaryView record={record} header={<SelectionHeader count={4} label='grid squares' />} />
+      </InfoPanelContext.Provider>
+    )
+  }
+
+  const { unit, ...combinedRecord } = grid100mRecord
+
+  test('shows the selection count and a Clear selection link instead of an identifier', () => {
+    const clearSelection = vi.fn()
+    const view = mountCombined(combinedRecord, clearSelection)
+
+    expect(view.getByRole('heading', { level: 3, name: '4 grid squares selected' })).toBeTruthy()
+    expect(view.getByText('Combined summary of the selected grid squares.')).toBeTruthy()
+    expect(view.container.querySelector('.app-map__summary-copy')).toBeNull()
+
+    fireEvent.click(view.getByRole('button', { name: 'Clear selection' }))
+
+    expect(clearSelection).toHaveBeenCalled()
+  })
+
+  test('shows whether the grid squares contain protected areas', () => {
+    const contains = mountCombined({ ...combinedRecord, protectedAreas: { contains: true } })
+    expect(section(contains, 'Protected areas').textContent).toContain('Present')
+    expect(section(contains, 'Protected areas').textContent).toContain('Contains protected areas.')
+    contains.unmount()
+
+    const none = mountCombined({ ...combinedRecord, protectedAreas: { contains: false } })
+    expect(section(none, 'Protected areas').textContent).toContain('None')
+    expect(section(none, 'Protected areas').textContent).toContain('Not in a protected area.')
   })
 })

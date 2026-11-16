@@ -90,7 +90,7 @@ describe('layers reducer', () => {
       layers: [],
       failedLayerIds: [],
       editingLayer: null,
-      inspection: { status: 'idle', hits: [], hit: null }
+      inspection: { status: 'idle', hits: [], hit: null, selection: null }
     })
   })
 
@@ -317,6 +317,22 @@ describe('layers reducer', () => {
     const selected = actions.SELECT_HIT(initialState, { hit: selectedHit, hits: [selectedHit] })
 
     expect(actions.DETAILS_FAILED(selected).inspection.status).toBe('detail-error')
+  })
+
+  test('clears any hits when showing a selection', () => {
+    const list = actions.SHOW_LIST(initialState, { hits: [hit(), hit('OS feature', 1)] })
+
+    const state = actions.SHOW_SELECTION(list, { title: 'Grid squares' })
+
+    expect(state.inspection).toEqual({ status: 'detail-loading', hits: [], hit: null, selection: { title: 'Grid squares' } })
+  })
+
+  test('loads a selection\'s details', () => {
+    const shown = actions.SHOW_SELECTION(initialState, { title: 'Grid squares' })
+
+    const state = actions.SELECTION_DETAILS_LOADED(shown, { details: { count: 2 } })
+
+    expect(state.inspection).toMatchObject({ status: 'detail-ready', selection: { title: 'Grid squares', details: { count: 2 } } })
   })
 
   test('updates backing hits without disturbing retained detail state', () => {

@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@defra/interactive-map', () => ({
-  EVENTS: { APP_PANEL_CLOSED: 'app:panelclosed' }
+  EVENTS: { APP_PANEL_CLOSED: 'app:panelclosed', APP_HIDE_PANEL: 'app:hidepanel' }
 }))
 
 const { createInspection } = await import('./index.js')
@@ -9,8 +10,10 @@ const { initialState, actions } = await import('../reducer.js')
 
 function createMapHarness () {
   const handlers = {}
+  const target = document.createElement('div')
   return {
     handlers,
+    getTargetElement: () => target,
     on: vi.fn((event, handler) => { handlers[event] = handler }),
     un: vi.fn((event, handler) => {
       if (handlers[event] === handler) {
@@ -29,7 +32,8 @@ function createEventBusHarness () {
       if (handlers[event] === handler) {
         delete handlers[event]
       }
-    })
+    }),
+    emit: vi.fn()
   }
 }
 
@@ -115,7 +119,7 @@ describe('#createInspection', () => {
     request.resolve([hit('Old theme')])
     await pending
 
-    expect(harness.state.inspection).toEqual({ status: 'idle', hits: [], hit: null })
+    expect(harness.state.inspection).toEqual({ status: 'idle', hits: [], hit: null, selection: null })
     expect(harness.appDispatch).not.toHaveBeenCalled()
   })
 
@@ -308,7 +312,7 @@ describe('#createInspection', () => {
 
     harness.inspection.reconcile()
 
-    expect(harness.appDispatch).toHaveBeenLastCalledWith({ type: 'CLOSE_PANEL', payload: 'gepInfoPanel' })
+    expect(harness.eventBus.emit).toHaveBeenCalledWith('app:hidepanel', 'gepInfoPanel')
     expect(harness.inspection.renderHit(removedHit)).toBeNull()
     const dispatchCount = harness.pluginDispatch.mock.calls.length
     await harness.inspection.selectHit(removedHit)
@@ -354,5 +358,254 @@ describe('#createInspection', () => {
     expect(harness.state.inspection).toMatchObject({ status: 'idle', hits: [], hit: null })
     expect(harness.state.layers).toBe(initialState.layers)
     expect(source.clearSelection).toHaveBeenCalled()
+  })
+})
+
+// x 0 has no square, any other x toggles that square
+function selectableSource () {
+  const selected = new Set()
+  const selection = {
+    toggleAt: vi.fn(([x]) => {
+      if (!x) {
+        return false
+      }
+
+      selected.has(x) ? selected.delete(x) : selected.add(x)
+      return true
+    }),
+    isEmpty: () => !selected.size,
+    title: () => 'Grid squares',
+    label: () => `${selected.size} grid squares selected`,
+    stillValid: vi.fn(() => true),
+    loadDetails: vi.fn(async () => ({ count: selected.size })),
+    render: vi.fn(details => details)
+  }
+
+  return {
+    selection,
+    getHits: vi.fn(async () => []),
+    clearSelection: vi.fn(() => selected.clear())
+  }
+}
+
+function shiftClickAt (coordinate = [1, 2]) {
+  return harness.map.handlers.singleclick({ coordinate, originalEvent: { shiftKey: true } })
+}
+
+function pressEscape () {
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+}
+
+// Like the map viewport and its menus, which prevent Escape's default
+function pressPreventedEscapeIn (element) {
+  document.body.append(element)
+  element.addEventListener('keydown', event => event.preventDefault())
+  element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  element.remove()
+}
+
+describe('Shift + click selection', () => {
+  let source
+  let datasets
+
+  beforeEach(() => {
+    source = selectableSource()
+    datasets = sourceWith([hit('Ancient Woodland')])
+    useSources(datasets, source)
+  })
+
+  test('shows the selection in the panel without asking sources for hits', async () => {
+    await shiftClickAt([1])
+    await shiftClickAt([2])
+
+    expect(source.getHits).not.toHaveBeenCalled()
+    expect(datasets.getHits).not.toHaveBeenCalled()
+    expect(harness.appDispatch).toHaveBeenCalledWith({
+      type: 'OPEN_PANEL',
+      payload: { panelId: 'gepInfoPanel', focusOnOpen: false }
+    })
+    expect(harness.state.inspection.selection).toEqual({ title: 'Grid squares', details: { count: 2 } })
+    expect(harness.announce.mock.calls.slice(-2)).toEqual([['2 grid squares selected'], ['2 grid squares selected, details loaded']])
+  })
+
+  test('starting a selection clears another source\'s highlight', async () => {
+    await shiftClickAt([1])
+
+    expect(datasets.clearSelection).toHaveBeenCalled()
+  })
+
+  test('a newer change supersedes an unfinished load', async () => {
+    const first = Promise.withResolvers()
+    source.selection.loadDetails.mockReturnValueOnce(first.promise)
+    const pending = shiftClickAt([1])
+    await shiftClickAt([2])
+
+    first.resolve({ count: 1 })
+    await pending
+
+    expect(harness.state.inspection.selection.details).toEqual({ count: 2 })
+  })
+
+  test('reports a failed load', async () => {
+    source.selection.loadDetails.mockRejectedValueOnce(new Error('offline'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await shiftClickAt([1])
+
+    expect(harness.state.inspection.status).toBe('detail-error')
+    expect(harness.announce).toHaveBeenLastCalledWith('Could not load details')
+  })
+
+  test('emptying the selection clears it and closes the panel', async () => {
+    await shiftClickAt([1])
+
+    await shiftClickAt([1])
+
+    expect(harness.eventBus.emit).toHaveBeenCalledWith('app:hidepanel', 'gepInfoPanel')
+    expect(harness.announce).toHaveBeenLastCalledWith('Selection cleared')
+  })
+
+  test('does nothing with no unit under the pointer', async () => {
+    await shiftClickAt([1])
+    harness.appDispatch.mockClear()
+
+    await shiftClickAt([0])
+
+    expect(harness.appDispatch).not.toHaveBeenCalled()
+    expect(harness.state.inspection.status).toBe('detail-ready')
+  })
+
+  test('a plain click clears the selection', async () => {
+    await shiftClickAt([1])
+
+    await inspectAt()
+
+    expect(source.selection.isEmpty()).toBe(true)
+    expect(harness.state.inspection.selection).toBeNull()
+  })
+
+  test('closes the panel without announcement when the selection is no longer valid', async () => {
+    await shiftClickAt([1])
+    harness.announce.mockClear()
+    source.selection.stillValid.mockReturnValue(false)
+
+    harness.inspection.reconcile()
+
+    expect(harness.eventBus.emit).toHaveBeenCalledWith('app:hidepanel', 'gepInfoPanel')
+    expect(source.selection.isEmpty()).toBe(true)
+    expect(harness.announce).not.toHaveBeenCalled()
+  })
+
+  test('reconciling keeps a selection that is still valid', async () => {
+    await shiftClickAt([1])
+
+    harness.inspection.reconcile()
+
+    expect(harness.eventBus.emit).not.toHaveBeenCalled()
+    expect(harness.state.inspection.status).toBe('detail-ready')
+  })
+
+  test('closing the panel clears the selection', async () => {
+    await shiftClickAt([1])
+
+    harness.eventBus.handlers['app:panelclosed']({ panelId: 'gepInfoPanel' })
+
+    expect(source.selection.isEmpty()).toBe(true)
+  })
+})
+
+describe('Escape', () => {
+  let source
+  let datasets
+
+  beforeEach(() => {
+    source = selectableSource()
+    datasets = sourceWith([hit('Ancient Woodland')])
+    useSources(datasets, source)
+  })
+
+  test('Escape clears the selection and closes the panel', async () => {
+    await shiftClickAt([1])
+
+    pressEscape()
+
+    expect(harness.eventBus.emit).toHaveBeenCalledWith('app:hidepanel', 'gepInfoPanel')
+    expect(source.selection.isEmpty()).toBe(true)
+    expect(harness.announce).toHaveBeenLastCalledWith('Selection cleared')
+  })
+
+  test('Escape from the map viewport clears the selection', async () => {
+    await shiftClickAt([1])
+    const viewport = document.createElement('div')
+    viewport.append(harness.map.getTargetElement())
+
+    pressPreventedEscapeIn(viewport)
+
+    expect(source.selection.isEmpty()).toBe(true)
+  })
+
+  test('Escape closes a plain click\'s hit too', async () => {
+    await inspectAt()
+
+    pressEscape()
+
+    expect(harness.eventBus.emit).toHaveBeenCalledWith('app:hidepanel', 'gepInfoPanel')
+    expect(harness.announce).toHaveBeenLastCalledWith('Selection cleared')
+  })
+
+  test('Escape closes a list of hits without announcing a cleared selection', async () => {
+    useSources(sourceWith([hit('Ancient Woodland'), hit('SSSI')]))
+    await inspectAt()
+    harness.announce.mockClear()
+
+    pressEscape()
+
+    expect(harness.eventBus.emit).toHaveBeenCalledWith('app:hidepanel', 'gepInfoPanel')
+    expect(harness.announce).not.toHaveBeenCalled()
+  })
+
+  test('Escape in a field leaves the panel open', async () => {
+    await shiftClickAt([1])
+    const input = document.createElement('input')
+    document.body.append(input)
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    input.remove()
+
+    expect(harness.eventBus.emit).not.toHaveBeenCalled()
+  })
+
+  test('Escape closes the panel while a new click is still searching', async () => {
+    await shiftClickAt([1])
+    datasets.getHits.mockReturnValue(new Promise(() => {}))
+    inspectAt()
+
+    pressEscape()
+
+    expect(harness.eventBus.emit).toHaveBeenCalledWith('app:hidepanel', 'gepInfoPanel')
+  })
+
+  test('Escape leaves keys handled by other controls alone', async () => {
+    await shiftClickAt([1])
+
+    pressPreventedEscapeIn(document.createElement('ul'))
+
+    expect(harness.eventBus.emit).not.toHaveBeenCalled()
+  })
+
+  test('Escape does nothing when the panel is closed', () => {
+    pressEscape()
+
+    expect(harness.eventBus.emit).not.toHaveBeenCalled()
+    expect(harness.announce).not.toHaveBeenCalled()
+  })
+
+  test('stops listening for Escape when disposed', async () => {
+    await shiftClickAt([1])
+    harness.inspection.dispose()
+
+    pressEscape()
+
+    expect(harness.eventBus.emit).not.toHaveBeenCalled()
   })
 })

@@ -32,7 +32,11 @@ function contentsPanelTitle ({ pluginState, appState }) {
   return 'Edit layer'
 }
 
-function infoPanelTitle ({ status, hits, hit }) {
+function infoPanelTitle ({ status, hits, hit, selection }) {
+  if (selection) {
+    return selection.title
+  }
+
   if (hit) {
     return hit.panelTitle ?? hit.label
   }
