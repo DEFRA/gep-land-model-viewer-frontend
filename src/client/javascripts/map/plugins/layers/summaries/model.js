@@ -36,7 +36,7 @@ import { toDate } from '../../../date.js'
  */
 
 /**
- * @typedef {{ percentage: number }} Intersection
+ * @typedef {{ percentage: number, area?: number }} Intersection
  */
 
 /**

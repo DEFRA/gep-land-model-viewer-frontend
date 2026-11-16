@@ -4,7 +4,7 @@ import { render } from '@testing-library/preact'
 import { THEMED_DATASET } from './data-layers/test-helpers/themed-dataset.js'
 
 vi.mock('./summaries/grid/index.jsx', () => ({ createGridSummary: vi.fn() }))
-vi.mock('./summaries/feature/index.jsx', () => ({ featureHitOptions: { label: vi.fn() } }))
+vi.mock('./summaries/feature/index.jsx', () => ({ createFeatureSummary: vi.fn() }))
 vi.mock('./data-layers/hits.jsx', () => ({ createLayerHits: vi.fn() }))
 vi.mock('./inspection/index.js', () => ({ createInspection: vi.fn() }))
 vi.mock('./data-layers/attribution.js', () => ({ getAttribution: vi.fn(() => '© Ordnance Survey | Natural England') }))
@@ -16,7 +16,7 @@ vi.mock('./data-layers/api.js', () => ({ loadLayer: vi.fn() }))
 vi.mock('./summaries/grid/api.js', () => ({ loadGridLayer: vi.fn() }))
 
 const { createGridSummary } = await import('./summaries/grid/index.jsx')
-const { featureHitOptions } = await import('./summaries/feature/index.jsx')
+const { createFeatureSummary } = await import('./summaries/feature/index.jsx')
 const { createLayerHits } = await import('./data-layers/hits.jsx')
 const { createInspection } = await import('./inspection/index.js')
 const { getAttribution } = await import('./data-layers/attribution.js')
@@ -35,6 +35,7 @@ let attributions
 let olMap
 let grid
 let layerHits
+let features
 let inspection
 let layerController
 let services
@@ -80,6 +81,7 @@ beforeEach(() => {
   olMap = {}
   grid = { getHits: vi.fn(), clearSelection: vi.fn(), setVisible: vi.fn(), setZIndex: vi.fn(), dispose: vi.fn() }
   layerHits = { getHits: vi.fn(), clearSelection: vi.fn(), dispose: vi.fn() }
+  features = { getHits: vi.fn(), clearSelection: vi.fn(), dispose: vi.fn() }
   inspection = {
     selectHit: vi.fn(),
     showHitList: vi.fn(),
@@ -99,6 +101,7 @@ beforeEach(() => {
   dispatch = vi.fn()
 
   vi.mocked(createGridSummary).mockReturnValue(grid)
+  vi.mocked(createFeatureSummary).mockReturnValue(features)
   vi.mocked(createLayerHits).mockReturnValue(layerHits)
   vi.mocked(createInspection).mockReturnValue(inspection)
   vi.mocked(createLayerController).mockReturnValue(layerController)
@@ -129,9 +132,9 @@ describe('LayersInit', () => {
     expect(inspection.reconcile).not.toHaveBeenCalled()
   })
 
-  test('leaves the grid out of the layer hits, as it identifies its own cells', () => {
+  test('leaves the grid and OS features out of the layer hits, as they identify their own units', () => {
     const woodland = { ...WOODLAND, ready: true }
-    renderInit({ pluginState: pluginState({ layers: [{ id: 'grid', title: 'Grid squares', ready: true }, woodland] }) })
+    renderInit({ pluginState: pluginState({ layers: [{ id: 'grid', title: 'Grid squares', ready: true }, { id: 'features', title: 'OS features', ready: true }, woodland] }) })
 
     const getLayers = createLayerHits.mock.calls[0][1]
     expect(getLayers()).toEqual([woodland])
@@ -143,14 +146,15 @@ describe('LayersInit', () => {
     expect(createInspection).toHaveBeenCalledWith({
       map: olMap,
       eventBus: services.eventBus,
-      sources: [layerHits, grid],
+      sources: [layerHits, grid, features],
       getInspectionState: expect.any(Function),
       dispatch,
       appDispatch: expect.any(Function),
       announce: services.announce
     })
     expect(createGridSummary).toHaveBeenCalledWith(services.eventBus, olMap, expect.any(Function))
-    expect(createLayerHits).toHaveBeenCalledWith(olMap, expect.any(Function), { features: featureHitOptions })
+    expect(createFeatureSummary).toHaveBeenCalledWith(olMap, expect.any(Function))
+    expect(createLayerHits).toHaveBeenCalledWith(olMap, expect.any(Function))
     expect(createLayerController).toHaveBeenCalledWith({
       map: olMap,
       drawnLayers: { grid },
@@ -254,6 +258,7 @@ describe('LayersInit', () => {
 
     expect(layerHits.dispose).toHaveBeenCalled()
     expect(grid.dispose).toHaveBeenCalled()
+    expect(features.dispose).toHaveBeenCalled()
     expect(inspection.dispose).toHaveBeenCalled()
     expect(layerController.dispose).toHaveBeenCalled()
     expect(refs.inspection.current).toBeNull()
