@@ -20,6 +20,15 @@ function datedEntry (name, type) {
 
 /**
  * @param {string} name
+ * @param {string[]} types Date types in order of preference.
+ * @returns {(src: object) => string | null}
+ */
+function firstDatedEntry (name, types) {
+  return (src) => types.map((type) => datedEntry(name, type)(src)).find(Boolean) ?? null
+}
+
+/**
+ * @param {string} name
  * @param {string | null} [fallback]
  * @returns {(src: object) => string | null}
  */
@@ -33,19 +42,6 @@ function firstDefault (name, fallback = null) {
  */
 function firstNestedCode (name) {
   return (src) => src[name]?.[0]?.code ?? null
-}
-
-/**
- * @param {string} name
- * @returns {(src: object) => string | null}
- */
-function latestNestedDate (name) {
-  return (src) => {
-    const dates = (src[name] ?? [])
-      .map((entry) => entry?.date)
-      .filter(Boolean)
-    return dates.length === 0 ? null : dates.reduce((a, b) => (Date.parse(a) > Date.parse(b) ? a : b))
-  }
 }
 
 /**
@@ -93,9 +89,9 @@ function resolution (src) {
 export {
   allDefaults,
   datedEntry,
+  firstDatedEntry,
   firstDefault,
   firstNestedCode,
-  latestNestedDate,
   mappedValue,
   objectDefault,
   rawArray,

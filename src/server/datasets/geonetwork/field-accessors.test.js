@@ -1,9 +1,9 @@
 import {
   allDefaults,
   datedEntry,
+  firstDatedEntry,
   firstDefault,
   firstNestedCode,
-  latestNestedDate,
   mappedValue,
   objectDefault,
   rawArray,
@@ -55,39 +55,45 @@ describe('#field-accessors', () => {
     })
   })
 
-  describe('latestNestedDate', () => {
-    test('picks the latest date across entries', () => {
-      expect(latestNestedDate('resourceDate')({
+  describe('firstDatedEntry', () => {
+    const updatedAt = firstDatedEntry('resourceDate', ['revision', 'publication'])
+
+    test('prefers the first type even when a later type is more recent', () => {
+      expect(updatedAt({
         resourceDate: [
-          { date: '2024-11-15T00:00:00Z' },
-          { date: '2026-04-14T12:07:32.271Z' },
-          { date: '2017-09-14T00:00:00Z' }
+          { type: 'creation', date: '2025-05-01' },
+          { type: 'publication', date: '2025-05-09' },
+          { type: 'revision', date: '2025-05-06' }
         ]
-      })).toBe('2026-04-14T12:07:32.271Z')
+      })).toBe('2025-05-06')
     })
 
-    test('compares timestamps with different timezone offsets', () => {
-      expect(latestNestedDate('resourceDate')({
+    test('falls back to the next type when the first has no date', () => {
+      expect(updatedAt({
         resourceDate: [
-          { date: '2024-01-02T01:00:00+02:00' },
-          { date: '2024-01-01T23:30:00-02:00' },
-          { date: '2024-01-02T00:30:00Z' }
+          { type: 'revision', date: null },
+          { type: 'publication', date: '2025-05-09' }
         ]
-      })).toBe('2024-01-01T23:30:00-02:00')
+      })).toBe('2025-05-09')
+    })
+
+    test('falls back to the next type when the first is missing', () => {
+      expect(updatedAt({
+        resourceDate: [
+          { type: 'creation', date: '2024-01-01T00:00:00Z' },
+          { type: 'publication', date: '2017-09-14T00:00:00Z' }
+        ]
+      })).toBe('2017-09-14T00:00:00Z')
+    })
+
+    test('returns null when none of the types are present', () => {
+      expect(updatedAt({
+        resourceDate: [{ type: 'creation', date: '2024-01-01T00:00:00Z' }]
+      })).toBeNull()
     })
 
     test('returns null when the field is missing', () => {
-      expect(latestNestedDate('resourceDate')({})).toBeNull()
-    })
-
-    test('returns null when the field is empty', () => {
-      expect(latestNestedDate('resourceDate')({ resourceDate: [] })).toBeNull()
-    })
-
-    test('skips entries without a date', () => {
-      expect(latestNestedDate('resourceDate')({
-        resourceDate: [{}, { date: '2024-01-01T00:00:00Z' }, { date: null }]
-      })).toBe('2024-01-01T00:00:00Z')
+      expect(updatedAt({})).toBeNull()
     })
   })
 

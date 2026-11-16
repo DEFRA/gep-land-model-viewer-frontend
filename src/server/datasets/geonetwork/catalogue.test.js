@@ -52,7 +52,7 @@ test('maps the Elasticsearch record into dataset metadata', async () => {
     updateFrequency: 'As needed',
     categories: ['Environment'],
     catalogueCategories: [],
-    updatedAt: '2025-05-09',
+    updatedAt: '2025-05-06',
     licence: 'Open Government Licence',
     format: [
       'Cloud Optimized GeoTIFF',
