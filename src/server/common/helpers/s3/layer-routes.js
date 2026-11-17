@@ -42,10 +42,11 @@ export function unavailable (service, error, h) {
  * @param {(params: Record<string, string>) => string} options.prefixFor Object key prefix of the layer's files
  * @param {Record<string, import('./layer.js').AssetFiles>} options.assetFiles Asset filenames by type
  * @param {Record<string, string>} [options.jsonFiles] Further JSON files the layer route returns by key
+ * @param {number} [options.minZoom] First map zoom level that shows the layer
  * @param {string} options.name Names the layer in errors, such as 'Dataset'
  * @param {string} options.service Names the service when S3 fails
  */
-export function createLayerRoutes ({ path, params, prefixFor, assetFiles, jsonFiles, name, service }) {
+export function createLayerRoutes ({ path, params, prefixFor, assetFiles, jsonFiles, minZoom, name, service }) {
   /** @type {import('@hapi/hapi').ServerRoute<{ Params: Record<string, string> }>} */
   const layerRoute = {
     method: 'GET',
@@ -67,7 +68,7 @@ export function createLayerRoutes ({ path, params, prefixFor, assetFiles, jsonFi
           return h.response({ error: `${name} layer not found` }).code(statusCodes.notFound)
         }
 
-        return layer
+        return minZoom === undefined ? layer : { ...layer, minZoom }
       } catch (error) {
         if (error instanceof BrokenReleaseError) {
           logger.error({ err: error }, `${name} layer release is broken`)

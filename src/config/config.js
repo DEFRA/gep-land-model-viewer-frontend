@@ -390,6 +390,12 @@ export const config = convict({
       format: 'nat',
       default: isDevelopment ? 7 : 2,
       env: 'MAP_ZOOM'
+    },
+    featuresMinZoom: {
+      doc: 'First map zoom level that shows the OS features layer',
+      format: 'nat',
+      default: 10,
+      env: 'MAP_FEATURES_MIN_ZOOM'
     }
   }
 })

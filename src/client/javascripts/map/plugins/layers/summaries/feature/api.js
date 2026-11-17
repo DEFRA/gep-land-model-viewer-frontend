@@ -1,13 +1,11 @@
 import { getJson } from '../../data-layers/api.js'
 import { sourceFor } from '../../data-layers/source.js'
 
-// Parcels are too dense around cities to load smoothly at low zooms
-const FEATURE_MIN_ZOOM = 10
-
 /**
  * @typedef {object} FeatureLayerResponse
  * @property {{ themes: object[], opacity?: number }} styleConfig
  * @property {{ fgb: string }} assets Asset URLs pinned to the release's file versions
+ * @property {number} minZoom First map zoom level that shows the OS features
  * @property {import('../land-model-properties.js').Sources} dataSources The release's data sources by theme
  */
 
@@ -25,6 +23,6 @@ const FEATURE_MIN_ZOOM = 10
  */
 export async function loadFeatureLayer (id, url, signal) {
   /** @type {FeatureLayerResponse} */
-  const { styleConfig, assets, dataSources } = await getJson(url, signal)
-  return { id, source: { ...sourceFor(styleConfig, assets), minZoom: FEATURE_MIN_ZOOM, dataSources } }
+  const { styleConfig, assets, minZoom, dataSources } = await getJson(url, signal)
+  return { id, source: { ...sourceFor(styleConfig, assets), minZoom, dataSources } }
 }
