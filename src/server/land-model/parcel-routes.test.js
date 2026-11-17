@@ -1,4 +1,5 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { config } from '../../config/config.js'
 import { AWS_VERSION_ID, TEST_AUTH, createTestServer, generatedAt, jsonObject, manifest, partialContent, serveObjects, styleConfig } from '../common/test-helpers/s3.js'
 import { landModel } from './index.js'
 
@@ -38,7 +39,7 @@ test('requires authentication and serves only the parcel features', async () => 
   expect(send).not.toHaveBeenCalled()
 })
 
-test('returns the parcels release with its data sources and only its FlatGeobuf URL', async () => {
+test('returns the parcels release with its data sources, minimum zoom and only its FlatGeobuf URL', async () => {
   const dataSources = { land_use: { name: 'OS NGD', date: '2026-10-21T10:47:51.297Z' } }
   serveObjects(send, PREFIX, {
     'manifest.json': jsonObject({ ...manifest({ 'style.json': 'style-version', 'data.fgb': AWS_VERSION_ID, 'data.tif': null }), dataSources }, 'manifest-version'),
@@ -52,7 +53,8 @@ test('returns the parcels release with its data sources and only its FlatGeobuf 
     generatedAt,
     styleConfig,
     dataSources,
-    assets: { fgb: `${ASSETS}/data.fgb?v=3%2FL4kqtJlcpXroDTDmJ%2BrmSpXd3dIbrHY` }
+    assets: { fgb: `${ASSETS}/data.fgb?v=3%2FL4kqtJlcpXroDTDmJ%2BrmSpXd3dIbrHY` },
+    minZoom: config.get('map.featuresMinZoom')
   })
   expect(send.mock.calls.map(([command]) => command.input.Key)).toEqual([`${PREFIX}/manifest.json`, `${PREFIX}/style.json`])
 })
