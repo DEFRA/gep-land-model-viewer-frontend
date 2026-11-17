@@ -1,9 +1,9 @@
 import {
   allDefaults,
   datedEntry,
+  firstDatedEntry,
   firstDefault,
   firstNestedCode,
-  latestNestedDate,
   mappedValue,
   objectDefault,
   rawArray,
@@ -67,8 +67,8 @@ const fields = {
     hitAccessor: rawArray('cat')
   },
   updatedAt: {
-    source: ['resourceDate.date'],
-    hitAccessor: latestNestedDate('resourceDate')
+    source: ['resourceDate.date', 'resourceDate.type'],
+    hitAccessor: firstDatedEntry('resourceDate', ['revision', 'publication'])
   },
   licence: {
     source: ['MD_ConstraintsUseLimitationObject'],
