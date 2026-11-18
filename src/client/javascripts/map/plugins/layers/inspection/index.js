@@ -1,5 +1,11 @@
 import { EVENTS } from '@defra/interactive-map'
+import GeoJSON from 'ol/format/GeoJSON.js'
 import { INFO_PANEL_ID } from '../constants.js'
+
+// The draw plugin has no cancel method
+const DRAW_CANCEL_SELECTOR = '.im-c-map-button--draw-cancel'
+
+const geoJson = new GeoJSON()
 
 /**
  * @typedef {object} Hit One selectable result under a click.
@@ -30,6 +36,7 @@ import { INFO_PANEL_ID } from '../constants.js'
  * @property {() => boolean} stillValid Whether the selection can still be shown.
  * @property {(options: { signal: AbortSignal }) => Promise<unknown>} loadDetails Details of the units selected when called.
  * @property {(details: unknown) => import('preact').VNode} render Draws the loaded details only.
+ * @property {(polygon: import('ol/geom/Polygon').default) => boolean} [selectIn] Selects the units the polygon overlaps and outlines it; false if it overlaps none.
  */
 
 /**
@@ -48,6 +55,7 @@ import { INFO_PANEL_ID } from '../constants.js'
  * @property {(action: object) => void} dispatch
  * @property {(action: object) => void} appDispatch
  * @property {(message: string) => void} announce
+ * @property {{ deleteFeature: (ids: string[]) => void }} drawPlugin Draws the polygon that selects an area
  */
 
 function clearSourceSelections (sources) {
@@ -73,7 +81,7 @@ async function collectHits (sources, coords, signal) {
 
 class Inspection {
   /** @param {InspectionOptions} options */
-  constructor ({ map, eventBus, sources, getInspectionState, dispatch, appDispatch, announce }) {
+  constructor ({ map, eventBus, sources, getInspectionState, dispatch, appDispatch, announce, drawPlugin }) {
     this.map = map
     this.eventBus = eventBus
     this.sources = sources
@@ -81,6 +89,7 @@ class Inspection {
     this.dispatch = dispatch
     this.appDispatch = appDispatch
     this.announce = announce
+    this.drawPlugin = drawPlugin
     /** @type {AbortController | null} */
     this.pending = null
     /** @type {Array<SourceHit | null>} */
@@ -88,13 +97,20 @@ class Inspection {
     /** @type {Selection | null} */
     this.shownSelection = null
     this.panelOpen = false
+    this.drawing = false
     this.handleMapClick = this.handleMapClick.bind(this)
     this.handleKeyDown = this.handleKeyDown.bind(this)
     this.onPanelClosed = this.onPanelClosed.bind(this)
+    this.onDrawStarted = this.onDrawStarted.bind(this)
+    this.onDrawCreated = this.onDrawCreated.bind(this)
+    this.onDrawCancelled = this.onDrawCancelled.bind(this)
 
     map.on('singleclick', this.handleMapClick)
     document.addEventListener('keydown', this.handleKeyDown)
     eventBus.on(EVENTS.APP_PANEL_CLOSED, this.onPanelClosed)
+    eventBus.on('draw:started', this.onDrawStarted)
+    eventBus.on('draw:created', this.onDrawCreated)
+    eventBus.on('draw:cancelled', this.onDrawCancelled)
   }
 
   getSourceHit (hit) {
@@ -164,6 +180,10 @@ class Inspection {
   }
 
   async handleMapClick ({ coordinate, originalEvent }) {
+    if (this.drawing) {
+      return
+    }
+
     if (originalEvent?.shiftKey) {
       await this.toggleSelectionAt(coordinate)
       return
@@ -210,6 +230,29 @@ class Inspection {
 
     if (source.selection.isEmpty()) {
       this.clearSelection()
+      return
+    }
+
+    await this.showSelection(source)
+  }
+
+  onDrawStarted () {
+    this.drawing = true
+  }
+
+  onDrawCancelled () {
+    this.drawing = false
+  }
+
+  /** @param {import('geojson').Feature} feature The finished polygon */
+  async onDrawCreated (feature) {
+    this.drawing = false
+    // The draw plugin cannot dash a finished shape, so the selecting source outlines it instead
+    this.drawPlugin.deleteFeature([String(feature.id)])
+
+    const polygon = /** @type {import('ol/geom/Polygon').default} */ (geoJson.readGeometry(feature.geometry))
+    const source = this.sources.find(candidate => candidate.selection?.selectIn?.(polygon))
+    if (!source) {
       return
     }
 
@@ -277,12 +320,14 @@ class Inspection {
 
   /** @param {KeyboardEvent} event */
   handleKeyDown (event) {
-    const { target } = event
-    // The map prevents Escape's default from its own viewport, but its Escape only clears its label highlight
-    const fromMap = target instanceof Node && target.contains(this.map.getTargetElement())
-    const handledElsewhere = event.defaultPrevented && !fromMap
-    const inField = target instanceof Element && target.matches('input, textarea, select, [contenteditable]')
-    if (event.key !== 'Escape' || !this.panelOpen || handledElsewhere || inField) {
+    if (this.drawing) {
+      if (event.key === 'Escape') {
+        /** @type {HTMLElement | null} */ (document.querySelector(DRAW_CANCEL_SELECTOR))?.click()
+      }
+      return
+    }
+
+    if (!this.isPanelEscape(event)) {
       return
     }
 
@@ -291,6 +336,20 @@ class Inspection {
     if (hit || selection) {
       this.announce('Selection cleared')
     }
+  }
+
+  /** @param {KeyboardEvent} event */
+  isPanelEscape (event) {
+    if (event.key !== 'Escape' || event.repeat || !this.panelOpen) {
+      return false
+    }
+
+    const { target } = event
+    // The map prevents Escape's default from its own viewport, but its Escape only clears its label highlight
+    const fromMap = target instanceof Node && target.contains(this.map.getTargetElement())
+    const handledElsewhere = event.defaultPrevented && !fromMap
+    const inField = target instanceof Element && target.matches('input, textarea, select, [contenteditable]')
+    return !handledElsewhere && !inField
   }
 
   showHitList () {
@@ -387,6 +446,9 @@ class Inspection {
     this.map.un('singleclick', this.handleMapClick)
     document.removeEventListener('keydown', this.handleKeyDown)
     this.eventBus.off(EVENTS.APP_PANEL_CLOSED, this.onPanelClosed)
+    this.eventBus.off('draw:started', this.onDrawStarted)
+    this.eventBus.off('draw:created', this.onDrawCreated)
+    this.eventBus.off('draw:cancelled', this.onDrawCancelled)
   }
 }
 

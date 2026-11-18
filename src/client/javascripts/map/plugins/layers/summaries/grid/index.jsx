@@ -1,9 +1,10 @@
 import { GRID_SUMMARY } from '../config.js'
-import { cellAtPoint } from './cell-at-point.js'
+import { cellAtPoint, cellsInPolygon } from './cell-at-point.js'
 import { cellSizeAtZoom } from './resolution.js'
-import { getGridDetails } from './data.js'
+import { getGridDetails, getCellsDetails } from './data.js'
 import { createGridLayer } from './grid-layer.js'
 import { combineRecords } from '../combine.js'
+import { createOutline } from '../outline.js'
 import { LandSummaryView } from '../components/LandSummaryView.jsx'
 import { SelectionHeader } from '../components/SelectionHeader.jsx'
 
@@ -33,6 +34,18 @@ function loadOnce (load) {
 /** @typedef {{ units: import('../model.js').GridUnit[], record: import('../model.js').LandModelThemes | null }} SelectionDetails */
 
 /**
+ * @param {NonNullable<ReturnType<typeof cellAtPoint>>} cell
+ * @param {import('./resolution.js').GridCellSize} cellSize
+ * @returns {Omit<SelectedCell, 'loadDetails'>}
+ */
+function toGridCell ({ cellId, easting, northing }, cellSize) {
+  return {
+    unit: { kind: 'grid', bngRef: cellId.compact, cellSize },
+    extent: [easting, northing, easting + cellSize, northing + cellSize]
+  }
+}
+
+/**
  * @param {import('../model.js').GridUnit} unit
  * @param {import('../model.js').LandModelThemes | null} record
  */
@@ -52,11 +65,6 @@ async function combineCells (cells) {
  * @returns {SelectedCell[]}
  */
 function toggleCell (selected, cell) {
-  // a square of another size starts a new selection, so a square and the squares inside it are never both selected
-  if (selected[0]?.unit.cellSize !== cell.unit.cellSize) {
-    return [cell]
-  }
-
   const isSelected = ({ unit }) => unit.bngRef === cell.unit.bngRef
   return selected.some(isSelected)
     ? selected.filter(candidate => !isSelected(candidate))
@@ -70,6 +78,7 @@ function toggleCell (selected, cell) {
  */
 export function createGridSummary (eventBus, map, getLayers) {
   const gridLayer = createGridLayer(eventBus, map)
+  const outline = createOutline(map)
   const view = map.getView()
   let visible = false
   /** @type {SelectedCell[]} */
@@ -92,10 +101,7 @@ export function createGridSummary (eventBus, map, getLayers) {
       return null
     }
 
-    /** @type {import('../model.js').GridUnit} */
-    const unit = { kind: 'grid', bngRef: cell.cellId.compact, cellSize }
-    const extent = [cell.easting, cell.northing, cell.easting + cellSize, cell.northing + cellSize]
-
+    const { unit, extent } = toGridCell(cell, cellSize)
     return { unit, extent, loadDetails: loadOnce(() => getGridDetails(unit, extent, gridSource())) }
   }
 
@@ -113,7 +119,34 @@ export function createGridSummary (eventBus, map, getLayers) {
         return false
       }
 
+      // a square of another size starts a new selection, so a square and the squares inside it are never both selected
+      if (selected[0]?.unit.cellSize !== cell.unit.cellSize) {
+        outline.clear()
+        setSelected([cell])
+        return true
+      }
+
       setSelected(toggleCell(selected, cell))
+      return true
+    },
+
+    selectIn (polygon) {
+      if (!visible) {
+        return false
+      }
+
+      const cellSize = cellSizeAtZoom(view.getZoom())
+      const cells = cellsInPolygon(polygon, cellSize).map(cell => toGridCell(cell, cellSize))
+      if (!cells.length) {
+        return false
+      }
+
+      const loadCells = loadOnce(() => getCellsDetails(cells, gridSource()))
+      setSelected(cells.map(cell => ({
+        ...cell,
+        loadDetails: async () => (await loadCells()).get(cell.unit.bngRef) ?? null
+      })))
+      outline.show(polygon)
       return true
     },
 
@@ -171,11 +204,13 @@ export function createGridSummary (eventBus, map, getLayers) {
     clearSelection () {
       selected = []
       gridLayer.clearHighlight()
+      outline.clear()
     },
 
     dispose () {
       gridLayer.clearHighlight()
       gridLayer.dispose()
+      outline.dispose()
     }
   }
 }

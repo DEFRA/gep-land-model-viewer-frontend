@@ -1,7 +1,8 @@
 import LayersIcon from '@lucide/icons/icons/layers'
 import ListIcon from '@lucide/icons/icons/list'
+import VectorPolygonIcon from '@lucide/icons/icons/vector-polygon'
 import { lucideIconContent } from '../../lucide-icon-content.js'
-import { initialState, actions, INSPECTION_STATUS } from './reducer.js'
+import { initialState, actions, INSPECTION_STATUS, isLayerStateVisible } from './reducer.js'
 import { LayersInit } from './LayersInit.jsx'
 import { LayersPanel } from './panels/layers/LayersPanel.jsx'
 import { KeyPanel } from './panels/key/KeyPanel.jsx'
@@ -12,6 +13,7 @@ import { ZoomWarning } from './controls/ZoomWarning.jsx'
 import { CONTENTS_PANEL_ID, DATASET_INFO_PANEL_ID, INFO_PANEL_ID } from './constants.js'
 import { editableStyleEntries } from './data-layers/style-config.js'
 import { getLayerStyle } from './data-layers/layer-style.js'
+import { SUMMARIES } from './summaries/config.js'
 
 function contentsPanelTitle ({ pluginState, appState }) {
   const { editingLayer, layers } = pluginState
@@ -30,6 +32,20 @@ function contentsPanelTitle ({ pluginState, appState }) {
   }
 
   return 'Edit layer'
+}
+
+/** @returns {string | undefined} Why area select is disabled */
+function selectAreaUnavailable ({ mapState, pluginState }) {
+  const summary = pluginState.layers.find(layer => SUMMARIES.some(({ id }) => id === layer.id))
+  if (!isLayerStateVisible(summary)) {
+    return 'Turn on Grid squares or Features in Land summary first'
+  }
+
+  if (mapState.zoom < summary.minZoom) {
+    return 'Zoom in to see Features first'
+  }
+
+  return undefined
 }
 
 function infoPanelTitle ({ status, hits, hit, selection }) {
@@ -148,6 +164,16 @@ export const manifest = {
     mobile: { slot: 'right-top', showLabel: true, order: 1 },
     tablet: { slot: 'right-top', showLabel: true, order: 1 },
     desktop: { slot: 'right-top', showLabel: true, order: 1 }
+  }, {
+    id: 'gepSelectArea',
+    label: 'Select an area',
+    iconId: 'gepSelectAreaIcon',
+    enableWhen: context => context.mapState.isMapReady && !selectAreaUnavailable(context),
+    description: selectAreaUnavailable,
+    onClick: (_event, { services }) => services.getPlugin('draw')?.newPolygon(crypto.randomUUID()),
+    mobile: { slot: 'right-top', showLabel: false, order: 100 },
+    tablet: { slot: 'right-top', showLabel: false, order: 100 },
+    desktop: { slot: 'right-top', showLabel: false, order: 100 }
   }],
 
   panels: [{
@@ -202,5 +228,8 @@ export const manifest = {
   }, {
     id: 'gepKeyIcon',
     svgContent: lucideIconContent(ListIcon)
+  }, {
+    id: 'gepSelectAreaIcon',
+    svgContent: lucideIconContent(VectorPolygonIcon)
   }]
 }

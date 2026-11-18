@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, test, expect, vi, afterEach } from 'vitest'
 import { HttpReader } from 'flatgeobuf/lib/mjs/http-reader.js'
-import { readCellProperties } from './cell-properties.js'
+import { readCellProperties, readCellsProperties } from './cell-properties.js'
 
 const BLOCK_SIZE = 16 * 1024
 
@@ -155,5 +155,22 @@ describe('range client', () => {
 
     await read(client, 0, 1)
     expect(fetch).toHaveBeenCalledOnce()
+  })
+})
+
+describe('#readCellsProperties', () => {
+  test('returns every cell whose point is in the extent, by reference', async () => {
+    serve(CELLS)
+
+    const cells = await readCellsProperties('/many.fgb', [465000, 474000, 467000, 476000])
+
+    expect([...cells.keys()].sort()).toEqual(['SE6574', 'SE6575', 'SE6674', 'SE6675'])
+    expect(cells.get('SE6675')).toEqual({ bng_ref: 'SE6675' })
+  })
+
+  test('returns no cells beyond the FGB', async () => {
+    serve(CELLS)
+
+    await expect(readCellsProperties('/none.fgb', [400000, 400000, 401000, 401000])).resolves.toEqual(new Map())
   })
 })

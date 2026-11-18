@@ -1,5 +1,13 @@
 {
   "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
   "high": true,
-  "allowlist": []
+  "allowlist": [
+    {
+      "GHSA-fc5q-39xc-vjpf": {
+        "active": true,
+        "notes": "picomatch has no patched release (latest 4.0.7). Transitive via build and dev tooling, and via nunjucks chokidar, which is only used in watch mode.",
+        "expiry": "2026-12-18"
+      }
+    }
+  ]
 }

@@ -55,7 +55,8 @@ export function LayersInit ({ mapState, mapProvider, pluginConfig, pluginState, 
       getInspectionState: () => inspectionStateRef.current,
       dispatch: pluginState.dispatch,
       appDispatch: appState.dispatch,
-      announce: services.announce
+      announce: services.announce,
+      drawPlugin: services.getPlugin('draw')
     })
     const layerController = createLayerController({
       map,

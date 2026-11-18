@@ -158,3 +158,22 @@ export async function readCellProperties (url, bngRef, [minX, minY, maxX, maxY])
 
   return null
 }
+
+/**
+ * Reads every cell in an extent from a coarse grid FGB.
+ *
+ * @param {string} url The FGB for the cells' size
+ * @param {import('ol/extent.js').Extent} extent The cells' bounds
+ * @returns {Promise<Map<string, CellProperties>>} Keyed by compact grid reference
+ */
+export async function readCellsProperties (url, [minX, minY, maxX, maxY]) {
+  const reader = await HttpReader.openSource(rangeClientFor(url))
+  /** @type {Map<string, CellProperties>} */
+  const cells = new Map()
+  for await (const { feature } of reader.selectBbox({ minX, minY, maxX, maxY })) {
+    const properties = /** @type {CellProperties} */ (parseProperties(feature, reader.header.columns))
+    cells.set(properties.bng_ref, properties)
+  }
+
+  return cells
+}

@@ -4,7 +4,9 @@ import createOpenLayersProvider from '@defra/interactive-map/providers/openlayer
 import mapStylesPlugin from '@defra/interactive-map/plugins/map-styles'
 import searchPlugin from '@defra/interactive-map/plugins/search'
 import scaleBarPlugin from '@defra/interactive-map/plugins/scale-bar'
+import createDrawPlugin from '@defra/interactive-map/plugins/draw'
 import { mapStyles } from './config/map-styles.js'
+import { DEFRA_GREEN, DEFRA_GREEN_DARK, withAlpha } from './config/colours.js'
 import createLayersPlugin from './plugins/layers/index.js'
 import createInfoLinksPlugin from './plugins/info-links/index.js'
 import createNorthIndicatorPlugin from './plugins/north-indicator/index.js'
@@ -69,6 +71,10 @@ const map = new InteractiveMap(MAP_ID, {
       }
     }),
     createLayersPlugin({ styleNonce, findGeoDataUrl, datasetId }),
+    createDrawPlugin({
+      editStroke: DEFRA_GREEN_DARK,
+      editFill: withAlpha(DEFRA_GREEN, 0.1)
+    }),
     createNorthIndicatorPlugin(),
     createInfoLinksPlugin(),
     scaleBarPlugin({ units: 'metric' })
