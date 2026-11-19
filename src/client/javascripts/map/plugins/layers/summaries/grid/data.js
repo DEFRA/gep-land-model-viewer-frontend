@@ -1,6 +1,7 @@
+import { createEmpty, extend } from 'ol/extent.js'
 import { toLandModelRecord } from '../land-model-properties.js'
-import { readCellValues } from './cell-values.js'
-import { readCellProperties } from './cell-properties.js'
+import { readCellValues, readCellsValues } from './cell-values.js'
+import { readCellProperties, readCellsProperties } from './cell-properties.js'
 
 // 10m cells are read from the COG and coarser cells from the FGB for their size.
 const COG_CELL_SIZE = 10
@@ -51,4 +52,30 @@ export async function getGridDetails (unit, extent, { url, bands, fgbs, dataSour
 
   const properties = await readCellProperties(fgbs[unit.cellSize], unit.bngRef, extent)
   return properties ? toLandModelRecord(unit, properties, dataSources) : null
+}
+
+/**
+ * Loads many cells of one size with one read.
+ *
+ * @param {Array<{ unit: import('../model.js').GridUnit, extent: import('ol/extent.js').Extent }>} cells
+ * @param {import('./api.js').GridSource} source The grid layer's source
+ * @returns {Promise<Map<string, import('../model.js').LandModelRecord | null>>} Keyed by compact grid reference
+ */
+export async function getCellsDetails (cells, { url, bands, fgbs, dataSources }) {
+  const extent = cells.reduce((bounds, cell) => extend(bounds, cell.extent), createEmpty())
+  const { cellSize } = cells[0].unit
+
+  if (cellSize === COG_CELL_SIZE) {
+    const valuesAt = await readCellsValues(url, extent)
+    return new Map(cells.map(({ unit, extent: cellExtent }) => {
+      const values = valuesAt(cellExtent)
+      return [unit.bngRef, values ? toGridRecord(unit, values, bands, dataSources) : null]
+    }))
+  }
+
+  const properties = await readCellsProperties(fgbs[cellSize], extent)
+  return new Map(cells.map(({ unit }) => {
+    const cellProperties = properties.get(unit.bngRef)
+    return [unit.bngRef, cellProperties ? toLandModelRecord(unit, cellProperties, dataSources) : null]
+  }))
 }

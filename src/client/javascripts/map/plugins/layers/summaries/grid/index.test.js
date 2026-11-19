@@ -1,5 +1,6 @@
 import { grid10mRecord } from '../fixtures/land-model.js'
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
+import { fromExtent } from 'ol/geom/Polygon.js'
 
 vi.mock('./grid-layer.js', () => ({
   createGridLayer: vi.fn()
@@ -7,11 +8,26 @@ vi.mock('./grid-layer.js', () => ({
 
 vi.mock('./data.js', async importOriginal => ({
   ...await importOriginal(),
-  getGridDetails: vi.fn(() => Promise.resolve(null))
+  getGridDetails: vi.fn(() => Promise.resolve(null)),
+  getCellsDetails: vi.fn(() => Promise.resolve(new Map()))
+}))
+
+// Records the polygon shown, or null
+vi.mock('../outline.js', () => ({
+  createOutline: vi.fn(() => {
+    let shown = null
+    return {
+      show: vi.fn(polygon => { shown = polygon }),
+      clear: vi.fn(() => { shown = null }),
+      dispose: vi.fn(),
+      get shown () { return shown }
+    }
+  })
 }))
 
 const { createGridLayer } = await import('./grid-layer.js')
-const { getGridDetails } = await import('./data.js')
+const { createOutline } = await import('../outline.js')
+const { getGridDetails, getCellsDetails } = await import('./data.js')
 const { createGridSummary } = await import('./index.jsx')
 
 function createMockGridLayer () {
@@ -48,6 +64,10 @@ describe('#createGridSummary', () => {
   afterEach(() => {
     vi.clearAllMocks()
   })
+
+  function outline () {
+    return vi.mocked(createOutline).mock.results.at(-1).value
+  }
 
   function registeredSource () {
     const summary = createGridSummary(eventBus, olMap, () => [{ id: 'grid', ready: true, source: layerSource }])
@@ -185,13 +205,14 @@ describe('#createGridSummary', () => {
     expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
   })
 
-  test('dispose clears the highlight and disposes the grid layer', () => {
+  test('dispose clears the highlight and disposes the grid layer and outline', () => {
     const summary = createGridSummary(eventBus, olMap)
 
     summary.dispose()
 
     expect(mockGridLayer.clearHighlight).toHaveBeenCalled()
     expect(mockGridLayer.dispose).toHaveBeenCalled()
+    expect(outline().dispose).toHaveBeenCalled()
   })
 
   describe('selection', () => {
@@ -312,6 +333,91 @@ describe('#createGridSummary', () => {
       expect(details.record.landCover.intersections).toEqual([{ label: 'Woodland', area: 10000, percentage: 50 }])
       expect(details.units.map(({ bngRef }) => bngRef)).toEqual(['SE667751', 'SE668751'])
       expect(selection.render(details).props.header.props).toEqual({ count: 2, label: 'grid squares' })
+    })
+
+    describe('by polygon', () => {
+      // crosses from the first square into the second
+      const POLYGON = fromExtent([466750, 475150, 466850, 475180])
+      const THIRD = [466925, 475137]
+
+      test('selects every square the polygon overlaps at the current size, replacing the selection', () => {
+        selection.toggleAt(THIRD)
+
+        expect(selection.selectIn(POLYGON)).toBe(true)
+
+        expect(selection.label()).toBe('2 grid squares selected')
+        expect(mockGridLayer.highlightCells).toHaveBeenLastCalledWith([FIRST_EXTENT, SECOND_EXTENT])
+        expect(outline().shown).toBe(POLYGON)
+      })
+
+      test('Shift + click at the same size keeps the outline', () => {
+        selection.selectIn(POLYGON)
+
+        selection.toggleAt(THIRD)
+
+        expect(outline().shown).toBe(POLYGON)
+      })
+
+      test('a square of another size removes the outline', () => {
+        selection.selectIn(POLYGON)
+        zoom = 6
+
+        selection.toggleAt(FIRST)
+
+        expect(outline().shown).toBeNull()
+      })
+
+      test('clearSelection removes the outline', () => {
+        selection.selectIn(POLYGON)
+
+        summary.clearSelection()
+
+        expect(outline().shown).toBeNull()
+      })
+
+      test('loads the squares with one read and keeps them loaded while Shift + clicking', async () => {
+        getCellsDetails.mockResolvedValue(new Map([
+          ['SE667751', { landCover: { dominant: { label: 'Woodland' }, intersections: [{ label: 'Woodland', area: 10000, percentage: 100 }] } }],
+          ['SE668751', null]
+        ]))
+        selection.selectIn(POLYGON)
+
+        const details = await selection.loadDetails()
+        selection.toggleAt(THIRD)
+        await selection.loadDetails()
+
+        expect(getCellsDetails).toHaveBeenCalledExactlyOnceWith([
+          { unit: { kind: 'grid', bngRef: 'SE667751', cellSize: 100 }, extent: FIRST_EXTENT },
+          { unit: { kind: 'grid', bngRef: 'SE668751', cellSize: 100 }, extent: SECOND_EXTENT }
+        ], layerSource)
+        expect(getGridDetails.mock.calls.map(([unit]) => unit.bngRef)).toEqual(['SE669751'])
+        expect(details.record.landCover.intersections).toEqual([{ label: 'Woodland', area: 10000, percentage: 50 }])
+      })
+
+      test('reads the squares again after a failure', async () => {
+        getCellsDetails.mockRejectedValueOnce(new Error('offline'))
+        selection.selectIn(POLYGON)
+        await expect(selection.loadDetails()).rejects.toThrow('offline')
+
+        await selection.loadDetails()
+
+        expect(getCellsDetails).toHaveBeenCalledTimes(2)
+      })
+
+      test('a polygon beyond the grid leaves the selection and its outline', () => {
+        selection.selectIn(POLYGON)
+
+        expect(selection.selectIn(fromExtent([-500, 100, -300, 200]))).toBe(false)
+        expect(selection.label()).toBe('2 grid squares selected')
+        expect(outline().shown).toBe(POLYGON)
+      })
+
+      test('selects nothing while hidden', () => {
+        summary.setVisible(false)
+
+        expect(selection.selectIn(POLYGON)).toBe(false)
+        expect(selection.isEmpty()).toBe(true)
+      })
     })
   })
 })

@@ -39,6 +39,36 @@ describe('layers plugin', () => {
     }
   })
 
+  test('enables Select an area only with a land summary layer shown at its zoom', () => {
+    const selectArea = manifest.buttons.find(button => button.id === 'gepSelectArea')
+    const context = (layers, { isMapReady = true, zoom = 10 } = {}) => ({ mapState: { isMapReady, zoom }, pluginState: { layers } })
+    const grid = { id: 'grid', ready: true, hidden: false }
+    const features = { id: 'features', ready: true, hidden: false, minZoom: 10 }
+    const woodland = { id: 'ancient-woodland', ready: true, hidden: false }
+
+    expect(selectArea.enableWhen(context([grid]))).toBe(true)
+    expect(selectArea.enableWhen(context([features]))).toBe(true)
+    expect(selectArea.description(context([grid]))).toBeUndefined()
+
+    expect(selectArea.enableWhen(context([grid], { isMapReady: false }))).toBe(false)
+
+    expect(selectArea.enableWhen(context([woodland]))).toBe(false)
+    expect(selectArea.enableWhen(context([{ ...grid, hidden: true }]))).toBe(false)
+    expect(selectArea.description(context([woodland]))).toBe('Turn on Grid squares or Features in Land summary first')
+
+    expect(selectArea.enableWhen(context([features], { zoom: 9 }))).toBe(false)
+    expect(selectArea.description(context([features], { zoom: 9 }))).toBe('Zoom in to see Features first')
+  })
+
+  test('Select an area starts a polygon with the draw plugin', () => {
+    const selectArea = manifest.buttons.find(button => button.id === 'gepSelectArea')
+    const draw = { newPolygon: vi.fn() }
+
+    selectArea.onClick({}, { services: { getPlugin: id => id === 'draw' ? draw : undefined } })
+
+    expect(draw.newPolygon).toHaveBeenCalledWith(expect.any(String))
+  })
+
   test('derives the Info panel title from inspection state', () => {
     const info = manifest.panels.find(panel => panel.id === 'gepInfoPanel')
     const label = /** @type {Function} */ (info.label)

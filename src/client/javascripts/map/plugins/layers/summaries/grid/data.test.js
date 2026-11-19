@@ -1,11 +1,11 @@
 import { describe, test, expect, vi } from 'vitest'
 
-vi.mock('./cell-values.js', () => ({ readCellValues: vi.fn() }))
-vi.mock('./cell-properties.js', () => ({ readCellProperties: vi.fn() }))
+vi.mock('./cell-values.js', () => ({ readCellValues: vi.fn(), readCellsValues: vi.fn() }))
+vi.mock('./cell-properties.js', () => ({ readCellProperties: vi.fn(), readCellsProperties: vi.fn() }))
 
-const { readCellValues } = await import('./cell-values.js')
-const { readCellProperties } = await import('./cell-properties.js')
-const { toGridRecord, getGridDetails } = await import('./data.js')
+const { readCellValues, readCellsValues } = await import('./cell-values.js')
+const { readCellProperties, readCellsProperties } = await import('./cell-properties.js')
+const { toGridRecord, getGridDetails, getCellsDetails } = await import('./data.js')
 
 const UNIT = { kind: 'grid', bngRef: 'SE60007003', cellSize: 10 }
 const COARSE_UNIT = { kind: 'grid', bngRef: 'SE643715', cellSize: 100 }
@@ -113,37 +113,38 @@ describe('#toGridRecord', () => {
   })
 })
 
+const SOURCE = {
+  url: '/api/land-model/grid/layer/assets/10.tif?v=1',
+  bands: testBands(),
+  dataSources: SOURCES,
+  fgbs: { 100: '/api/land-model/grid/layer/assets/100.fgb?v=2', 1000: '/api/land-model/grid/layer/assets/1000.fgb?v=3' }
+}
+
 describe('#getGridDetails', () => {
-  const source = {
-    url: '/api/land-model/grid/layer/assets/10.tif?v=1',
-    bands: testBands(),
-    dataSources: SOURCES,
-    fgbs: { 100: '/api/land-model/grid/layer/assets/100.fgb?v=2', 1000: '/api/land-model/grid/layer/assets/1000.fgb?v=3' }
-  }
   const extent = [460000, 470030, 460010, 470040]
   const coarseExtent = [464300, 471500, 464400, 471600]
 
   test('reads a 10m cell from the COG', async () => {
     readCellValues.mockResolvedValue([1, 2, 1])
 
-    const record = await getGridDetails(UNIT, extent, source)
+    const record = await getGridDetails(UNIT, extent, SOURCE)
 
-    expect(readCellValues).toHaveBeenCalledWith(source.url, extent)
+    expect(readCellValues).toHaveBeenCalledWith(SOURCE.url, extent)
     expect(record.landUse.dominant.label).toBe('Dwellings')
   })
 
   test('returns null beyond the COG', async () => {
     readCellValues.mockResolvedValue(null)
 
-    await expect(getGridDetails(UNIT, extent, source)).resolves.toBeNull()
+    await expect(getGridDetails(UNIT, extent, SOURCE)).resolves.toBeNull()
   })
 
   test('reads a coarser cell from the FGB for its size and takes its largest class as dominant', async () => {
     readCellProperties.mockResolvedValue(testProperties())
 
-    const record = await getGridDetails(COARSE_UNIT, coarseExtent, source)
+    const record = await getGridDetails(COARSE_UNIT, coarseExtent, SOURCE)
 
-    expect(readCellProperties).toHaveBeenCalledWith(source.fgbs[100], 'SE643715', coarseExtent)
+    expect(readCellProperties).toHaveBeenCalledWith(SOURCE.fgbs[100], 'SE643715', coarseExtent)
     expect(record.unit).toBe(COARSE_UNIT)
     expect(record.landCover).toEqual({
       dominant: { label: 'Broad leaved & mixed woodland' },
@@ -157,7 +158,7 @@ describe('#getGridDetails', () => {
   test('takes a coarser cell\'s protected area count from its column', async () => {
     readCellProperties.mockResolvedValue(testProperties())
 
-    const record = await getGridDetails(COARSE_UNIT, coarseExtent, source)
+    const record = await getGridDetails(COARSE_UNIT, coarseExtent, SOURCE)
 
     expect(record.protectedAreas).toEqual({ count: 1, source: { name: 'Natural England SSSI, SAC, SPA, Ramsar, NNR', updated: UPDATED } })
   })
@@ -165,7 +166,7 @@ describe('#getGridDetails', () => {
   test('takes a coarser cell\'s pseudo SBIs from its intersections, dropping those without an SBI', async () => {
     readCellProperties.mockResolvedValue(testProperties())
 
-    const record = await getGridDetails(COARSE_UNIT, coarseExtent, source)
+    const record = await getGridDetails(COARSE_UNIT, coarseExtent, SOURCE)
 
     expect(record.landManagement).toEqual({ records: [{ pseudoSbi: '430580387823' }], source: { name: 'RPA', updated: UPDATED } })
   })
@@ -173,6 +174,41 @@ describe('#getGridDetails', () => {
   test('returns null when the FGB has no point for the cell', async () => {
     readCellProperties.mockResolvedValue(null)
 
-    await expect(getGridDetails(COARSE_UNIT, coarseExtent, source)).resolves.toBeNull()
+    await expect(getGridDetails(COARSE_UNIT, coarseExtent, SOURCE)).resolves.toBeNull()
+  })
+})
+
+describe('#getCellsDetails', () => {
+  const fine = [
+    { unit: UNIT, extent: [460000, 470030, 460010, 470040] },
+    { unit: { kind: 'grid', bngRef: 'SE60017003', cellSize: 10 }, extent: [460010, 470030, 460020, 470040] },
+    { unit: { kind: 'grid', bngRef: 'SE60007002', cellSize: 10 }, extent: [460000, 470020, 460010, 470030] }
+  ]
+  const coarse = [
+    { unit: COARSE_UNIT, extent: [464300, 471500, 464400, 471600] },
+    { unit: { kind: 'grid', bngRef: 'SE644715', cellSize: 100 }, extent: [464400, 471500, 464500, 471600] }
+  ]
+
+  test('reads 10m cells from one COG window over all of them', async () => {
+    const values = { 460000: [1, 2, 1], 460010: null }
+    readCellsValues.mockResolvedValue(([minX, minY]) => minY === 470020 ? [2, 1, 2] : values[minX])
+
+    const records = await getCellsDetails(fine, SOURCE)
+
+    expect(readCellsValues).toHaveBeenCalledWith(SOURCE.url, [460000, 470020, 460020, 470040])
+    expect(records.get('SE60007003').landUse.dominant.label).toBe('Dwellings')
+    expect(records.get('SE60017003')).toBeNull()
+    expect(records.get('SE60007002').unit).toBe(fine[2].unit)
+  })
+
+  test('reads coarser cells from one FGB read over all of them, matching references', async () => {
+    readCellsProperties.mockResolvedValue(new Map([['SE643715', testProperties()], ['SE999999', testProperties()]]))
+
+    const records = await getCellsDetails(coarse, SOURCE)
+
+    expect(readCellsProperties).toHaveBeenCalledWith(SOURCE.fgbs[100], [464300, 471500, 464500, 471600])
+    expect(records.get('SE643715').landUse.dominant).toEqual({ label: 'Unused land' })
+    expect(records.get('SE644715')).toBeNull()
+    expect(records.size).toBe(2)
   })
 })

@@ -54,6 +54,13 @@ html:has(.app-map-page) {
   top: max(var(--banner-top, 0px), calc(var(--primary-gap) + var(--button-size) + var(--divider-gap)));
 }
 
+// Wrap the Select area tooltip.
+.app-map .im-c-button-wrapper--gep-select-area .im-c-tooltip {
+  width: max-content;
+  max-width: 15em;
+  white-space: normal;
+}
+
 // Give Contents its own column beside every other right-top control.
 .app-map
   :is(.im-o-app--tablet, .im-o-app--desktop)

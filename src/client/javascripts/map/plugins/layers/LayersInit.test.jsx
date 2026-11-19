@@ -39,6 +39,7 @@ let features
 let inspection
 let layerController
 let services
+let drawPlugin
 let refs
 let dispatch
 
@@ -92,10 +93,12 @@ beforeEach(() => {
     sync: vi.fn(),
     dispose: vi.fn()
   }
+  drawPlugin = { deleteFeature: vi.fn() }
   services = {
     announce: vi.fn(),
     hints: { show: vi.fn() },
-    eventBus: {}
+    eventBus: {},
+    getPlugin: vi.fn(id => id === 'draw' ? drawPlugin : undefined)
   }
   refs = {}
   dispatch = vi.fn()
@@ -150,7 +153,8 @@ describe('LayersInit', () => {
       getInspectionState: expect.any(Function),
       dispatch,
       appDispatch: expect.any(Function),
-      announce: services.announce
+      announce: services.announce,
+      drawPlugin
     })
     expect(createGridSummary).toHaveBeenCalledWith(services.eventBus, olMap, expect.any(Function))
     expect(createFeatureSummary).toHaveBeenCalledWith(olMap, expect.any(Function))

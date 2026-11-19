@@ -255,6 +255,10 @@ export default {
           to: 'stylesheets/vendor/interactive-map-scale-bar.css'
         },
         {
+          from: path.join(dirname, 'node_modules/@defra/interactive-map/plugins/draw/dist/css/index.css'),
+          to: 'stylesheets/vendor/interactive-map-draw.css'
+        },
+        {
           from: path.join(dirname, 'src/client/data/vts'),
           to: 'data/vts'
         }

@@ -25,6 +25,10 @@ vi.mock('@defra/interactive-map/plugins/search', () => ({
   default: vi.fn(() => ({ id: 'search' }))
 }))
 
+vi.mock('@defra/interactive-map/plugins/draw', () => ({
+  default: vi.fn(() => ({ id: 'draw' }))
+}))
+
 vi.mock('./config/map-styles.js', () => ({
   mapStyles: [{ id: 'outdoor', label: 'Outdoor', url: '/style.json' }]
 }))
@@ -71,6 +75,7 @@ describe('map entry point', () => {
       'search',
       'mapStyles',
       'gepLayers',
+      'draw',
       'gepNorthIndicator',
       'gepInfoLinks',
       'scaleBar'

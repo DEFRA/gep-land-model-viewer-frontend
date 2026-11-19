@@ -61,6 +61,7 @@ function makeHarness (sources = []) {
   const eventBus = createEventBusHarness()
   const appDispatch = vi.fn()
   const announce = vi.fn()
+  const drawPlugin = { deleteFeature: vi.fn() }
   const pluginDispatch = vi.fn((action) => {
     state = actions[action.type]?.(state, action.payload) ?? state
   })
@@ -71,7 +72,8 @@ function makeHarness (sources = []) {
     getInspectionState: () => state.inspection,
     dispatch: pluginDispatch,
     appDispatch,
-    announce
+    announce,
+    drawPlugin
   })
 
   return {
@@ -79,6 +81,7 @@ function makeHarness (sources = []) {
     eventBus,
     appDispatch,
     announce,
+    drawPlugin,
     pluginDispatch,
     inspection,
     get state () { return state }
@@ -362,9 +365,16 @@ describe('#createInspection', () => {
 })
 
 // x 0 has no square, any other x toggles that square
+// polygon selects squares 10 + 11
 function selectableSource () {
   const selected = new Set()
   const selection = {
+    selectIn: vi.fn(() => {
+      selected.clear()
+      selected.add(10)
+      selected.add(11)
+      return true
+    }),
     toggleAt: vi.fn(([x]) => {
       if (!x) {
         return false
@@ -607,5 +617,127 @@ describe('Escape', () => {
     pressEscape()
 
     expect(harness.eventBus.emit).not.toHaveBeenCalled()
+  })
+})
+
+const POLYGON = { type: 'Polygon', coordinates: [[[0, 0], [100, 0], [100, 100], [0, 0]]] }
+
+function drawPolygon (id = 'first') {
+  harness.eventBus.handlers['draw:started']({ mode: 'draw_polygon', featureId: id })
+  return harness.eventBus.handlers['draw:created']({ type: 'Feature', id, geometry: POLYGON, properties: {} })
+}
+
+describe('Polygon selection', () => {
+  let source
+  let datasets
+
+  beforeEach(() => {
+    source = selectableSource()
+    datasets = sourceWith([hit('Ancient Woodland')])
+    useSources(datasets, source)
+  })
+
+  test('a finished polygon replaces the selection with the units it overlaps', async () => {
+    await shiftClickAt([1])
+
+    await drawPolygon()
+
+    expect(source.selection.selectIn.mock.calls[0][0].getCoordinates()).toEqual(POLYGON.coordinates)
+    expect(datasets.clearSelection).toHaveBeenCalled()
+    expect(harness.state.inspection.selection).toEqual({ title: 'Grid squares', details: { count: 2 } })
+    expect(harness.announce).toHaveBeenLastCalledWith('2 grid squares selected, details loaded')
+  })
+
+  test('removes the draw plugin\'s shape, which the source outlines instead', async () => {
+    await drawPolygon()
+
+    expect(harness.drawPlugin.deleteFeature).toHaveBeenCalledWith(['first'])
+  })
+
+  test('ignores map clicks while drawing', async () => {
+    harness.eventBus.handlers['draw:started']({ mode: 'draw_polygon', featureId: 'first' })
+
+    await inspectAt()
+    await shiftClickAt([1])
+
+    expect(datasets.getHits).not.toHaveBeenCalled()
+    expect(source.selection.toggleAt).not.toHaveBeenCalled()
+  })
+
+  test('cancelling leaves the selection and listens for clicks again', async () => {
+    await drawPolygon()
+    harness.eventBus.handlers['draw:started']({ mode: 'draw_polygon', featureId: 'second' })
+
+    harness.eventBus.handlers['draw:cancelled']({ type: 'Feature', id: 'second', geometry: POLYGON, properties: {} })
+
+    expect(source.clearSelection).not.toHaveBeenCalled()
+    await inspectAt()
+    expect(source.clearSelection).toHaveBeenCalled()
+  })
+
+  test('a second polygon replaces the first', async () => {
+    await drawPolygon('first')
+
+    await drawPolygon('second')
+
+    expect(source.selection.selectIn).toHaveBeenCalledTimes(2)
+    expect(harness.drawPlugin.deleteFeature.mock.calls).toEqual([[['first']], [['second']]])
+    expect(harness.state.inspection.selection.details).toEqual({ count: 2 })
+  })
+
+  test('Shift + click carries on from the polygon\'s selection', async () => {
+    await drawPolygon()
+
+    await shiftClickAt([1])
+
+    expect(source.clearSelection).not.toHaveBeenCalled()
+    expect(harness.state.inspection.selection.details).toEqual({ count: 3 })
+  })
+
+  test('a polygon no source can select from leaves the selection', async () => {
+    await drawPolygon('first')
+    source.selection.selectIn.mockReturnValue(false)
+
+    await drawPolygon('second')
+
+    expect(harness.drawPlugin.deleteFeature).toHaveBeenLastCalledWith(['second'])
+    expect(source.clearSelection).not.toHaveBeenCalled()
+    expect(harness.state.inspection.selection.details).toEqual({ count: 2 })
+  })
+
+  test('Escape while drawing cancels the drawing and keeps the selection', async () => {
+    await shiftClickAt([1])
+    const cancel = document.createElement('button')
+    cancel.className = 'im-c-map-button--draw-cancel'
+    const onCancel = vi.fn()
+    cancel.addEventListener('click', onCancel)
+    document.body.append(cancel)
+    harness.eventBus.handlers['draw:started']({ mode: 'draw_polygon', featureId: 'first' })
+
+    pressEscape()
+    cancel.remove()
+
+    expect(onCancel).toHaveBeenCalled()
+    expect(harness.eventBus.emit).not.toHaveBeenCalled()
+    expect(source.selection.isEmpty()).toBe(false)
+  })
+
+  test('holding Escape after cancelling the drawing keeps the selection', async () => {
+    await shiftClickAt([1])
+    harness.eventBus.handlers['draw:started']({ mode: 'draw_polygon', featureId: 'first' })
+    harness.eventBus.handlers['draw:cancelled']()
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', repeat: true }))
+
+    expect(harness.eventBus.emit).not.toHaveBeenCalled()
+    expect(source.selection.isEmpty()).toBe(false)
+  })
+
+  test('stops listening for drawing when disposed', () => {
+    harness.inspection.dispose()
+
+    expect(harness.eventBus.handlers['draw:started']).toBeUndefined()
+    expect(harness.eventBus.handlers['draw:created']).toBeUndefined()
+    expect(harness.eventBus.handlers['draw:cancelled']).toBeUndefined()
   })
 })
