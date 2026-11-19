@@ -1,4 +1,13 @@
 import { loadLayer } from './api.js'
+import { matchThemeFieldsToFgbColumns } from './layers/fgb-columns.js'
+
+const { matchedStyleConfig } = vi.hoisted(() => ({
+  matchedStyleConfig: { themes: [{ band: 1, field: 'themname' }] }
+}))
+
+vi.mock('./layers/fgb-columns.js', () => ({
+  matchThemeFieldsToFgbColumns: vi.fn(async (source) => ({ ...source, styleConfig: matchedStyleConfig }))
+}))
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -16,12 +25,27 @@ test('builds the map source from the dataset layer response', async () => {
 
   const dataset = await loadLayer('dataset', '/api/datasets/dataset/layer')
 
+  expect(matchThemeFieldsToFgbColumns).toHaveBeenCalledWith(expect.objectContaining({ styleConfig }))
   expect(dataset).toEqual({
     id: 'dataset',
-    source: expect.objectContaining({ type: 'fgb', url: assets.fgb, styleConfig, overview: { type: 'cog', url: assets.cog } })
+    source: expect.objectContaining({
+      type: 'fgb',
+      url: assets.fgb,
+      styleConfig: matchedStyleConfig,
+      overview: { type: 'cog', url: assets.cog }
+    })
   })
   expect(fetch).toHaveBeenCalledOnce()
   expect(fetch).toHaveBeenCalledWith('/api/datasets/dataset/layer', expect.any(Object))
+})
+
+test('does not read FlatGeobuf columns for a COG-only layer', async () => {
+  const styleConfig = { themes: [{ band: 1, classes: [{ fill: [0, 0, 0, 1] }] }] }
+  stubResponse({ styleConfig, assets: { cog: '/api/datasets/dataset/layer/assets/data.tif' } })
+
+  await loadLayer('dataset', '/api/datasets/dataset/layer')
+
+  expect(matchThemeFieldsToFgbColumns).not.toHaveBeenCalled()
 })
 
 test('rejects map loading when the layer request fails', async () => {
