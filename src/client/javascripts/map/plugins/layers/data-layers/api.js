@@ -1,5 +1,6 @@
 import { authenticatedFetch } from '../../../authenticated-fetch.js'
 import { sourceFor } from './source.js'
+import { matchThemeFieldsToFgbColumns } from './layers/fgb-columns.js'
 
 /**
  * @typedef {object} LayerResponse
@@ -27,5 +28,7 @@ export async function getJson (url, signal) {
 export async function loadLayer (id, url, signal) {
   /** @type {LayerResponse} */
   const { styleConfig, assets } = await getJson(url, signal)
-  return { id, source: sourceFor(styleConfig, assets) }
+  const source = sourceFor(styleConfig, assets)
+
+  return { id, source: source.type === 'fgb' ? await matchThemeFieldsToFgbColumns(source) : source }
 }
