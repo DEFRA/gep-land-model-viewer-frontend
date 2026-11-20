@@ -61,6 +61,7 @@
     "@hapi/vision": "7.0.3",
     "@hapi/yar": "11.0.3",
     "@lucide/icons": "1.61.0",
+    "@turf/boolean-intersects": "7.4.0",
     "blankie": "5.0.0",
     "convict": "6.2.5",
     "convict-format-with-validator": "6.2.0",

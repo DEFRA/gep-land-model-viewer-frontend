@@ -70,6 +70,10 @@ function PanelBody ({ status, hits, hit, selection, onSelectHit, onBack, renderH
     return <Message>Loading details...</Message>
   }
 
+  if (status === INSPECTION_STATUS.DETAIL_ERROR) {
+    return <Message>Could not load details. Try selecting again.</Message>
+  }
+
   return null
 }
 

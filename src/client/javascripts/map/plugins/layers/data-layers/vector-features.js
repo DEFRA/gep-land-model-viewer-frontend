@@ -11,7 +11,7 @@ function isFgbDetailLayer (layer, layerStates) {
   return layerState?.source.type === 'fgb' && layer.get('id') === layerIdFor(layerState)
 }
 
-function featureHasVisibleStyle (feature, styleConfig) {
+export function featureHasVisibleStyle (feature, styleConfig) {
   const value = feature.get(styleConfig.field)
   return visibleClassForFieldValue(styleConfig, value) !== null
 }

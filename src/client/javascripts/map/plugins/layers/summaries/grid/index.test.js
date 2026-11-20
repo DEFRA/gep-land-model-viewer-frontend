@@ -339,27 +339,28 @@ describe('#createGridSummary', () => {
       // crosses from the first square into the second
       const POLYGON = fromExtent([466750, 475150, 466850, 475180])
       const THIRD = [466925, 475137]
+      const OPTIONS = { signal: new AbortController().signal }
 
-      test('selects every square the polygon overlaps at the current size, replacing the selection', () => {
+      test('selects every square the polygon overlaps at the current size, replacing the selection', async () => {
         selection.toggleAt(THIRD)
 
-        expect(selection.selectIn(POLYGON)).toBe(true)
+        expect(await selection.selectIn(POLYGON, OPTIONS)).toBe(true)
 
         expect(selection.label()).toBe('2 grid squares selected')
         expect(mockGridLayer.highlightCells).toHaveBeenLastCalledWith([FIRST_EXTENT, SECOND_EXTENT])
         expect(outline().shown).toBe(POLYGON)
       })
 
-      test('Shift + click at the same size keeps the outline', () => {
-        selection.selectIn(POLYGON)
+      test('Shift + click at the same size keeps the outline', async () => {
+        await selection.selectIn(POLYGON, OPTIONS)
 
         selection.toggleAt(THIRD)
 
         expect(outline().shown).toBe(POLYGON)
       })
 
-      test('a square of another size removes the outline', () => {
-        selection.selectIn(POLYGON)
+      test('a square of another size removes the outline', async () => {
+        await selection.selectIn(POLYGON, OPTIONS)
         zoom = 6
 
         selection.toggleAt(FIRST)
@@ -367,8 +368,8 @@ describe('#createGridSummary', () => {
         expect(outline().shown).toBeNull()
       })
 
-      test('clearSelection removes the outline', () => {
-        selection.selectIn(POLYGON)
+      test('clearSelection removes the outline', async () => {
+        await selection.selectIn(POLYGON, OPTIONS)
 
         summary.clearSelection()
 
@@ -380,7 +381,7 @@ describe('#createGridSummary', () => {
           ['SE667751', { landCover: { dominant: { label: 'Woodland' }, intersections: [{ label: 'Woodland', area: 10000, percentage: 100 }] } }],
           ['SE668751', null]
         ]))
-        selection.selectIn(POLYGON)
+        await selection.selectIn(POLYGON, OPTIONS)
 
         const details = await selection.loadDetails()
         selection.toggleAt(THIRD)
@@ -396,7 +397,7 @@ describe('#createGridSummary', () => {
 
       test('reads the squares again after a failure', async () => {
         getCellsDetails.mockRejectedValueOnce(new Error('offline'))
-        selection.selectIn(POLYGON)
+        await selection.selectIn(POLYGON, OPTIONS)
         await expect(selection.loadDetails()).rejects.toThrow('offline')
 
         await selection.loadDetails()
@@ -404,18 +405,15 @@ describe('#createGridSummary', () => {
         expect(getCellsDetails).toHaveBeenCalledTimes(2)
       })
 
-      test('a polygon beyond the grid leaves the selection and its outline', () => {
-        selection.selectIn(POLYGON)
-
-        expect(selection.selectIn(fromExtent([-500, 100, -300, 200]))).toBe(false)
-        expect(selection.label()).toBe('2 grid squares selected')
-        expect(outline().shown).toBe(POLYGON)
+      test('a polygon beyond the grid selects nothing', async () => {
+        expect(await selection.selectIn(fromExtent([-500, 100, -300, 200]), OPTIONS)).toBe(false)
+        expect(selection.isEmpty()).toBe(true)
       })
 
-      test('selects nothing while hidden', () => {
+      test('selects nothing while hidden', async () => {
         summary.setVisible(false)
 
-        expect(selection.selectIn(POLYGON)).toBe(false)
+        expect(await selection.selectIn(POLYGON, OPTIONS)).toBe(false)
         expect(selection.isEmpty()).toBe(true)
       })
     })

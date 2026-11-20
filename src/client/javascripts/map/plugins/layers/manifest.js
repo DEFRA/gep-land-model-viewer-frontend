@@ -65,6 +65,10 @@ function infoPanelTitle ({ status, hits, hit, selection }) {
     return 'Loading details'
   }
 
+  if (status === INSPECTION_STATUS.DETAIL_ERROR) {
+    return 'Could not load details'
+  }
+
   if (status === INSPECTION_STATUS.EMPTY) {
     return 'No information found'
   }
