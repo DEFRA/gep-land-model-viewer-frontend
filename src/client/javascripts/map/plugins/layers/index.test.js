@@ -79,6 +79,8 @@ describe('layers plugin', () => {
       .toBe('Loading details')
     expect(label({ pluginState: { inspection: { status: 'empty', hits: [], hit: null } } }))
       .toBe('No information found')
+    expect(label({ pluginState: { inspection: { status: 'detail-error', hits: [], hit: null } } }))
+      .toBe('Could not load details')
     expect(label({ pluginState: { inspection: { status: 'list', hits: [{}, {}], hit: null } } }))
       .toBe('2 layers selected')
     expect(label({ pluginState: { inspection: { status: 'detail-ready', hits: [], hit: { label: 'OS feature' } } } }))

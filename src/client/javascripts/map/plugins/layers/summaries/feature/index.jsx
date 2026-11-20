@@ -1,11 +1,14 @@
 import { createHighlight } from '../../inspection/highlight.js'
-import { featureProperties, vectorFeaturesAt } from '../../data-layers/vector-features.js'
+import { featureHasVisibleStyle, featureProperties, vectorFeaturesAt } from '../../data-layers/vector-features.js'
+import { getLayerStyle } from '../../data-layers/layer-style.js'
 import { isLayerStateVisible } from '../../reducer.js'
 import { FEATURE_SUMMARY } from '../config.js'
 import { combineRecords } from '../combine.js'
+import { createOutline } from '../outline.js'
 import { LandSummaryView } from '../components/LandSummaryView.jsx'
 import { SelectionHeader } from '../components/SelectionHeader.jsx'
 import { toFeatureRecord } from './data.js'
+import { featuresIntersecting, readFeaturesInExtent } from './features-in-polygon.js'
 
 const OS_FEATURE = 'OS feature'
 const OS_FEATURES = 'OS features'
@@ -57,11 +60,51 @@ function toggleFeature (selected, feature) {
 }
 
 /**
+ * @param {import('ol/geom/Polygon.js').default} polygon
+ * @param {string} url
+ * @param {() => import('../../reducer.js').LayerState} getLayerState
+ * @param {AbortSignal} signal
+ * @returns {Promise<SelectedFeature[]>}
+ */
+async function selectableFeaturesIn (polygon, url, getLayerState, signal) {
+  const inExtent = await readFeaturesInExtent(url, polygon.getExtent(), { signal })
+  const layerState = getLayerState()
+  if (signal.aborted || !isLayerStateVisible(layerState)) {
+    return []
+  }
+
+  const { styleConfig } = getLayerStyle(layerState)
+  const visible = inExtent.filter(feature => featureHasVisibleStyle(feature, styleConfig))
+  return featuresIntersecting(polygon, visible).map(feature => toSelectedFeature(feature, layerState))
+}
+
+/**
+ * @param {SelectedFeature[]} features
+ * @returns {Promise<SelectionDetails>}
+ */
+async function loadSelectionDetails (features) {
+  const records = await Promise.all(features.map(({ loadDetails }) => loadDetails()))
+  const record = records.length === 1
+    ? records[0]
+    : combineRecords(features.map(({ geometry }, index) => ({ record: records[index], area: geometry.getArea() })))
+  return { units: records.map(({ unit }) => unit), record }
+}
+
+/** @param {unknown} details */
+function renderSelection (details) {
+  const { units, record } = /** @type {SelectionDetails} */ (details)
+  return units.length === 1
+    ? renderFeature(/** @type {import('../model.js').LandModelRecord} */ (record))
+    : <LandSummaryView record={record} header={<SelectionHeader count={units.length} label={OS_FEATURES} />} />
+}
+
+/**
  * @param {import('ol/Map').default} map
  * @param {() => import('../../reducer.js').LayerState[]} getLayers
  */
 export function createFeatureSummary (map, getLayers) {
   const highlight = createHighlight(map)
+  const outline = createOutline(map)
   /** @type {SelectedFeature[]} */
   let selected = []
 
@@ -97,6 +140,22 @@ export function createFeatureSummary (map, getLayers) {
       return true
     },
 
+    async selectIn (polygon, { signal }) {
+      const layerState = featureLayer()
+      if (!isLayerStateVisible(layerState) || map.getView().getZoom() < layerState.minZoom) {
+        return false
+      }
+
+      const features = await selectableFeaturesIn(polygon, layerState.source.url, featureLayer, signal)
+      if (!features.length) {
+        return false
+      }
+
+      setSelected(features)
+      outline.show(polygon)
+      return true
+    },
+
     isEmpty: () => !selected.length,
 
     title: () => featuresLabel(selected.length),
@@ -105,22 +164,9 @@ export function createFeatureSummary (map, getLayers) {
 
     stillValid: isVisible,
 
-    /** @returns {Promise<SelectionDetails>} */
-    async loadDetails () {
-      const features = selected
-      const records = await Promise.all(features.map(({ loadDetails }) => loadDetails()))
-      const record = records.length === 1
-        ? records[0]
-        : combineRecords(features.map(({ geometry }, index) => ({ record: records[index], area: geometry.getArea() })))
-      return { units: records.map(({ unit }) => unit), record }
-    },
+    loadDetails: () => loadSelectionDetails(selected),
 
-    render (details) {
-      const { units, record } = /** @type {SelectionDetails} */ (details)
-      return units.length === 1
-        ? renderFeature(/** @type {import('../model.js').LandModelRecord} */ (record))
-        : <LandSummaryView record={record} header={<SelectionHeader count={units.length} label={OS_FEATURES} />} />
-    }
+    render: renderSelection
   }
 
   return {
@@ -145,10 +191,12 @@ export function createFeatureSummary (map, getLayers) {
     clearSelection () {
       selected = []
       highlight.clear()
+      outline.clear()
     },
 
     dispose () {
       highlight.dispose()
+      outline.dispose()
     }
   }
 }

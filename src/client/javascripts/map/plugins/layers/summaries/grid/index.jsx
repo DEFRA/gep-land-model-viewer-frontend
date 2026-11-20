@@ -130,7 +130,7 @@ export function createGridSummary (eventBus, map, getLayers) {
       return true
     },
 
-    selectIn (polygon) {
+    async selectIn (polygon) {
       if (!visible) {
         return false
       }
