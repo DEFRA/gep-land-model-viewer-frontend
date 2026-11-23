@@ -67,7 +67,7 @@
     "convict-format-with-validator": "6.2.0",
     "cssnano": "9.9.0",
     "date-fns": "4.4.0",
-    "flatgeobuf": "4.6.0",
+    "flatgeobuf": "4.6.1",
     "geotiff": "3.1.0-beta.0",
     "global-agent": "3.0.0",
     "govuk-frontend": "6.6.0",
@@ -84,7 +84,7 @@
     "pino": "10.4.0",
     "pino-pretty": "13.2.0",
     "preact": "10.29.8",
-    "proj4": "2.22.0",
+    "proj4": "2.23.0",
     "react-colorful": "5.8.1",
     "semver": "7.8.5",
     "undici": "8.12.3"
