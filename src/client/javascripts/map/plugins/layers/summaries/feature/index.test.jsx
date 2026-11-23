@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
 import { vi, describe, test, expect, beforeEach } from 'vitest'
-import Polygon from 'ol/geom/Polygon.js'
+import Polygon, { fromExtent } from 'ol/geom/Polygon.js'
 import { createFeatureSummary } from './index.jsx'
 import { toFeatureRecord } from './data.js'
+import { readFeaturesInExtent } from './features-in-polygon.js'
+
+vi.mock('./features-in-polygon.js', async importOriginal => ({
+  ...await importOriginal(),
+  readFeaturesInExtent: vi.fn()
+}))
 
 const PROPERTIES = {
   osid: 'parcel-1',
@@ -53,6 +59,7 @@ describe('#createFeatureSummary', () => {
   let pointerLayer
   let layers
   let map
+  let zoom
 
   const detailLayer = { get: () => 'gep-features' }
 
@@ -60,9 +67,11 @@ describe('#createFeatureSummary', () => {
     featuresUnderPointer = []
     pointerLayer = detailLayer
     layers = [FEATURES_LAYER]
+    zoom = 12
     map = {
       addLayer: vi.fn(),
       removeLayer: vi.fn(),
+      getView: () => ({ getZoom: () => zoom }),
       getPixelFromCoordinate: vi.fn(() => [100, 200]),
       forEachFeatureAtPixel: (_pixel, callback, options) => {
         if (options.layerFilter(pointerLayer)) {
@@ -288,6 +297,126 @@ describe('#createFeatureSummary', () => {
       expect(details.units).toEqual([{ kind: 'feature', osid: 'a' }, { kind: 'feature', osid: 'b' }])
       expect(details.record.soils.intersections).toEqual([{ label: 'Brown soils', area: 300, percentage: 60 }])
       expect(selection.render(details).props.header.props).toEqual({ count: 2, label: 'OS features' })
+    })
+  })
+
+  describe('selection by polygon', () => {
+    const POLYGON = fromExtent([0, 0, 100, 100])
+    const INSIDE = stubFeature({ osid: 'inside' }, fromExtent([20, 20, 40, 40]))
+    const CROSSING = stubFeature({ osid: 'crossing' }, fromExtent([90, 40, 120, 60]))
+    const OUTSIDE = stubFeature({ osid: 'outside' }, fromExtent([150, 0, 200, 100]))
+    let summary
+    let selection
+    let signal
+
+    beforeEach(() => {
+      summary = createSummary()
+      selection = summary.selection
+      signal = new AbortController().signal
+      readFeaturesInExtent.mockResolvedValue([INSIDE, CROSSING, OUTSIDE])
+    })
+
+    function outlined () {
+      return map.addLayer.mock.calls[1][0].getSource().getFeatures().map(feature => feature.getGeometry())
+    }
+
+    test('selects the OS features the polygon overlaps from the file, replacing the selection', async () => {
+      toggleAt(summary, stubFeature({ osid: 'clicked' }))
+
+      expect(await selection.selectIn(POLYGON, { signal })).toBe(true)
+
+      expect(readFeaturesInExtent).toHaveBeenCalledWith('/data.fgb', [0, 0, 100, 100], { signal })
+      expect(selection.label()).toBe('2 OS features selected')
+      expect(highlighted()).toEqual([INSIDE.getGeometry(), CROSSING.getGeometry()])
+      expect(outlined()).toEqual([POLYGON])
+    })
+
+    test('skips OS features with no visible style', async () => {
+      const source = FEATURES_LAYER.source
+      const [theme] = source.styleConfig.themes
+      layers = [{
+        ...FEATURES_LAYER,
+        source: { ...source, styleConfig: { themes: [{ ...theme, classes: [{ ...theme.classes[0], fill: [59, 104, 0, 0] }] }] } }
+      }]
+
+      expect(await selection.selectIn(POLYGON, { signal })).toBe(false)
+      expect(selection.isEmpty()).toBe(true)
+    })
+
+    test('a polygon overlapping no OS features selects nothing', async () => {
+      readFeaturesInExtent.mockResolvedValue([OUTSIDE])
+
+      expect(await selection.selectIn(POLYGON, { signal })).toBe(false)
+      expect(selection.isEmpty()).toBe(true)
+    })
+
+    test('selects nothing while hidden', async () => {
+      layers = [{ ...FEATURES_LAYER, hidden: true }]
+
+      expect(await selection.selectIn(POLYGON, { signal })).toBe(false)
+      expect(readFeaturesInExtent).not.toHaveBeenCalled()
+    })
+
+    test('selects nothing below the zoom the OS features are drawn from', async () => {
+      layers = [{ ...FEATURES_LAYER, minZoom: 9 }]
+      zoom = 8
+
+      expect(await selection.selectIn(POLYGON, { signal })).toBe(false)
+      expect(readFeaturesInExtent).not.toHaveBeenCalled()
+    })
+
+    test('a read that ends after its request was replaced selects nothing', async () => {
+      const controller = new AbortController()
+      const read = Promise.withResolvers()
+      readFeaturesInExtent.mockReturnValue(read.promise)
+      toggleAt(summary, stubFeature({ osid: 'clicked' }))
+
+      const selecting = selection.selectIn(POLYGON, { signal: controller.signal })
+      controller.abort()
+      read.resolve([INSIDE])
+
+      expect(await selecting).toBe(false)
+      expect(selection.label()).toBe('1 OS feature selected')
+      expect(outlined()).toEqual([])
+    })
+
+    test.each([
+      ['hidden', [{ ...FEATURES_LAYER, hidden: true }]],
+      ['removed', []]
+    ])('a read that ends after the layer is %s selects nothing', async (_change, nextLayers) => {
+      const read = Promise.withResolvers()
+      readFeaturesInExtent.mockReturnValue(read.promise)
+
+      const selecting = selection.selectIn(POLYGON, { signal })
+      layers = nextLayers
+      read.resolve([INSIDE])
+
+      expect(await selecting).toBe(false)
+      expect(selection.isEmpty()).toBe(true)
+      expect(outlined()).toEqual([])
+    })
+
+    test('Shift + click keeps the outline', async () => {
+      await selection.selectIn(POLYGON, { signal })
+
+      toggleAt(summary, INSIDE)
+
+      expect(selection.label()).toBe('1 OS feature selected')
+      expect(outlined()).toEqual([POLYGON])
+    })
+
+    test('clearSelection removes the outline', async () => {
+      await selection.selectIn(POLYGON, { signal })
+
+      summary.clearSelection()
+
+      expect(outlined()).toEqual([])
+    })
+
+    test('dispose removes the outline', () => {
+      summary.dispose()
+
+      expect(map.removeLayer).toHaveBeenCalledWith(map.addLayer.mock.calls[1][0])
     })
   })
 })

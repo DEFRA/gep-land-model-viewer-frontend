@@ -63,6 +63,12 @@ describe('InfoPanel', () => {
     expect(view.container.textContent).toContain('Loading details...')
   })
 
+  test('reports an area that could not be read', () => {
+    renderPanel({ ...INITIAL_INSPECTION, status: 'detail-error' })
+
+    expect(view.container.textContent).toBe('Could not load details. Try selecting again.')
+  })
+
   test('reports a click that found nothing', () => {
     renderPanel({ ...INITIAL_INSPECTION, status: 'empty' })
 

@@ -369,7 +369,7 @@ describe('#createInspection', () => {
 function selectableSource () {
   const selected = new Set()
   const selection = {
-    selectIn: vi.fn(() => {
+    selectIn: vi.fn(async () => {
       selected.clear()
       selected.add(10)
       selected.add(11)
@@ -631,6 +631,11 @@ describe('Polygon selection', () => {
   let source
   let datasets
 
+  async function lookupSignal () {
+    await vi.waitFor(() => expect(source.selection.selectIn).toHaveBeenCalled())
+    return source.selection.selectIn.mock.calls.at(-1)[1].signal
+  }
+
   beforeEach(() => {
     source = selectableSource()
     datasets = sourceWith([hit('Ancient Woodland')])
@@ -666,6 +671,7 @@ describe('Polygon selection', () => {
 
   test('cancelling leaves the selection and listens for clicks again', async () => {
     await drawPolygon()
+    source.clearSelection.mockClear()
     harness.eventBus.handlers['draw:started']({ mode: 'draw_polygon', featureId: 'second' })
 
     harness.eventBus.handlers['draw:cancelled']({ type: 'Feature', id: 'second', geometry: POLYGON, properties: {} })
@@ -687,6 +693,7 @@ describe('Polygon selection', () => {
 
   test('Shift + click carries on from the polygon\'s selection', async () => {
     await drawPolygon()
+    source.clearSelection.mockClear()
 
     await shiftClickAt([1])
 
@@ -694,15 +701,74 @@ describe('Polygon selection', () => {
     expect(harness.state.inspection.selection.details).toEqual({ count: 3 })
   })
 
-  test('a polygon no source can select from leaves the selection', async () => {
+  test('a polygon no source can select from clears the selection and finds nothing', async () => {
     await drawPolygon('first')
-    source.selection.selectIn.mockReturnValue(false)
+    source.selection.selectIn.mockResolvedValue(false)
 
     await drawPolygon('second')
 
     expect(harness.drawPlugin.deleteFeature).toHaveBeenLastCalledWith(['second'])
-    expect(source.clearSelection).not.toHaveBeenCalled()
-    expect(harness.state.inspection.selection.details).toEqual({ count: 2 })
+    expect(source.clearSelection).toHaveBeenCalled()
+    expect(harness.state.inspection).toMatchObject({ status: 'empty', selection: null })
+    expect(harness.announce).toHaveBeenLastCalledWith('No information found at this location')
+  })
+
+  test('clears the selection and shows loading while the source finds the polygon\'s units', async () => {
+    await shiftClickAt([1])
+    const lookup = Promise.withResolvers()
+    source.selection.selectIn.mockReturnValue(lookup.promise)
+
+    const selecting = drawPolygon()
+
+    expect((await lookupSignal()).aborted).toBe(false)
+    expect(source.clearSelection).toHaveBeenCalled()
+    expect(harness.appDispatch).toHaveBeenLastCalledWith({ type: 'OPEN_PANEL', payload: { panelId: 'gepInfoPanel', focusOnOpen: false } })
+    expect(harness.state.inspection).toMatchObject({ status: 'searching', selection: null })
+    expect(harness.announce).toHaveBeenLastCalledWith('Loading details')
+
+    lookup.resolve(true)
+    await selecting
+
+    expect(harness.state.inspection.selection.title).toBe('Grid squares')
+  })
+
+  test('a click while finding the units cancels the lookup', async () => {
+    await shiftClickAt([1])
+    const lookup = Promise.withResolvers()
+    source.selection.selectIn.mockReturnValueOnce(lookup.promise)
+    const selecting = drawPolygon()
+    const signal = await lookupSignal()
+
+    await inspectAt()
+    lookup.resolve(true)
+    await selecting
+
+    expect(signal.aborted).toBe(true)
+    expect(source.selection.loadDetails).toHaveBeenCalledOnce()
+  })
+
+  test('a layer change while finding the units cancels the lookup', async () => {
+    const lookup = Promise.withResolvers()
+    source.selection.selectIn.mockReturnValueOnce(lookup.promise)
+    const selecting = drawPolygon()
+    const signal = await lookupSignal()
+
+    harness.inspection.reconcile()
+    lookup.resolve(true)
+    await selecting
+
+    expect(signal.aborted).toBe(true)
+    expect(harness.state.inspection).toMatchObject({ status: 'idle', selection: null })
+  })
+
+  test('a lookup that fails reports it', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    source.selection.selectIn.mockRejectedValue(new Error('offline'))
+
+    await drawPolygon()
+
+    expect(harness.state.inspection).toMatchObject({ status: 'detail-error', selection: null })
+    expect(harness.announce).toHaveBeenLastCalledWith('Could not load details')
   })
 
   test('Escape while drawing cancels the drawing and keeps the selection', async () => {

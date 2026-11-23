@@ -5,6 +5,9 @@ import { INFO_PANEL_ID } from '../constants.js'
 // The draw plugin has no cancel method
 const DRAW_CANCEL_SELECTOR = '.im-c-map-button--draw-cancel'
 
+const LOADING_MESSAGE = 'Loading details'
+const LOAD_FAILED_MESSAGE = 'Could not load details'
+
 const geoJson = new GeoJSON()
 
 /**
@@ -36,7 +39,7 @@ const geoJson = new GeoJSON()
  * @property {() => boolean} stillValid Whether the selection can still be shown.
  * @property {(options: { signal: AbortSignal }) => Promise<unknown>} loadDetails Details of the units selected when called.
  * @property {(details: unknown) => import('preact').VNode} render Draws the loaded details only.
- * @property {(polygon: import('ol/geom/Polygon').default) => boolean} [selectIn] Selects the units the polygon overlaps and outlines it; false if it overlaps none.
+ * @property {(polygon: import('ol/geom/Polygon').default, options: { signal: AbortSignal }) => Promise<boolean>} [selectIn] Selects the units the polygon overlaps and outlines it; false if it overlaps none.
  */
 
 /**
@@ -150,7 +153,7 @@ class Inspection {
     })
 
     if (announceLoading) {
-      this.announce('Loading details')
+      this.announce(LOADING_MESSAGE)
     }
 
     try {
@@ -171,7 +174,7 @@ class Inspection {
 
       console.error('Failed to load details for selection', err)
       this.dispatch({ type: 'DETAILS_FAILED' })
-      this.announce('Could not load details')
+      this.announce(LOAD_FAILED_MESSAGE)
     } finally {
       if (this.pending === controller) {
         this.pending = null
@@ -193,7 +196,7 @@ class Inspection {
     this.sourceHits = []
     this.endSelection()
     this.dispatch({ type: 'SEARCH_STARTED' })
-    this.announce('Loading details')
+    this.announce(LOADING_MESSAGE)
 
     const collected = await collectHits(this.sources, coordinate, controller.signal)
     if (controller.signal.aborted) {
@@ -251,12 +254,41 @@ class Inspection {
     this.drawPlugin.deleteFeature([String(feature.id)])
 
     const polygon = /** @type {import('ol/geom/Polygon').default} */ (geoJson.readGeometry(feature.geometry))
-    const source = this.sources.find(candidate => candidate.selection?.selectIn?.(polygon))
-    if (!source) {
-      return
-    }
+    const controller = this.beginRequest()
+    this.sourceHits = []
+    this.endSelection()
+    this.openPanel()
+    this.dispatch({ type: 'SEARCH_STARTED' })
+    this.announce(LOADING_MESSAGE)
 
-    await this.showSelection(source)
+    try {
+      for (const source of this.sources) {
+        const selected = await source.selection?.selectIn?.(polygon, { signal: controller.signal })
+        if (controller.signal.aborted) {
+          return
+        }
+
+        if (selected) {
+          await this.showSelection(source)
+          return
+        }
+      }
+
+      this.dispatch({ type: 'SHOW_EMPTY' })
+      this.announce('No information found at this location')
+    } catch (err) {
+      if (controller.signal.aborted) {
+        return
+      }
+
+      console.error('Failed to select an area', err)
+      this.dispatch({ type: 'DETAILS_FAILED' })
+      this.announce(LOAD_FAILED_MESSAGE)
+    } finally {
+      if (this.pending === controller) {
+        this.pending = null
+      }
+    }
   }
 
   /** @param {HitSource} source */
@@ -286,7 +318,7 @@ class Inspection {
 
       console.error('Failed to load details for selection', err)
       this.dispatch({ type: 'DETAILS_FAILED' })
-      this.announce('Could not load details')
+      this.announce(LOAD_FAILED_MESSAGE)
     } finally {
       if (this.pending === controller) {
         this.pending = null
