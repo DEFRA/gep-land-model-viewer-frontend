@@ -13,7 +13,7 @@ export const manifest = {
 
   buttons: [{
     id: 'gepNorthIndicator',
-    label: 'Reset bearing to north',
+    label: 'Reset bearing to north. To rotate the map, hold Shift and Alt and drag.',
     iconId: 'gepCompass',
     onClick: (_e, { mapProvider }) => {
       mapProvider.map.getView().animate({ rotation: 0, duration: RESET_NORTH_DURATION })

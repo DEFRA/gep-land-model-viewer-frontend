@@ -88,10 +88,10 @@ export const GridSelection = /** @type {Story} */ ({
 })
 
 export const FeatureSelection = /** @type {Story} */ ({
-  name: 'OS features selected',
+  name: 'Features selected',
   args: {
     record: combineRecords(featureSelection),
-    selection: { title: 'OS features', label: 'OS features', count: featureSelection.length }
+    selection: { title: 'Features', label: 'Features', count: featureSelection.length }
   }
 })
 

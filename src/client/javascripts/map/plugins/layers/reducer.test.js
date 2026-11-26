@@ -188,7 +188,7 @@ describe('layers reducer', () => {
     }, { id: 'features', enabled: true })
 
     expect(state.layers).toEqual([
-      { id: 'features', title: 'OS features', layerUrl: '/api/land-model/parcels/layer', ready: false },
+      { id: 'features', title: 'Features', layerUrl: '/api/land-model/parcels/layer', ready: false },
       layer('peat')
     ])
   })

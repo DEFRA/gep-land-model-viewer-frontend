@@ -10,8 +10,8 @@ import { SelectionHeader } from '../components/SelectionHeader.jsx'
 import { toFeatureRecord } from './data.js'
 import { featuresIntersecting, readFeaturesInExtent } from './features-in-polygon.js'
 
-const OS_FEATURE = 'OS feature'
-const OS_FEATURES = 'OS features'
+const OS_FEATURE = 'Feature'
+const OS_FEATURES = 'Features'
 
 /** @param {number} count */
 function featuresLabel (count) {

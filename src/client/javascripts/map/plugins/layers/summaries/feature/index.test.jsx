@@ -102,7 +102,7 @@ describe('#createFeatureSummary', () => {
     const [hit] = summary.getHits(COORDS)
     const details = await hit.loadDetails()
 
-    expect(hit.label).toBe('OS feature')
+    expect(hit.label).toBe('Feature')
     expect(details).toEqual(toFeatureRecord(PROPERTIES, SOURCES))
     expect(details.landCover.source.name).toBe('UKCEH Land Cover Map')
     expect(hit.render(details).props.record).toBe(details)
@@ -212,8 +212,8 @@ describe('#createFeatureSummary', () => {
       expect(toggleAt(summary, feature)).toBe(true)
 
       expect(selection.isEmpty()).toBe(false)
-      expect(selection.title()).toBe('OS feature')
-      expect(selection.label()).toBe('1 OS feature selected')
+      expect(selection.title()).toBe('Feature')
+      expect(selection.label()).toBe('1 Feature selected')
       expect(highlighted()).toEqual([feature.getGeometry()])
     })
 
@@ -223,13 +223,13 @@ describe('#createFeatureSummary', () => {
       toggleAt(summary, first)
       toggleAt(summary, second)
 
-      expect(selection.title()).toBe('OS features')
-      expect(selection.label()).toBe('2 OS features selected')
+      expect(selection.title()).toBe('Features')
+      expect(selection.label()).toBe('2 Features selected')
       expect(highlighted()).toEqual([first.getGeometry(), second.getGeometry()])
 
       toggleAt(summary, first)
 
-      expect(selection.label()).toBe('1 OS feature selected')
+      expect(selection.label()).toBe('1 Feature selected')
       expect(highlighted()).toEqual([second.getGeometry()])
     })
 
@@ -247,14 +247,14 @@ describe('#createFeatureSummary', () => {
 
       toggleAt(summary, stubFeature({ osid: 'b' }))
 
-      expect(selection.label()).toBe('2 OS features selected')
+      expect(selection.label()).toBe('2 Features selected')
     })
 
     test('nothing changes with no OS feature under the pointer', () => {
       toggleAt(summary, stubFeature({ osid: 'a' }))
 
       expect(toggleAt(summary, null)).toBe(false)
-      expect(selection.label()).toBe('1 OS feature selected')
+      expect(selection.label()).toBe('1 Feature selected')
     })
 
     test('nothing changes and the selection is no longer valid while the layer is hidden', () => {
@@ -265,7 +265,7 @@ describe('#createFeatureSummary', () => {
       layers = [{ ...FEATURES_LAYER, hidden: true }]
 
       expect(toggleAt(summary, stubFeature({ osid: 'b' }))).toBe(false)
-      expect(selection.label()).toBe('1 OS feature selected')
+      expect(selection.label()).toBe('1 Feature selected')
       expect(selection.stillValid()).toBe(false)
     })
 
@@ -296,7 +296,7 @@ describe('#createFeatureSummary', () => {
 
       expect(details.units).toEqual([{ kind: 'feature', osid: 'a' }, { kind: 'feature', osid: 'b' }])
       expect(details.record.soils.intersections).toEqual([{ label: 'Brown soils', area: 300, percentage: 60 }])
-      expect(selection.render(details).props.header.props).toEqual({ count: 2, label: 'OS features' })
+      expect(selection.render(details).props.header.props).toEqual({ count: 2, label: 'Features' })
     })
   })
 
@@ -326,7 +326,7 @@ describe('#createFeatureSummary', () => {
       expect(await selection.selectIn(POLYGON, { signal })).toBe(true)
 
       expect(readFeaturesInExtent).toHaveBeenCalledWith('/data.fgb', [0, 0, 100, 100], { signal })
-      expect(selection.label()).toBe('2 OS features selected')
+      expect(selection.label()).toBe('2 Features selected')
       expect(highlighted()).toEqual([INSIDE.getGeometry(), CROSSING.getGeometry()])
       expect(outlined()).toEqual([POLYGON])
     })
@@ -376,7 +376,7 @@ describe('#createFeatureSummary', () => {
       read.resolve([INSIDE])
 
       expect(await selecting).toBe(false)
-      expect(selection.label()).toBe('1 OS feature selected')
+      expect(selection.label()).toBe('1 Feature selected')
       expect(outlined()).toEqual([])
     })
 
@@ -401,7 +401,7 @@ describe('#createFeatureSummary', () => {
 
       toggleAt(summary, INSIDE)
 
-      expect(selection.label()).toBe('1 OS feature selected')
+      expect(selection.label()).toBe('1 Feature selected')
       expect(outlined()).toEqual([POLYGON])
     })
 

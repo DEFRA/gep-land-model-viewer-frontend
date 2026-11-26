@@ -98,7 +98,7 @@ describe('LayersPanel', () => {
     expect(groups.every(group => !group.open)).toBe(true)
     expect(count('Habitats and biotopes')).toBe('2 datasets')
     expect(count('Soil')).toBe('1 dataset')
-    expect(labels()).toEqual(['Grid squares', 'OS features', 'Meadow habitats', 'Ancient Woodland', 'Flood Zones', 'Peaty Soils'])
+    expect(labels()).toEqual(['Grid squares', 'Features', 'Meadow habitats', 'Ancient Woodland', 'Flood Zones', 'Peaty Soils'])
     expect(view.queryByRole('button', { name: 'Clear search' })).toBeNull()
   })
 
@@ -136,7 +136,7 @@ describe('LayersPanel', () => {
     fireEvent.input(view.getByRole('searchbox'), { target: { value: '  water ' } })
     receiveResults([DATASETS[3]])
 
-    expect(labels()).toEqual(['Grid squares', 'OS features', 'Flood Zones'])
+    expect(labels()).toEqual(['Grid squares', 'Features', 'Flood Zones'])
     expect(view.container.querySelector('details')).toBeNull()
     expect(view.container.querySelector('[data-app-layer-empty]').hidden).toBe(true)
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_QUERY', payload: '  water ' })
@@ -156,7 +156,7 @@ describe('LayersPanel', () => {
     expect(empty.hidden).toBe(false)
     expect(empty.textContent.trim()).toBe('No datasets match "Natural risk"')
     expect(announce).toHaveBeenCalledWith('No datasets match "Natural risk"')
-    expect(labels()).toEqual(['Grid squares', 'OS features'])
+    expect(labels()).toEqual(['Grid squares', 'Features'])
     expect(view.container.querySelector('details')).toBeNull()
 
     fireEvent.input(view.getByRole('searchbox'), { target: { value: 'Unknown' } })
@@ -303,7 +303,7 @@ describe('LayersPanel', () => {
     expect(error.className).toContain('govuk-error-message')
     expect(error.textContent).toBe('Error: This land summary could not be added. Try again later.')
 
-    fireEvent.click(view.getByRole('checkbox', { name: 'OS features' }))
+    fireEvent.click(view.getByRole('checkbox', { name: 'Features' }))
     expect(dispatch).toHaveBeenLastCalledWith({ type: 'SET_SUMMARY', payload: { id: 'features', enabled: true } })
     expect(view.container.querySelector('#summary-features').checked).toBe(true)
     expect(view.container.querySelector('#summary-features-error')).toBeNull()
@@ -336,10 +336,10 @@ describe('LayersPanel', () => {
   test('shows information for either land summary when one is selected', async () => {
     renderPanel({ layers: [{ id: 'grid', ready: true }] })
     const gridInfo = view.getByRole('button', { name: 'About Grid squares' })
-    const featuresInfo = view.getByRole('button', { name: 'About OS features' })
+    const featuresInfo = view.getByRole('button', { name: 'About Features' })
 
     fireEvent.click(featuresInfo)
-    expect((await view.findByRole('dialog', { name: 'About OS features' })).textContent)
+    expect((await view.findByRole('dialog', { name: 'About Features' })).textContent)
       .toBe('Real-world boundaries derived from Ordnance Survey.')
 
     fireEvent.click(gridInfo)
