@@ -16,7 +16,7 @@ export const GRID_SUMMARY = {
 
 export const FEATURE_SUMMARY = {
   id: 'features',
-  label: 'OS features',
+  label: 'Features',
   description: 'Real-world boundaries derived from Ordnance Survey.',
   catalogueCategory: 'landModelParcels',
   layerUrl: '/api/land-model/parcels/layer'
